@@ -1,0 +1,14 @@
+# Build output
+bin/
+obj/
+*.user
+.vs/
+
+# Release staging
+dist/
+
+# Local
+.env
+.venv/
+__pycache__/
+.claude/

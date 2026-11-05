@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--The stub: the one file players put into BepInEx\plugins by hand. It only finds SeaPowerKeel.dll in the game's
+      enabled mod folders (Workshop or StreamingAssets) and starts it, so it should never need an update; everything else
+      ships through the Workshop.-->
+  <PropertyGroup>
+    <AssemblyName>SeaPowerKeel.Stub</AssemblyName>
+    <RootNamespace>SeaPowerKeel.Stub</RootNamespace>
+    <Product>R.A.T.S. Keel stub: starts the Keel mod loader from the game's mod folders.</Product>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SeaPowerKeel\ModFolders.cs" Link="ModFolders.cs" />
+  </ItemGroup>
+
+</Project>

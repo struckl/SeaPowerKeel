@@ -1,0 +1,73 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace SeaPowerKeel;
+
+internal static class Report
+{
+    public static string Tag(PluginState s) => s switch
+    {
+        PluginState.Running => "RUNNING",
+        PluginState.RunningWithErrors => "ERRORS",
+        PluginState.Failed => "FAILED",
+        PluginState.NotStarted => "NOT STARTED",
+        PluginState.Skipped => "SKIPPED",
+        PluginState.LeftToAnchorChain => "ANCHOR CHAIN",
+        _ => "WAITING",
+    };
+
+    public static bool IsProblem(PluginEntry p) =>
+        p.State is PluginState.Failed or PluginState.NotStarted or PluginState.RunningWithErrors;
+
+    public static string Summary(IReadOnlyCollection<PluginEntry> all)
+    {
+        int running = all.Count(p => p.State is PluginState.Running or PluginState.RunningWithErrors);
+        int errors = all.Count(p => p.State == PluginState.RunningWithErrors);
+        int failed = all.Count(p => p.State is PluginState.Failed or PluginState.NotStarted);
+        int ac = all.Count(p => p.State == PluginState.LeftToAnchorChain);
+        var parts = new List<string> { $"{running} running" };
+        if (errors > 0) parts.Add($"{errors} with errors");
+        if (failed > 0) parts.Add($"{failed} not started");
+        if (ac > 0) parts.Add($"{ac} left to Anchor Chain");
+        return string.Join(", ", parts);
+    }
+
+    public static string Text(IReadOnlyCollection<PluginEntry> all, string header, IEnumerable<string> notes)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(header);
+        sb.AppendLine(Summary(all));
+        foreach (string n in notes)
+            sb.AppendLine("Note: " + n);
+        sb.AppendLine();
+        foreach (PluginEntry p in Sorted(all))
+        {
+            sb.AppendLine($"[{Tag(p.State)}] {p.Display} {p.Version} ({p.Guid}) – {p.Folder?.Label}, {System.IO.Path.GetFileName(p.Dll)}, {p.Kind}" +
+                          (p.State is PluginState.Running or PluginState.RunningWithErrors ? $", started in {p.StartMs:0} ms" : ""));
+            if (!string.IsNullOrEmpty(p.Reason))
+                sb.AppendLine("    " + p.Reason);
+            foreach (string w in p.Warnings)
+                sb.AppendLine("    warning: " + w);
+            if (p.LaterErrors > 0)
+                sb.AppendLine($"    {p.LaterErrors} error(s) since it started, first: {p.FirstLaterError}");
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Problems first, then running, then the rest; each group in start/mod-list order.</summary>
+    public static IEnumerable<PluginEntry> Sorted(IEnumerable<PluginEntry> all) =>
+        all.OrderBy(p => p.State switch
+        {
+            PluginState.Failed => 0,
+            PluginState.NotStarted => 1,
+            PluginState.RunningWithErrors => 2,
+            PluginState.Running => 3,
+            PluginState.LeftToAnchorChain => 4,
+            _ => 5,
+        }).ThenBy(p => p.Order);
+
+    public static string Short(IList<string> items, int n = 2) =>
+        string.Join("; ", items.Take(n)) + (items.Count > n ? $" (and {items.Count - n} more)" : "");
+}
