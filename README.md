@@ -14,6 +14,10 @@ folders, sort out dependencies and start order, start them), and on top of that:
   (missing dependency and the version it needs, a conflict, the wrong game build …). Errors a mod throws later are counted
   against it. The same report is in `BepInEx\Keel-report.txt`, and a short notice appears after start-up when something
   went wrong.
+- **A log with times.** `BepInEx\Keel-log.txt` has every log line of the game, BepInEx and all mods with the time of day and
+  the seconds since the game started; an exception gets a line saying which mod it came from, with its stack trace (also in
+  LogOutput.log). BepInEx's own log has no times and is overwritten at every start; Keel keeps the last sessions too
+  (`Keel-log.1.txt`, `.2.txt`, …).
 - **One DLL for both game builds** (the flat map of 0.8.7 and the 3D globe build): Keel references no game assembly.
 - **The hand-installed part never changes.** The stub in `BepInEx\plugins` only finds and starts Keel; every update comes
   through the Workshop.
@@ -42,6 +46,8 @@ running.
 | `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods when Anchor Chain is not running |
 | `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part; `Off` |
 | `Loading.DisabledPlugins` | empty | Plugin ids Keel does not start although their folder is on |
+| `Logging.TimestampedLog` | `true` | Write `BepInEx\Keel-log.txt` with times and the mod each exception came from |
+| `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |
 | `Report.Hotkey` | `Ctrl+Shift+K` | Report window |
 | `Report.NoticeOnProblems` | `true` | Notice after start-up when a mod did not start or threw |
 

@@ -60,4 +60,6 @@ Players can switch to `Strict` (any missing use keeps the DLL out) or `Off` in `
 
 Keel starts plugins one at a time. One that throws while starting is marked `FAILED` and the next one starts. Exceptions
 your mod throws later (from `Update`, Harmony patches …) are counted against it by its namespaces in the stack trace and
-shown in the report (Ctrl+Shift+K, `BepInEx\Keel-report.txt`), so players can tell you which mod a red log line is from.
+shown in the report (Ctrl+Shift+K, `BepInEx\Keel-report.txt`), and the log gets a line naming your mod with the stack
+trace. Ask players for `BepInEx\Keel-log.txt` (or `Keel-log.1.txt` for the session before): every line there has the time
+of day and the seconds since the game started.

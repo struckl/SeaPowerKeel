@@ -28,6 +28,20 @@ internal sealed class Runner
 
     public string AnchorChainDll;
 
+    /// <summary>Called for every exception Unity logs that Keel can pin on a mod: the mod, the message, the stack trace.</summary>
+    public Action<PluginEntry, string, string> ModError;
+
+    /// <summary>The mod whose namespaces appear in this text (a message with a stack trace), or null.</summary>
+    public string OwnerOf(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return null;
+        foreach ((string[] namespaces, PluginEntry plugin) in owners)
+            if (namespaces.Any(ns => text.Contains(ns)))
+                return plugin.Display;
+        return null;
+    }
+
     public Runner(ManualLogSource log, GameObject host, IEnumerable<ModFolder> folders)
     {
         this.log = log;
@@ -135,14 +149,32 @@ internal sealed class Runner
     };
 
     // Unity logs exceptions from Awake/Start/Update instead of throwing them at us.
+    private bool inLog;
+
     private void OnLog(string message, string stackTrace, LogType type)
     {
-        if (type != LogType.Exception && type != LogType.Error)
+        if (type != LogType.Exception && type != LogType.Error || inLog)
             return;
+        inLog = true;
+        try
+        {
+            Attribute(message, stackTrace, type);
+        }
+        finally
+        {
+            inLog = false;
+        }
+    }
+
+    private void Attribute(string message, string stackTrace, LogType type)
+    {
         if (starting != null)
         {
             if (type == LogType.Exception)
+            {
                 startErrors.Add(FirstLine(message));
+                ModError?.Invoke(starting, message, stackTrace);
+            }
             return;
         }
         if (type != LogType.Exception || string.IsNullOrEmpty(stackTrace))
@@ -155,6 +187,7 @@ internal sealed class Runner
             plugin.FirstLaterError ??= FirstLine(message);
             if (plugin.State == PluginState.Running)
                 plugin.State = PluginState.RunningWithErrors;
+            ModError?.Invoke(plugin, message, stackTrace);
             break;
         }
     }

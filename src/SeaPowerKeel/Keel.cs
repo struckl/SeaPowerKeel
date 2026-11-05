@@ -58,6 +58,8 @@ internal sealed class KeelHost : MonoBehaviour
     private ConfigEntry<string> disabled;
     private ConfigEntry<string> hotkey;
     private ConfigEntry<bool> notice;
+    private KeelLog keelLog;
+    private float nextFlush;
     private readonly List<string> notes = new();
     private bool done;
     private float noticeUntil;
@@ -84,6 +86,23 @@ internal sealed class KeelHost : MonoBehaviour
         hotkey = config.Bind("Report", "Hotkey", "Ctrl+Shift+K", "Shows and hides the report window.");
         notice = config.Bind("Report", "NoticeOnProblems", true,
             "After start-up, show a short notice in the corner when a mod did not start or threw errors.");
+        ConfigEntry<bool> timedLog = config.Bind("Logging", "TimestampedLog", true,
+            @"Write BepInEx\Keel-log.txt: every log line of the game, BepInEx and all mods with time of day and seconds since the game " +
+            "started, and the mod an exception came from (with its stack trace).");
+        ConfigEntry<int> keep = config.Bind("Logging", "KeepSessions", 3,
+            "How many earlier sessions' logs to keep (Keel-log.1.txt is the last one).");
+        if (timedLog.Value)
+        {
+            try
+            {
+                keelLog = new KeelLog(Math.Max(0, Math.Min(20, keep.Value)));
+                BepInEx.Logging.Logger.Listeners.Add(keelLog);
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning($"Cannot write the timestamped log: {ex.Message}");
+            }
+        }
         ParseHotkey(hotkey.Value);
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
@@ -122,6 +141,12 @@ internal sealed class KeelHost : MonoBehaviour
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
+        if (keelLog != null)
+            keelLog.OwnerOf = runner.OwnerOf;
+        // Unity hands exceptions to BepInEx without saying which mod threw; Keel adds a line that does, with the stack trace,
+        // to LogOutput.log and Keel-log.txt alike.
+        runner.ModError = (p, message, stack) =>
+            log.LogError($"The exception above came from {p.Display} {p.Version} ({p.Guid}, {p.Folder.Label}): {message}{Environment.NewLine}{stack}");
         RuleAnchorChain(enabled, runner);
 
         // 4. Check every DLL that may start against this game build.
@@ -248,10 +273,20 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        if (keelLog != null && Time.unscaledTime > nextFlush)
+        {
+            keelLog.Flush();
+            nextFlush = Time.unscaledTime + 1f;
+        }
+    }
+
     private void OnApplicationQuit()
     {
         if (done)
             WriteReport();
+        keelLog?.Flush();
     }
 
     private void ParseHotkey(string text)

@@ -10,4 +10,7 @@
   Chain is not running; a DLL with both entries runs its Anchor Chain entry only).
 - `keel.ini` for mods with one DLL per game build.
 - Report: Ctrl+Shift+K window, `BepInEx\Keel-report.txt`, notice after start-up, later errors counted per mod.
+- `BepInEx\Keel-log.txt`: every log line with time of day and seconds since the game started, the mod an error belongs to,
+  the last sessions kept (`Logging.TimestampedLog`, `Logging.KeepSessions`). Exceptions Unity logs get a line naming the
+  mod they came from, with the stack trace, in LogOutput.log too.
 - `tools/offline-check`: the same scan, check and plan outside the game.
