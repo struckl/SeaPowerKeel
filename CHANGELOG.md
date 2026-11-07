@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.1.0 – 2026-11-05 (not released, not yet run in the game)
+## 0.1.0 – 2026-11-07 (not released; run in the game on 0.8.7)
+
+Fixed after the first run in the game (2026-11-07):
+- The scanner could not read `[BepInDependency]` (Cecil needs BepInEx.dll for the enum argument) and dropped the whole DLL;
+  it now resolves from Managed, BepInEx\core and the mod folders, and one unreadable type no longer hides the others.
+- Errors were pinned on the first plugin of a DLL (shared namespace); now the plugin's own class wins, topmost frame first.
+- The stub's version and Keel's path were missing from the first log line.
+- The notice ran out during the start-up load screen; it now appears when the main menu is up.
+- The report window was tiny on 4K: scaled by screen height (`Report.Scale`).
+- Phase timings in the log; the summary counts failed and not started apart.
+
 
 - Stub 1.0.0 for `BepInEx\plugins`: finds `SeaPowerKeel.dll` in the enabled mod folders (newest wins) and starts it.
 - Loader: the game's mod list (or `usersettings.ini`), plugin discovery without loading (Mono.Cecil), game-version check

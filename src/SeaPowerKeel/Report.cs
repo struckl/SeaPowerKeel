@@ -25,11 +25,13 @@ internal static class Report
     {
         int running = all.Count(p => p.State is PluginState.Running or PluginState.RunningWithErrors);
         int errors = all.Count(p => p.State == PluginState.RunningWithErrors);
-        int failed = all.Count(p => p.State is PluginState.Failed or PluginState.NotStarted);
+        int failed = all.Count(p => p.State == PluginState.Failed);
+        int notStarted = all.Count(p => p.State == PluginState.NotStarted);
         int ac = all.Count(p => p.State == PluginState.LeftToAnchorChain);
         var parts = new List<string> { $"{running} running" };
         if (errors > 0) parts.Add($"{errors} with errors");
-        if (failed > 0) parts.Add($"{failed} not started");
+        if (failed > 0) parts.Add($"{failed} failed");
+        if (notStarted > 0) parts.Add($"{notStarted} not started");
         if (ac > 0) parts.Add($"{ac} left to Anchor Chain");
         return string.Join(", ", parts);
     }

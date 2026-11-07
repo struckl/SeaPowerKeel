@@ -39,18 +39,22 @@ public static class Keel
         if (AppDomain.CurrentDomain.GetData(marker) != null)
             return;
         AppDomain.CurrentDomain.SetData(marker, path);
+        // Awake runs inside AddComponent, so what it needs is handed over first.
+        KeelHost.PendingStubVersion = stubVersion;
+        KeelHost.PendingPath = path;
         var go = new GameObject(Name);
         UnityEngine.Object.DontDestroyOnLoad(go);
-        var host = go.AddComponent<KeelHost>();
-        host.StubVersion = stubVersion;
-        host.OwnPath = path;
+        go.AddComponent<KeelHost>();
     }
 }
 
 internal sealed class KeelHost : MonoBehaviour
 {
-    public string StubVersion;
-    public string OwnPath;
+    internal static string PendingStubVersion, PendingPath;
+    public string StubVersion = PendingStubVersion;
+    public string OwnPath = PendingPath;
+    private bool noticeArmed;
+    private bool wantNotice;
 
     private ManualLogSource log;
     private ConfigEntry<bool> loadAcMods;
@@ -58,6 +62,7 @@ internal sealed class KeelHost : MonoBehaviour
     private ConfigEntry<string> disabled;
     private ConfigEntry<string> hotkey;
     private ConfigEntry<bool> notice;
+    private ConfigEntry<float> uiScale;
     private KeelLog keelLog;
     private float nextFlush;
     private readonly List<string> notes = new();
@@ -103,6 +108,7 @@ internal sealed class KeelHost : MonoBehaviour
                 log.LogWarning($"Cannot write the timestamped log: {ex.Message}");
             }
         }
+        uiScale = config.Bind("Report", "Scale", 0f, "Size of the report window and notice; 0 = by screen height (2 on a 4K screen).");
         ParseHotkey(hotkey.Value);
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
@@ -124,6 +130,10 @@ internal sealed class KeelHost : MonoBehaviour
             folders = ModFolders.FromDisk();
             notes.Add("The game did not list its mod folders within 60 s; Keel used usersettings.ini instead.");
         }
+        else
+        {
+            log.LogInfo($"The game's mod list is there (waited {watch.Elapsed.TotalSeconds:0.0} s).");
+        }
 
         // 2. On the globe build, after the start-up load screen: mods started during it can keep the unit data from loading.
         if (GameState.Globe)
@@ -131,13 +141,16 @@ internal sealed class KeelHost : MonoBehaviour
             watch.Restart();
             while (!GameState.StartupDone() && watch.Elapsed.TotalSeconds < 180)
                 yield return new WaitForSecondsRealtime(0.25f);
+            log.LogInfo($"Start-up load screen done (waited {watch.Elapsed.TotalSeconds:0.0} s).");
         }
 
         List<ModFolder> enabled = folders.Where(f => f.Enabled).ToList();
         log.LogInfo($"{enabled.Count} of {folders.Count} mod folders are on.");
 
         // 3. Find the plugins (metadata only).
-        Keel.Plugins.AddRange(Scanner.Scan(enabled, Warn));
+        watch.Restart();
+        Keel.Plugins.AddRange(Scanner.Scan(enabled, Warn, Paths.ManagedPath, Paths.BepInExAssemblyDirectory));
+        log.LogInfo($"Found {Keel.Plugins.Count} plugin(s) in {Keel.Plugins.Select(p => p.Dll).Distinct().Count()} DLL(s) ({watch.ElapsedMilliseconds} ms).");
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
@@ -150,7 +163,10 @@ internal sealed class KeelHost : MonoBehaviour
         RuleAnchorChain(enabled, runner);
 
         // 4. Check every DLL that may start against this game build.
+        watch.Restart();
         yield return Check();
+        log.LogInfo($"Game-version check done ({watch.ElapsedMilliseconds} ms, frames included).");
+        watch.Restart();
 
         // 5. Plan and start.
         var elsewhere = new HashSet<string>(Chainloader.PluginInfos.Keys);
@@ -168,10 +184,11 @@ internal sealed class KeelHost : MonoBehaviour
             log.LogWarning($"NOT STARTED: {p.Display} {p.Version} ({p.Folder.Label}) – {p.Reason}");
 
         done = true;
+        log.LogInfo($"Started {order.Count} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();
-        if (notice.Value && Keel.Plugins.Any(Report.IsProblem))
-            noticeUntil = Time.realtimeSinceStartup + 25;
+        // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
+        wantNotice = notice.Value && Keel.Plugins.Any(Report.IsProblem);
         // Errors that come later show up in the window; the file is rewritten when the window opens and at quit.
     }
 
@@ -275,10 +292,15 @@ internal sealed class KeelHost : MonoBehaviour
 
     private void Update()
     {
-        if (keelLog != null && Time.unscaledTime > nextFlush)
+        if (Time.unscaledTime > nextFlush)
         {
-            keelLog.Flush();
             nextFlush = Time.unscaledTime + 1f;
+            keelLog?.Flush();
+            if (wantNotice && !noticeArmed && GameState.StartupDone())
+            {
+                noticeArmed = true;
+                noticeUntil = Time.realtimeSinceStartup + 30;
+            }
         }
     }
 
@@ -316,6 +338,10 @@ internal sealed class KeelHost : MonoBehaviour
                 WriteReport();
             e.Use();
         }
+        // IMGUI draws in screen pixels: scale it so the report reads the same on 1080p and 4K (Report.Scale, 0 = by screen height).
+        float scale = uiScale.Value > 0 ? uiScale.Value : Mathf.Max(1f, Screen.height / 1080f);
+        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+        float screenW = Screen.width / scale, screenH = Screen.height / scale;
         wrap ??= new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true };
         small ??= new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, fontSize = 11 };
         title ??= new GUIStyle(GUI.skin.label) { richText = true, fontSize = 15 };
@@ -323,10 +349,17 @@ internal sealed class KeelHost : MonoBehaviour
         if (!showWindow && Time.realtimeSinceStartup < noticeUntil)
         {
             int bad = Keel.Plugins.Count(Report.IsProblem);
-            var r = new Rect(20, Screen.height - 90, 470, 70);
+            var r = new Rect(20, screenH - 90, 470, 70);
             GUI.Box(r, GUIContent.none);
             GUI.Label(new Rect(r.x + 10, r.y + 6, r.width - 20, r.height - 12),
                       $"<b>{Keel.Name}</b>: {bad} mod(s) did not start or threw errors.\n{Report.Summary(Keel.Plugins)}.\n<b>{hotkey.Value}</b> shows why.", wrap);
+        }
+        if (showWindow)
+        {
+            window.width = Mathf.Min(960, screenW - 40);
+            window.height = Mathf.Min(600, screenH - 40);
+            window.x = Mathf.Clamp(window.x, 0, screenW - window.width);
+            window.y = Mathf.Clamp(window.y, 0, screenH - window.height);
         }
         if (showWindow)
             window = GUI.Window(0x4B45454C, window, DrawWindow, $"{Keel.Name} {Keel.Version} – {GameState.BuildName}");

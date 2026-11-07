@@ -22,10 +22,15 @@ internal static class Scanner
                || name.StartsWith("AnchorChain", StringComparison.OrdinalIgnoreCase);
     }
 
-    public static List<PluginEntry> Scan(IEnumerable<ModFolder> folders, Action<string> warn)
+    /// <param name="searchDirs">Where Cecil looks for assemblies a DLL's attributes refer to (an enum argument such as
+    /// BepInDependency's flags needs BepInEx.dll): the game's Managed folder and BepInEx\core. The mod folders are added.</param>
+    public static List<PluginEntry> Scan(IList<ModFolder> folders, Action<string> warn, params string[] searchDirs)
     {
         var all = new List<PluginEntry>();
         int order = 0;
+        using var resolver = new DefaultAssemblyResolver();
+        foreach (string d in searchDirs.Concat(folders.Select(f => f.Path)).Where(Directory.Exists))
+            resolver.AddSearchDirectory(d);
         foreach (ModFolder folder in folders)
         {
             Manifest manifest = Manifest.Read(folder.Path, warn);
@@ -42,7 +47,7 @@ internal static class Scanner
             }
             foreach (string dll in dlls)
             {
-                List<PluginEntry> found = ScanDll(dll, folder, warn);
+                List<PluginEntry> found = ScanDll(dll, folder, warn, resolver);
                 // Some mods carry both entries in one DLL: the Anchor Chain one for the Workshop, the BepInEx one for players
                 // who copy the DLL into BepInEx\plugins. From a mod folder only the Anchor Chain entry is meant to run
                 // (the one Anchor Chain uses, the one the author tested); starting both would run the mod twice.
@@ -62,24 +67,32 @@ internal static class Scanner
         return all;
     }
 
-    private static List<PluginEntry> ScanDll(string dll, ModFolder folder, Action<string> warn)
+    private static List<PluginEntry> ScanDll(string dll, ModFolder folder, Action<string> warn, IAssemblyResolver resolver)
     {
         var result = new List<PluginEntry>();
         try
         {
             using var stream = new MemoryStream(File.ReadAllBytes(dll));
-            using ModuleDefinition module = ModuleDefinition.ReadModule(stream, new ReaderParameters { ReadSymbols = false });
+            using ModuleDefinition module = ModuleDefinition.ReadModule(stream, new ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
             foreach (TypeDefinition type in module.GetTypes())
             {
                 if (!type.IsClass || type.IsAbstract || !type.HasCustomAttributes)
                     continue;
                 PluginEntry entry = null;
-                CustomAttribute bep = Attr(type, "BepInEx.BepInPlugin");
-                CustomAttribute ac = Attr(type, "AnchorChain.ACPlugin");
-                if (bep != null && Inherits(type, "BepInEx.BaseUnityPlugin"))
-                    entry = FromBepInEx(type, bep);
-                else if (ac != null && Implements(type, "AnchorChain.IAnchorChainMod"))
-                    entry = FromAnchorChain(type, ac);
+                try
+                {
+                    CustomAttribute bep = Attr(type, "BepInEx.BepInPlugin");
+                    CustomAttribute ac = Attr(type, "AnchorChain.ACPlugin");
+                    if (bep != null && Inherits(type, "BepInEx.BaseUnityPlugin"))
+                        entry = FromBepInEx(type, bep);
+                    else if (ac != null && Implements(type, "AnchorChain.IAnchorChainMod"))
+                        entry = FromAnchorChain(type, ac);
+                }
+                catch (Exception ex)
+                {
+                    // one unreadable type must not hide the DLL's other plugins
+                    warn($"Cannot read the plugin attributes of {type.FullName} in {Path.GetFileName(dll)} ({folder.Label}): {ex.Message}");
+                }
                 if (entry == null)
                     continue;
                 entry.Dll = dll;

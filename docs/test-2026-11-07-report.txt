@@ -1,0 +1,28 @@
+R.A.T.S. Keel 0.1.0 (stub 1.0.0) – Sea Power, flat map (0.8.7) – 2026-11-07 19:19
+12 running, 1 with errors, 1 failed, 3 not started
+Note: Anchor Chain is not running: Keel starts its mods (types from E:\Games\steamapps\workshop\content\1286220\3380210757\AnchorChain.dll).
+
+[FAILED] KeelTest Throws On Start 1.0.0 (dev.keeltest.throws) – KeelTest, KeelTestA.dll, BepInEx
+    Threw while starting: InvalidOperationException: KEELTEST thrown on purpose in Awake
+[NOT STARTED] KeelTest Needs Newer Fine 1.0.0 (dev.keeltest.toonew) – KeelTest, KeelTestA.dll, BepInEx
+    Needs KeelTest Fine 2.0 or newer; installed is 1.2.0.
+[NOT STARTED] KeelTest Missing Dependency 1.0.0 (dev.keeltest.missing) – KeelTest, KeelTestA.dll, BepInEx
+    Needs dev.keeltest.notthere, which is not installed or switched off in the mod list.
+[NOT STARTED] KeelTest Globe Only 1.0.0 (dev.keeltest.globeonly) – KeelTest, KeelTestGlobe.dll, BepInEx
+    Made for another game version: this build has no SeapowerUI.MapDisplayState. Loading it would stop missions from loading, so Keel leaves it out.
+[ERRORS] KeelTest Later Error 1.0.0 (dev.keeltest.later) – KeelTest, KeelTestA.dll, BepInEx, started in 0 ms
+    1 error(s) since it started, first: Exception: KEELTEST thrown on purpose from Update
+[RUNNING] BetterTacMap 0.1 (toemel.bettertacmap) – Workshop 3768036424, BetterTacMap.dll, AnchorChain, started in 517 ms
+[RUNNING] IdentifyExpanded 3.420.6967 (com.fmsv.identifyexpanded) – Workshop 3790594162, IdentifyExpanded.dll, AnchorChain, started in 307 ms
+[RUNNING] Sea Power Radio 1.2.0 (dev.sewerlabs.seapowerradio) – SeaPowerRadio, SeaPowerRadio.dll, AnchorChain, started in 4 ms
+    warning: Uses 4 thing(s) this game build lacks, e.g. SeaPower.Globals::get_currentMissionFilePath(); SeaPower.LiveMap.MapPalette (and 2 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Radio (flat map) 1.2.0 (dev.sewerlabs.seapowerradio.flatmap) – SeaPowerRadio, SeaPowerRadioFlat.dll, AnchorChain, started in 1535 ms
+[RUNNING] Sea Power Topographic Map 1.5.0 (dev.sewerlabs.seapowertopo) – SeaPowerTopo, SeaPowerTopo.dll, AnchorChain, started in 3 ms
+    warning: Uses 14 thing(s) this game build lacks, e.g. MapControl.MapProjection::TryMapToGeoPosition(Double, Double, GeoPosition&); SeaPower.FileLayerSnapshot (and 12 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Topographic Map (flat map) 1.5.0 (dev.sewerlabs.seapowertopo.flatmap) – SeaPowerTopo, SeaPowerTopoFlat.dll, AnchorChain, started in 214 ms
+[RUNNING] Sea Power Cities and Borders 1.1.0 (dev.sewerlabs.seapowerborders) – SeaPowerBorders, SeaPowerBorders.dll, AnchorChain, started in 3 ms
+    warning: Uses 10 thing(s) this game build lacks, e.g. MapControl.MapBase::TryLocationToView(GeoPosition, Point&); MapControl.MapProjection::GetVisibleGeoBounds(ViewTransform, Size) (and 8 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Cities and Borders (flat map) 1.1.0 (dev.sewerlabs.seapowerborders.flatmap) – SeaPowerBorders, SeaPowerBordersFlat.dll, AnchorChain, started in 370 ms
+[RUNNING] KeelTest Fine 1.2.0 (dev.keeltest.fine) – KeelTest, KeelTestA.dll, BepInEx, started in 2 ms
+[RUNNING] KeelTest Dependent 1.0.0 (dev.keeltest.dependent) – KeelTest, KeelTestA.dll, BepInEx, started in 1 ms
+[RUNNING] KeelTest After Throws 1.0.0 (dev.keeltest.afterthrows) – KeelTest, KeelTestA.dll, BepInEx, started in 1 ms

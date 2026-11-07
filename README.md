@@ -25,8 +25,8 @@ folders, sort out dependencies and start order, start them), and on top of that:
   starts twice. When Anchor Chain is not running (its preloader cannot start on the 3D globe build yet), Keel starts those
   mods itself.
 
-Status: **0.1.0, not yet run in the game.** Checked offline: builds, 0 missing references on both game builds, and the
-scanner, game-version check and planner run over the installed Workshop mods (see *Development*).
+Status: **0.1.0, run in the game on 0.8.7 (flat map) on 2026-11-07**; the 3D globe build is checked offline only (0 missing
+references, scanner, game-version check and planner over the installed mods). Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md).
 
 ## Install
 

@@ -31,15 +31,47 @@ internal sealed class Runner
     /// <summary>Called for every exception Unity logs that Keel can pin on a mod: the mod, the message, the stack trace.</summary>
     public Action<PluginEntry, string, string> ModError;
 
-    /// <summary>The mod whose namespaces appear in this text (a message with a stack trace), or null.</summary>
-    public string OwnerOf(string text)
+    /// <summary>The mod whose code appears in this text (a message with a stack trace), or null.</summary>
+    public string OwnerOf(string text) => Find(text)?.Display;
+
+    /// <summary>
+    /// The plugin a stack trace belongs to. A plugin's own class beats a namespace match (several plugins of one DLL share
+    /// the namespace), and the topmost frame wins (a mod calling into another mod's code is not the one that threw).
+    /// </summary>
+    private PluginEntry Find(string text)
     {
         if (string.IsNullOrEmpty(text))
             return null;
+        PluginEntry best = null;
+        int bestAt = int.MaxValue;
         foreach ((string[] namespaces, PluginEntry plugin) in owners)
-            if (namespaces.Any(ns => text.Contains(ns)))
-                return plugin.Display;
-        return null;
+        {
+            string type = plugin.TypeName.Replace('+', '/');
+            foreach (string probe in new[] { plugin.TypeName + ".", plugin.TypeName + ":", type + ".", type + ":" })
+            {
+                int at = text.IndexOf(probe, StringComparison.Ordinal);
+                if (at >= 0 && at < bestAt)
+                {
+                    best = plugin;
+                    bestAt = at;
+                }
+            }
+        }
+        if (best != null)
+            return best;
+        foreach ((string[] namespaces, PluginEntry plugin) in owners)
+        {
+            foreach (string ns in namespaces)
+            {
+                int at = text.IndexOf(ns, StringComparison.Ordinal);
+                if (at >= 0 && at < bestAt)
+                {
+                    best = plugin;
+                    bestAt = at;
+                }
+            }
+        }
+        return best;
     }
 
     public Runner(ManualLogSource log, GameObject host, IEnumerable<ModFolder> folders)
@@ -179,17 +211,14 @@ internal sealed class Runner
         }
         if (type != LogType.Exception || string.IsNullOrEmpty(stackTrace))
             return;
-        foreach ((string[] namespaces, PluginEntry plugin) in owners)
-        {
-            if (!namespaces.Any(ns => stackTrace.Contains(ns)))
-                continue;
-            plugin.LaterErrors++;
-            plugin.FirstLaterError ??= FirstLine(message);
-            if (plugin.State == PluginState.Running)
-                plugin.State = PluginState.RunningWithErrors;
-            ModError?.Invoke(plugin, message, stackTrace);
-            break;
-        }
+        PluginEntry plugin = Find(stackTrace);
+        if (plugin == null)
+            return;
+        plugin.LaterErrors++;
+        plugin.FirstLaterError ??= FirstLine(message);
+        if (plugin.State == PluginState.Running)
+            plugin.State = PluginState.RunningWithErrors;
+        ModError?.Invoke(plugin, message, stackTrace);
     }
 
     private static string FirstLine(string s)

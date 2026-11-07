@@ -40,7 +40,7 @@ internal static class Program
         }
 
         var notes = new List<string>();
-        List<PluginEntry> all = Scanner.Scan(folders, notes.Add);
+        List<PluginEntry> all = Scanner.Scan(folders, notes.Add, managed, core);
         using (var pre = new Preflight(managed, core))
         {
             foreach (IGrouping<string, PluginEntry> dll in all.Where(p => p.State == PluginState.Pending).GroupBy(p => p.Dll))
