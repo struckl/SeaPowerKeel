@@ -1,1 +1,1 @@
-First release of R.A.T.S. Keel 0.1.0: a mod loader that checks every mod against your game version before loading it, starts each mod on its own, only loads mods switched on in the Mods menu, and shows a report (Ctrl+Shift+K) and a log with times. Runs BepInEx plugins and Anchor Chain mods. Run in the game on 0.8.7; the 3D globe build is checked offline.
+Page and in-game text: Keel replaces Anchor Chain's loader; how to switch over.

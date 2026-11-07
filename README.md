@@ -2,7 +2,7 @@
 
 *R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals*
 
-A mod loader for Sea Power's code mods. It does the job a chainloader does (find the plugin DLLs in the game's mod
+A mod loader for Sea Power's code mods and a replacement for Anchor Chain's loader (Anchor Chain mods keep working). It does the job a chainloader does (find the plugin DLLs in the game's mod
 folders, sort out dependencies and start order, start them), and on top of that:
 
 - **Checks every mod against your game version before loading it.** A mod built for the other game build used to be able
@@ -35,8 +35,9 @@ references, scanner, game-version check and planner over the installed mods). Te
    into `Sea Power\BepInEx\plugins`.
 3. Start the game. Ctrl+Shift+K shows the report.
 
-Keel works next to Anchor Chain. You can keep both; Keel only takes Anchor Chain mods over when Anchor Chain itself is not
-running.
+**Switching from Anchor Chain:** delete `AnchorChain.Preloader.dll` from `BepInEx\plugins`; Keel then loads the Anchor Chain
+mods. Keep Anchor Chain subscribed and on: its mods are built against its DLL, which Keel uses as a library (it does not start
+Anchor Chain). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
 
 ## Settings
 
