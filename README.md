@@ -31,7 +31,8 @@ references, scanner, game-version check and planner over the installed mods). Te
 ## Install
 
 1. Subscribe to R.A.T.S. Keel on the Workshop and switch it on in the game's Mods menu.
-2. Once: copy `SeaPowerKeel.Stub.dll` (from the GitHub release) into `Sea Power\BepInEx\plugins`.
+2. Once: copy `SeaPowerKeel.Stub.dll` from `copy-to-BepInEx-plugins` in Keel's Workshop folder (or from the GitHub release)
+   into `Sea Power\BepInEx\plugins`.
 3. Start the game. Ctrl+Shift+K shows the report.
 
 Keel works next to Anchor Chain. You can keep both; Keel only takes Anchor Chain mods over when Anchor Chain itself is not
@@ -73,7 +74,8 @@ dotnet build src/SeaPowerKeel/SeaPowerKeel.csproj -c Release          # -p:Deplo
 dotnet build src/SeaPowerKeel.Stub/SeaPowerKeel.Stub.csproj -c Release
 ```
 
-`-p:GameDir=...` for another install. `tools/offline-check` runs Keel's scanner, game-version check and planner over mod
+`-p:GameDir=...` for another install. `tools/package.ps1` (or `python tools/modtool.py package keel --yes` in the workspace) stages
+`dist\SeaPowerKeel\` for the Workshop. Workshop item 3835527459 (private for now); page text and picture in `workshop/`. `tools/offline-check` runs Keel's scanner, game-version check and planner over mod
 folders on disk against a game build's `Managed` folder, without the game:
 
 ```
