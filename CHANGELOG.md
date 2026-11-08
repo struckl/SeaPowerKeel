@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Anchor Chain compatibility (offline-checked only, not run in the game)
+## Unreleased - Anchor Chain compatibility (run in the game on globe beta 261107 on 2026-11-08 with Euromod: 25 mods started, a mission ran; 0.8.7 offline only)
 
 Reports on Discord said big Anchor Chain mods (Euromod's Anchorchain Expansion Pack, sonar systems) did not work under Keel.
 Compared with Anchor Chain's loader (released 1.1.0 DLL and the current source), these differences are fixed:
