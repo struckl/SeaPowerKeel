@@ -18,6 +18,8 @@ internal static class LoadingWindow
 
     /// <summary>True while a mission is running (set by Keel's host about twice a second): the summary card belongs to the main menu only.</summary>
     public static volatile bool MissionRunning;
+    /// <summary>The main menu shows a page other than its top one: the summary card hides and comes back with the top page.</summary>
+    public static volatile bool OnMenuSubPage;
     /// <summary>When (UTC ticks) the game last loaded a scene on its own (a mission, the editor, a campaign), not added to the menu.</summary>
     public static long SceneLoadedTicks;
 

@@ -26,7 +26,7 @@ internal static class Native
     public const uint WS_POPUP = 0x80000000;
     public const uint WS_EX_TOPMOST = 0x8, WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000, WS_EX_LAYERED = 0x80000;
     public const uint WM_DESTROY = 0x2, WM_PAINT = 0xF, WM_ERASEBKGND = 0x14, WM_MOUSEACTIVATE = 0x21, WM_TIMER = 0x113, WM_LBUTTONDOWN = 0x201;
-    public const int SW_SHOWNOACTIVATE = 4, SPI_GETWORKAREA = 0x30, LOGPIXELSX = 88;
+    public const int SW_HIDE = 0, SW_SHOWNOACTIVATE = 4, SPI_GETWORKAREA = 0x30, LOGPIXELSX = 88;
     public const uint LWA_ALPHA = 0x2, SWP_NOACTIVATE = 0x10, SWP_SHOWWINDOW = 0x40;
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
     public const uint DT_RIGHT = 0x2, DT_VCENTER = 0x4, DT_SINGLELINE = 0x20, DT_NOPREFIX = 0x800, DT_END_ELLIPSIS = 0x8000;

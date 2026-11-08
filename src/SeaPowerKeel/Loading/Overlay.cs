@@ -36,7 +36,7 @@ internal sealed class Overlay
     private static Native.WndProc proc;                     // kept alive: Win32 holds only the pointer
     private static Native.EnumWindowsProc enumProc;
 
-    private enum Stage { Full, Moving, Summary, Fading }
+    private enum Stage { Full, Moving, Summary, Away, Fading }
 
     private readonly Progress progress;
     private readonly OverlayOptions options;
@@ -179,7 +179,7 @@ internal sealed class Overlay
     {
         // The summary card belongs to the main menu: when a mission runs or the game loads a scene of its own (mission, editor,
         // campaign), it goes.
-        if ((stage == Stage.Moving || stage == Stage.Summary) && (LoadingWindow.MissionRunning || LoadingWindow.SceneLoadedTicks > summaryStartTicks))
+        if ((stage == Stage.Moving || stage == Stage.Summary || stage == Stage.Away) && (LoadingWindow.MissionRunning || LoadingWindow.SceneLoadedTicks > summaryStartTicks))
             Begin(Stage.Fading);
         if (owner == IntPtr.Zero && ++ticks % 6 == 1) FindOwner();
         Progress.Snapshot s = progress.Take(0);
@@ -200,8 +200,18 @@ internal sealed class Overlay
                 break;
             }
             case Stage.Summary:
+                if (LoadingWindow.OnMenuSubPage) { Native.ShowWindow(hwnd, Native.SW_HIDE); Begin(Stage.Away); return; }      // Scenarios, Options ...: gone at once
                 if (options.SummarySeconds > 0 && t > options.SummarySeconds) Begin(Stage.Fading);
                 break;
+            case Stage.Away:
+                if (!LoadingWindow.OnMenuSubPage)      // back on the menu's top page: there again at once, with a fresh timer
+                {
+                    stage = Stage.Summary; stageStart = Now;
+                    SetAlpha(options.Opacity);
+                    Native.ShowWindow(hwnd, Native.SW_SHOWNOACTIVATE);
+                    Paint();
+                }
+                return;
             case Stage.Fading:
             {
                 double k = Math.Min(1.0, t / FadeSeconds);
