@@ -1,4 +1,4 @@
-Title: [Mod] R.A.T.S. Keel – replaces Anchor Chain: your mods on the 3D globe beta today, faster start, and no more broken missions from outdated mods
+Title: [Mod] R.A.T.S. Keel – a new mod loader for Sea Power: your mods on the 3D globe beta today, with a faster and safer start
 
 Hi all,
 

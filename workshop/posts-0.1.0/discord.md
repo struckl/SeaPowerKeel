@@ -1,4 +1,5 @@
-**R.A.T.S. Keel – replaces Anchor Chain** ⚓
+**R.A.T.S. Keel – a new mod loader for Sea Power** ⚓
+Takes over from Anchor Chain.
 Your mods keep working as they are. Unsure? Both can run side by side – but Anchor Chain's loader is no longer needed.
 **Updated regularly** – follows every game update and beta build, updates arrive through the Workshop.
 
