@@ -27,8 +27,8 @@ folders, sort out dependencies and start order, start them), and on top of that:
   starts twice. When Anchor Chain is not running (its preloader cannot start on the 3D globe build yet), Keel starts those
   mods itself.
 
-Status: **0.1.0, run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
-a mission on each. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
+Status: **0.1.1. 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
+a mission on each; 0.1.1 on that beta only. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
 
 ## Install
 
@@ -38,8 +38,9 @@ a mission on each. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md
 3. Start the game. Ctrl+Shift+K shows the report.
 
 **Switching from Anchor Chain:** delete `AnchorChain.Preloader.dll` from `BepInEx\plugins`; Keel then loads the Anchor Chain
-mods. Keep Anchor Chain subscribed and on: its mods are built against its DLL, which Keel uses as a library (it does not start
-Anchor Chain). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
+mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
+is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). A
+mod that uses Anchor Chain's `ACConfig` still needs Anchor Chain itself. With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
 
 ## Settings
 

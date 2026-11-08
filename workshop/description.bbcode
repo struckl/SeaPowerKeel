@@ -24,7 +24,7 @@ Anchor Chain got Sea Power's code mods started, and I built Keel to take that fu
 [*]Subscribe and switch R.A.T.S. Keel on in the game's Mods menu.
 [*]Once: copy [b]SeaPowerKeel.Stub.dll[/b] from the folder [i]copy-to-BepInEx-plugins[/i] in Keel's Workshop folder (or from the GitHub release) into [i]Sea Power\BepInEx\plugins[/i].
 [*]Delete [b]AnchorChain.Preloader.dll[/b] from [i]Sea Power\BepInEx\plugins[/i]. From now on Keel does the loading.
-[*]Keep Anchor Chain subscribed and switched on: Anchor Chain mods are built against its files, and Keel uses them (it does not start Anchor Chain).
+[*]You no longer need the Anchor Chain item: Keel brings its own copy of Anchor Chain's library (MIT) for the mods built against it. Run in the game on the 3D globe public beta (build 261107) with no Anchor Chain on the PC. On 0.8.7 keep Anchor Chain subscribed, that is the tested way there. A mod that uses Anchor Chain's ACConfig still needs Anchor Chain itself.
 [*]Start the game. Ctrl+Shift+K shows the report.
 [/olist]
 If you keep Anchor Chain's preloader, Anchor Chain loads its mods as before and Keel steps aside for them, so nothing starts twice.

@@ -24,8 +24,8 @@ the plugin to `Chainloader.PluginInfos`, so other plugins find it the BepInEx wa
 
 `[ACPlugin]` on an `IAnchorChainMod`, with `[ACDependency]` / `[ACIncompatibility]`, as Anchor Chain describes. While
 Anchor Chain runs, Keel leaves these to it. When Anchor Chain is not running (for example when its preloader cannot start
-on a game build), Keel starts them itself: it takes the types from Anchor Chain's DLL (so Anchor Chain must still be
-subscribed) and calls `TriggerEntryPoint`. Differences: `before`/`after` only order the start (an absent plugin named
+on a game build), Keel starts them itself: it takes the types from Anchor Chain's DLL (a subscribed copy, else the
+one Keel ships) and calls `TriggerEntryPoint`. Differences: `before`/`after` only order the start (an absent plugin named
 there does not keep yours from starting); mods with `[ACConfig]` are left to Anchor Chain.
 
 A DLL that has both an `[ACPlugin]` and a `[BepInPlugin]` entry runs through its Anchor Chain entry only.

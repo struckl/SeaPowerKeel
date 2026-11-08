@@ -11,7 +11,7 @@ Anchor Chain got Sea Power's code mods going – I built Keel to take it further
 • **Ctrl+Shift+K** shows what runs and why something doesn't
 • **Timestamped logs** naming the mod behind each error
 
-**Install:** subscribe → copy `SeaPowerKeel.Stub.dll` (folder `copy-to-BepInEx-plugins` in Keel's Workshop folder) into `BepInEx\plugins` → to let Keel do all the loading, remove `AnchorChain.Preloader.dll` (keep Anchor Chain subscribed, your mods need its files).
+**Install:** subscribe → copy `SeaPowerKeel.Stub.dll` (folder `copy-to-BepInEx-plugins` in Keel's Workshop folder) into `BepInEx\plugins` → to let Keel do all the loading, remove `AnchorChain.Preloader.dll` (on the 3D globe beta you no longer need the Anchor Chain item; on 0.8.7 keep it subscribed).
 
 Thanks to the Anchor Chain team – Keel stands on their work.
 Workshop: <https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459>
