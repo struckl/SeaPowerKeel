@@ -439,7 +439,7 @@ internal sealed class Overlay
         if (s.Done) { foot = "All mods started."; footColor = Green; }
         else if (s.Current != null)    // Keel logs "STARTING i/n: name" before each start, so the slow mod is named while it is slow
         {
-            foot = "Starting " + s.CurrentIndex + "/" + s.Total + ": " + Shorten(s.Current, 42) + (s.CurrentFor >= 1 ? "  " + s.CurrentFor.ToString("0") + " s" : "");
+            foot = "Starting " + s.CurrentIndex + "/" + s.Total + ": " + Shorten(s.Current, 42) + (s.CurrentFor >= 1 ? "  -  " + s.CurrentFor.ToString("0") + " s" : "");
             footColor = s.CurrentFor >= 5 ? Amber : Text;
         }
         else if (s.Idle >= 2.5)
