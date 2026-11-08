@@ -614,7 +614,9 @@ internal sealed class KeelHost : MonoBehaviour
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Copy report", GUILayout.Width(140)))
             GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
-        GUILayout.Label($"<size=11>Also in {reportPath}</size>", wrap);
+        // A fixed width: a wrapping label in a row takes all the width a long path wants and pushed Close out of the window.
+        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f)));
+        GUILayout.FlexibleSpace();
         if (GUILayout.Button("Close", GUILayout.Width(100)))
             showWindow = false;
         GUILayout.EndHorizontal();
