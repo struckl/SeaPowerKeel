@@ -61,10 +61,7 @@ internal static class Report
             sb.AppendLine($"DLLs left out on purpose ({skipped.Count}):");
             foreach (SkippedDll d in skipped)
                 sb.AppendLine($"[SKIPPED DLL] {System.IO.Path.GetFileName(d.Path)} – {d.Folder?.Label}, {d.Path}{Environment.NewLine}    {d.Reason}");
-        }
-        sb.AppendLine();
-        sb.AppendLine("R.A.T.S. Keel by Kanalratte (struckl) - Steam: https://steamcommunity.com/profiles/76561198169349193 - Discord: https://discord.gg/vc8uAVH6Sh (BuOrd, #sp-mods) - GitHub: https://github.com/struckl/SeaPowerKeel");
-        return sb.ToString();
+        }        return sb.ToString();
     }
 
     /// <summary>Problems first, then running, then the rest; each group in start/mod-list order.</summary>
