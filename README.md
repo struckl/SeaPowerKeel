@@ -43,8 +43,7 @@ a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-n
 
 **Switching from Anchor Chain:** delete `AnchorChain.Preloader.dll` from `BepInEx\plugins`; Keel then loads the Anchor Chain
 mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
-is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). A
-mod that uses Anchor Chain's `ACConfig` still needs Anchor Chain itself. With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
+is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). Keel now handles ACConfig files itself (checked offline; no mod in the game test used it). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
 
 ## Settings
 
