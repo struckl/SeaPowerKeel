@@ -353,6 +353,7 @@ internal sealed class KeelHost : MonoBehaviour
                     {
                         if (declared != null)
                             p.Warnings.Add(declared);
+                        p.MissingUses.AddRange(r.Uses);
                         if (r.Uses.Count > 0)
                             p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}. Fine if the mod checks the game version itself; " +
                                            "otherwise expect errors when that part runs.");

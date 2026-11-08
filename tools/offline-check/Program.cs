@@ -59,6 +59,7 @@ internal static class Program
                         p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.ClassLoad)}.");
                     else
                     {
+                        p.MissingUses.AddRange(r.Uses);
                         if (r.Uses.Count > 0)
                             p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}.");
                         if (r.Lookups.Count > 0)

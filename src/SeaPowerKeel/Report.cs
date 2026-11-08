@@ -52,6 +52,8 @@ internal static class Report
                 sb.AppendLine("    " + p.Reason);
             foreach (string w in p.Warnings)
                 sb.AppendLine("    warning: " + w);
+            if (p.MissingUses.Count > 2)
+                sb.AppendLine("    all missing in this build: " + string.Join("; ", p.MissingUses.Take(60)) + (p.MissingUses.Count > 60 ? $" (and {p.MissingUses.Count - 60} more)" : ""));
             if (p.LaterErrors > 0)
                 sb.AppendLine($"    {p.LaterErrors} error(s) since it started, first: {p.FirstLaterError}");
         }

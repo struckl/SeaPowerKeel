@@ -338,7 +338,7 @@ internal sealed class Runner
         }
         if (type != LogType.Exception || string.IsNullOrEmpty(stackTrace))
             return;
-        PluginEntry plugin = Find(stackTrace);
+        PluginEntry plugin = Find(stackTrace) ?? BlameMissingMember(message);
         if (plugin == null)
             return;
         plugin.LaterErrors++;
@@ -346,6 +346,46 @@ internal sealed class Runner
         if (plugin.State == PluginState.Running)
             plugin.State = PluginState.RunningWithErrors;
         ModError?.Invoke(plugin, message, stackTrace);
+    }
+
+    private readonly HashSet<string> blamed = new();
+
+    /// <summary>
+    /// A "Method not found" / "Field not found" error whose stack holds no mod (a Harmony patch rewrote a game method, so the
+    /// trace shows only the game's own frames): finds the mod whose DLL calls that member, from the preflight's list of what this
+    /// build lacks. That is how a mod made for another game version is named when it breaks a game screen.
+    /// </summary>
+    private PluginEntry BlameMissingMember(string message)
+    {
+        if (message == null || !(message.StartsWith("MissingMethodException") || message.StartsWith("MissingFieldException")))
+            return null;
+        int at = message.IndexOf(" not found: ", StringComparison.Ordinal);
+        if (at < 0)
+            return null;
+        string sig = FirstLine(message.Substring(at + 12));          // e.g. List`1<string> SeaPower.FileManager.GetDirectories(string)
+        int paren = sig.IndexOf('(');
+        string head = paren < 0 ? sig : sig.Substring(0, paren);
+        int space = head.LastIndexOf(' ');
+        if (space >= 0)
+            head = head.Substring(space + 1);
+        int dot = head.LastIndexOf('.');
+        if (dot <= 0)
+            return null;
+        string key = head.Substring(0, dot).Replace('+', '/') + "::" + head.Substring(dot + 1);
+        foreach ((string[] _, PluginEntry p) in owners)
+        {
+            if (!p.MissingUses.Any(u => u == key || u.StartsWith(key + "(", StringComparison.Ordinal)))
+                continue;
+            if (blamed.Add(p.Guid + "|" + key))
+            {
+                string why = $"The game threw 'not found: {FirstLine(message.Substring(at + 12))}'. {p.Display} calls it and this game build does not have it: " +
+                             "the mod was made for another game version (see its warnings in the report).";
+                p.Warnings.Add(why);
+                log.LogWarning(why);
+            }
+            return p;
+        }
+        return null;
     }
 
     private static string FirstLine(string s)
