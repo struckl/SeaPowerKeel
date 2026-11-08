@@ -13,9 +13,15 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--selftest")
+            return SelfTest.Run(args.Skip(1).ToArray());
+        if (args.Length > 0 && args[0] == "--inicheck")
+            return SelfTest.IniCheck(args.Skip(1).ToArray());
         if (args.Length < 3)
         {
             Console.WriteLine("usage: SeaPowerKeel.OfflineCheck <Managed> <BepInEx core> <mod folder | folder of mod folders> ...");
+            Console.WriteLine("       SeaPowerKeel.OfflineCheck --selftest <Managed> <BepInEx core>      (Keel's own tests; exit code 1 when one fails)");
+            Console.WriteLine("       SeaPowerKeel.OfflineCheck --inicheck <Managed> [<Managed> ...]     (do the game's IniHandler members [ACConfig] needs exist?)");
             return 2;
         }
         string managed = args[0], core = args[1];
@@ -40,7 +46,8 @@ internal static class Program
         }
 
         var notes = new List<string>();
-        List<PluginEntry> all = Scanner.Scan(folders, notes.Add, managed, core);
+        var skipped = new List<SkippedDll>();
+        List<PluginEntry> all = Scanner.Scan(folders, notes.Add, skipped, managed, core);
         using (var pre = new Preflight(managed, core))
         {
             foreach (IGrouping<string, PluginEntry> dll in all.Where(p => p.State == PluginState.Pending).GroupBy(p => p.Dll))
@@ -60,7 +67,7 @@ internal static class Program
             p.State = PluginState.Running;   // would start; nothing is run here
         Console.WriteLine("Start order: " + string.Join(" > ", order.Select(p => p.Display)));
         Console.WriteLine();
-        Console.WriteLine(Report.Text(all, "Offline check (nothing started; RUNNING = would start)", notes));
+        Console.WriteLine(Report.Text(all, "Offline check (nothing started; RUNNING = would start)", notes, skipped));
         return 0;
     }
 }
