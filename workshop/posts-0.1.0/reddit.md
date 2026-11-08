@@ -1,4 +1,4 @@
-Title: [Mod] R.A.T.S. Keel – a new mod loader for Sea Power: your mods on the 3D globe beta today, with a faster and safer start
+Title: [Mod] R.A.T.S. Keel – faster, safer modding on every game version (your mods run on the 3D globe beta today)
 
 Hi all,
 
