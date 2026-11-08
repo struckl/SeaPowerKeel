@@ -478,7 +478,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (Loading.LoadingWindow.ReportRequested)      // a click on the loading window's summary
         {
             Loading.LoadingWindow.ReportRequested = false;
-            if (!showWindow) ToggleWindow();
+            ToggleWindow();      // a click on the summary opens the report, the next one closes it
         }
         if (Time.unscaledTime > nextFlush)
         {
@@ -523,6 +523,7 @@ internal sealed class KeelHost : MonoBehaviour
             ToggleWindow();
             e.Use();
         }
+        if (showWindow && e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) { showWindow = false; e.Use(); }      // Esc closes the report
         // IMGUI draws in screen pixels: scale it so the report reads the same on 1080p and 4K (Report.Scale, 0 = by screen height).
         float scale = uiScale.Value > 0 ? uiScale.Value : Mathf.Max(1f, Screen.height / 1080f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));

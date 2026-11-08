@@ -31,8 +31,8 @@ internal sealed class OverlayOptions
 internal sealed class Overlay
 {
     private const string ClassName = "RatsLoadingOverlay";
-    private const int Rows = 8, Tick = 33;
-    private const double MoveSeconds = 0.9, FadeSeconds = 0.8;
+    private const int Rows = 8, Tick = 16;
+    private const double MoveSeconds = 0.8, FadeSeconds = 0.8;
     private static Native.WndProc proc;                     // kept alive: Win32 holds only the pointer
     private static Native.EnumWindowsProc enumProc;
 
@@ -133,7 +133,16 @@ internal sealed class Overlay
                 Native.ValidateRect(h, IntPtr.Zero);
                 return IntPtr.Zero;
             case Native.WM_LBUTTONDOWN:
-                if (stage == Stage.Summary) options.OnSummaryClick?.Invoke();
+                if (stage == Stage.Summary)
+                {
+                    int cx = (short)((long)lParam & 0xFFFF), cy = (short)(((long)lParam >> 16) & 0xFFFF);
+                    int pad = (int)Math.Round(14 * scale), top = (int)Math.Round((8 + 24 + 20 + 20) * scale), lineH = (int)Math.Round(20 * scale);
+                    if (cx >= pad && cx <= pad + (int)Math.Round(CreditWidth * scale) && cy >= top && cy <= top + lineH)
+                    {
+                        try { Process.Start(new ProcessStartInfo(ProfileUrl) { UseShellExecute = true }); } catch (Exception) { /* no browser: nothing to do */ }
+                    }
+                    else options.OnSummaryClick?.Invoke();
+                }
                 else if (options.ClickToHide && stage == Stage.Full) Begin(Stage.Fading);
                 return IntPtr.Zero;
             case Native.WM_RBUTTONDOWN:
@@ -282,7 +291,7 @@ internal sealed class Overlay
     {
         int gh = game.Bottom - game.Top;
         int w = (int)(Layout.SummaryWidth * scale), h = (int)(Layout.SummaryHeight * scale);
-        int x = game.Left + (int)(8 * scale), y = game.Bottom - (int)(gh * 0.075) - h;
+        int x = game.Left + (int)(8 * scale), y = game.Bottom - (int)(gh * 0.05) - h;
         return new Native.RECT { Left = x, Top = y, Right = x + w, Bottom = y + h };
     }
 
@@ -361,7 +370,7 @@ internal sealed class Overlay
 
     internal static class Layout
     {
-        public const int Width = 460, SummaryWidth = 400, SummaryHeight = 76;
+        public const int Width = 460, SummaryWidth = 400, SummaryHeight = 94;
         public static int Height(int rows) => 14 + 24 + 22 + 22 + rows * 19 + 8 + 20 + 14;
     }
 
@@ -465,7 +474,12 @@ internal sealed class Overlay
         }
         else { line3 = "No problems  -  click for the report"; c3 = Dim; }
         Put(dc, fontSmall, c3, line3, pad, y, w - 2 * pad, lineH, Native.DT_END_ELLIPSIS);
+        y += lineH;
+        Put(dc, fontSmall, Edge, "Made by Kanalratte", pad, y, S(CreditWidth), lineH, Native.DT_END_ELLIPSIS);      // quiet; a click opens his Steam profile
     }
+
+    public const int CreditWidth = 130;
+    private const string ProfileUrl = "https://steamcommunity.com/profiles/76561198169349193";
 
     private static string Shorten(string s, int n) => s.Length <= n ? s : s.Substring(0, n - 1) + "...";
 
