@@ -61,7 +61,9 @@ internal static class Report
             sb.AppendLine($"DLLs left out on purpose ({skipped.Count}):");
             foreach (SkippedDll d in skipped)
                 sb.AppendLine($"[SKIPPED DLL] {System.IO.Path.GetFileName(d.Path)} – {d.Folder?.Label}, {d.Path}{Environment.NewLine}    {d.Reason}");
-        }        return sb.ToString();
+        }        sb.AppendLine();
+        sb.AppendLine("R.A.T.S. Keel - Kanalratte");
+        return sb.ToString();
     }
 
     /// <summary>Problems first, then running, then the rest; each group in start/mod-list order.</summary>

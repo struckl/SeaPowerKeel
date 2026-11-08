@@ -377,7 +377,7 @@ internal sealed class Overlay
         Native.SetBkMode(dc, Native.TRANSPARENT);
         int pad = S(14), y = S(12);
 
-        Put(dc, fontBold, Amber, "R.A.T.S. Loading  -  Kanalratte", pad, y, w - 2 * pad - S(70), S(24), 0);
+        Put(dc, fontBold, Amber, "R.A.T.S. Loading", pad, y, w - 2 * pad - S(70), S(24), 0);
         Put(dc, fontText, Dim, Clock(s.Elapsed), pad, y, w - 2 * pad, S(24), Native.DT_RIGHT);
         y += S(24);
 
@@ -428,7 +428,7 @@ internal sealed class Overlay
         }
         else if (s.Idle >= 2.5)
         {
-            foot = "Waiting " + s.Idle.ToString("0") + " s" + (string.IsNullOrEmpty(s.LastEvent) ? "" : " after " + Shorten(s.LastEvent, 34)) + " - the next step is slow";
+            foot = "Nothing new for " + s.Idle.ToString("0") + " s" + (string.IsNullOrEmpty(s.LastEvent) ? "" : " (last message: " + Shorten(s.LastEvent, 34) + ")") + " - the game is busy with a slow step";
             footColor = Amber;
         }
         else { foot = "Click to hide."; footColor = Dim; }
