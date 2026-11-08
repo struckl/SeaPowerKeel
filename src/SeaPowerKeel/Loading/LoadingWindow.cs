@@ -16,6 +16,11 @@ internal static class LoadingWindow
     /// <summary>Set by a click on the summary card; Keel's host (main thread) opens its report window.</summary>
     public static volatile bool ReportRequested;
 
+    /// <summary>True while a mission is running (set by Keel's host about twice a second): the summary card belongs to the main menu only.</summary>
+    public static volatile bool MissionRunning;
+    /// <summary>When (UTC ticks) the game last loaded a scene on its own (a mission, the editor, a campaign), not added to the menu.</summary>
+    public static long SceneLoadedTicks;
+
     public static void Start(ConfigFile config, ManualLogSource log)
     {
         try

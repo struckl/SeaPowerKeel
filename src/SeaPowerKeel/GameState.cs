@@ -103,6 +103,18 @@ internal static class GameState
         }
     }
 
+    private static System.Reflection.FieldInfo playerTaskforce;
+    /// <summary>A mission is running: the player's taskforce exists (<c>Globals._playerTaskforce</c>).</summary>
+    public static bool InMission()
+    {
+        try
+        {
+            playerTaskforce ??= T("SeaPower.Globals")?.GetField("_playerTaskforce", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            return playerTaskforce != null && playerTaskforce.GetValue(null) != null;
+        }
+        catch (Exception) { return false; }
+    }
+
     /// <summary>The game's <c>SeaPower.IniHandler</c> type (null if this build has none under that name).</summary>
     public static Type IniHandlerType => T("SeaPower.IniHandler");
 

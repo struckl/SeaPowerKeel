@@ -111,6 +111,10 @@ internal sealed class KeelHost : MonoBehaviour
         }
         uiScale = config.Bind("Report", "Scale", 0f, "Size of the report window and notice; 0 = by screen height (2 on a 4K screen).");
         ParseHotkey(hotkey.Value);
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += (scene, mode) =>
+        {
+            if (mode == UnityEngine.SceneManagement.LoadSceneMode.Single) Loading.LoadingWindow.SceneLoadedTicks = DateTime.UtcNow.Ticks;
+        };
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
@@ -452,6 +456,8 @@ internal sealed class KeelHost : MonoBehaviour
         return null;
     }
 
+    private float nextMissionCheck;
+
     private void Update()
     {
         if (!hotkeyProbed)
@@ -474,6 +480,11 @@ internal sealed class KeelHost : MonoBehaviour
             if (down && !keyWasDown)
                 ToggleWindow();
             keyWasDown = down;
+        }
+        if (Time.unscaledTime > nextMissionCheck)
+        {
+            nextMissionCheck = Time.unscaledTime + 0.5f;
+            Loading.LoadingWindow.MissionRunning = GameState.InMission();
         }
         if (Loading.LoadingWindow.ReportRequested)      // a click on the loading window's summary
         {
