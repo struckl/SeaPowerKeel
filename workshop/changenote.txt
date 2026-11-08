@@ -1,1 +1,1 @@
-Page and in-game text: Keel replaces Anchor Chain's loader; how to switch over.
+Run on the 3D globe public beta (build 261107): Keel starts the Anchor Chain mods there. Report key fixed on the globe build, repeated log lines are counted instead of written, solid report window.

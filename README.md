@@ -14,6 +14,8 @@ folders, sort out dependencies and start order, start them), and on top of that:
   (missing dependency and the version it needs, a conflict, the wrong game build …). Errors a mod throws later are counted
   against it. The same report is in `BepInEx\Keel-report.txt`, and a short notice appears after start-up when something
   went wrong.
+- **Always works on the beta branch.** Keel uses nothing of the game that changes between builds; on the 3D globe beta, where
+  Anchor Chain's preloader does not start, Keel runs the Anchor Chain mods.
 - **A log with times.** `BepInEx\Keel-log.txt` has every log line of the game, BepInEx and all mods with the time of day and
   the seconds since the game started; an exception gets a line saying which mod it came from, with its stack trace (also in
   LogOutput.log). BepInEx's own log has no times and is overwritten at every start; Keel keeps the last sessions too
@@ -25,8 +27,8 @@ folders, sort out dependencies and start order, start them), and on top of that:
   starts twice. When Anchor Chain is not running (its preloader cannot start on the 3D globe build yet), Keel starts those
   mods itself.
 
-Status: **0.1.0, run in the game on 0.8.7 (flat map) on 2026-11-07**; the 3D globe build is checked offline only (0 missing
-references, scanner, game-version check and planner over the installed mods). Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md).
+Status: **0.1.0, run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
+a mission on each. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
 
 ## Install
 

@@ -290,8 +290,96 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
+    private void ToggleWindow()
+    {
+        // The key can arrive both through IMGUI and through the polled keyboard in the same frame: count it once.
+        if (Time.frameCount == lastToggleFrame)
+            return;
+        lastToggleFrame = Time.frameCount;
+        showWindow = !showWindow;
+        noticeUntil = 0;
+        if (showWindow && done)
+            WriteReport();
+    }
+
+    private int lastToggleFrame = -1;
+    private bool keyWasDown;
+    private Func<bool> hotkeyDown;
+    private bool hotkeyProbed;
+
+    /// <summary>
+    /// The globe build does not always hand keys to IMGUI, so the hotkey is also read from the keyboard: through the Input
+    /// System package where the game has it, else the old Input class. Found by name, so Keel references neither.
+    /// </summary>
+    private Func<bool> ProbeHotkey()
+    {
+        const BindingFlags pub = BindingFlags.Public | BindingFlags.Instance;
+        try
+        {
+            Type kbType = Type.GetType("UnityEngine.InputSystem.Keyboard, Unity.InputSystem");
+            PropertyInfo current = kbType?.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
+            if (current != null)
+            {
+                string keyName = key.ToString();
+                keyName = char.ToLowerInvariant(keyName[0]) + keyName.Substring(1) + "Key";
+                bool Pressed(object kb, string name) =>
+                    kb.GetType().GetProperty(name, pub)?.GetValue(kb) is object control &&
+                    control.GetType().GetProperty("isPressed", pub)?.GetValue(control) is bool b && b;
+                return () =>
+                {
+                    object kb = current.GetValue(null);
+                    return kb != null && Pressed(kb, keyName)
+                        && (!keyCtrl || Pressed(kb, "ctrlKey")) && (!keyShift || Pressed(kb, "shiftKey")) && (!keyAlt || Pressed(kb, "altKey"));
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // no Input System package: try the old input
+        }
+        try
+        {
+            MethodInfo getKey = Type.GetType("UnityEngine.Input, UnityEngine.InputLegacyModule")?.GetMethod("GetKey", new[] { typeof(KeyCode) });
+            if (getKey != null)
+            {
+                bool Down(KeyCode k) => (bool)getKey.Invoke(null, new object[] { k });
+                Down(key);   // throws right away when the game has the old input switched off
+                return () => Down(key)
+                             && (!keyCtrl || Down(KeyCode.LeftControl) || Down(KeyCode.RightControl))
+                             && (!keyShift || Down(KeyCode.LeftShift) || Down(KeyCode.RightShift))
+                             && (!keyAlt || Down(KeyCode.LeftAlt) || Down(KeyCode.RightAlt));
+            }
+        }
+        catch (Exception)
+        {
+            // old input switched off
+        }
+        return null;
+    }
+
     private void Update()
     {
+        if (!hotkeyProbed)
+        {
+            hotkeyProbed = true;
+            hotkeyDown = ProbeHotkey();
+        }
+        if (hotkeyDown != null)
+        {
+            bool down;
+            try
+            {
+                down = hotkeyDown();
+            }
+            catch (Exception)
+            {
+                down = false;
+                hotkeyDown = null;
+            }
+            if (down && !keyWasDown)
+                ToggleWindow();
+            keyWasDown = down;
+        }
         if (Time.unscaledTime > nextFlush)
         {
             nextFlush = Time.unscaledTime + 1f;
@@ -332,10 +420,7 @@ internal sealed class KeelHost : MonoBehaviour
         Event e = Event.current;
         if (e.type == EventType.KeyDown && e.keyCode == key && e.control == keyCtrl && e.shift == keyShift && e.alt == keyAlt)
         {
-            showWindow = !showWindow;
-            noticeUntil = 0;
-            if (showWindow && done)
-                WriteReport();
+            ToggleWindow();
             e.Use();
         }
         // IMGUI draws in screen pixels: scale it so the report reads the same on 1080p and 4K (Report.Scale, 0 = by screen height).
@@ -360,6 +445,14 @@ internal sealed class KeelHost : MonoBehaviour
             window.height = Mathf.Min(600, screenH - 40);
             window.x = Mathf.Clamp(window.x, 0, screenW - window.width);
             window.y = Mathf.Clamp(window.y, 0, screenH - window.height);
+        }
+        if (showWindow)
+        {
+            // IMGUI's window is see-through; the game's menu text behind it made the report hard to read.
+            Color before = GUI.color;
+            GUI.color = new Color(0.07f, 0.09f, 0.12f, 0.97f);
+            GUI.DrawTexture(window, Texture2D.whiteTexture);
+            GUI.color = before;
         }
         if (showWindow)
             window = GUI.Window(0x4B45454C, window, DrawWindow, $"{Keel.Name} {Keel.Version} – {GameState.BuildName}");

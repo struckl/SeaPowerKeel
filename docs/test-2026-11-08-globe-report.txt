@@ -1,0 +1,21 @@
+R.A.T.S. Keel 0.1.0 (stub 1.0.0) – Sea Power, 3D globe map – 2026-11-08 01:18
+9 running, 1 with errors
+Note: Anchor Chain is not running: Keel starts its mods (types from E:\Games\steamapps\workshop\content\1286220\3380210757\AnchorChain.dll).
+
+[ERRORS] IdentifyExpanded 3.420.6967 (com.fmsv.identifyexpanded) – Workshop 3790594162, IdentifyExpanded.dll, AnchorChain, started in 330 ms
+    warning: Uses 5 thing(s) this game build lacks, e.g. SeaPower.GeoPosition::CourseTo(GeoPosition); SeaPower.UI_Parameters::get_TM_AlliedColor_Brush() (and 3 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+    10 error(s) since it started, first: NullReferenceException: Object reference not set to an instance of an object
+[RUNNING] BetterTacMap 0.1 (toemel.bettertacmap) – Workshop 3768036424, BetterTacMap.dll, AnchorChain, started in 119 ms
+    warning: Uses 4 thing(s) this game build lacks, e.g. SeapowerUI.GizmoLayerManager::Layers; SeapowerUI.GizmoLayerManager::LayersById (and 2 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Radio 1.2.0 (dev.sewerlabs.seapowerradio) – SeaPowerRadio, SeaPowerRadio.dll, AnchorChain, started in 1548 ms
+    warning: Uses 3 thing(s) this game build lacks, e.g. SeaPower.AircraftParameters::_altitudeEfficiencyCurve; SeaPower.AircraftParameters::_rangeMultiplierCurve (and 1 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Radio (flat map) 1.2.0 (dev.sewerlabs.seapowerradio.flatmap) – SeaPowerRadio, SeaPowerRadioFlat.dll, AnchorChain, started in 4 ms
+    warning: Uses 6 thing(s) this game build lacks, e.g. SeaPower.AircraftParameters::_altitudeEfficiencyCurve; SeaPower.AircraftParameters::_rangeMultiplierCurve (and 4 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Topographic Map 1.5.0 (dev.sewerlabs.seapowertopo) – SeaPowerTopo, SeaPowerTopo.dll, AnchorChain, started in 207 ms
+    warning: Uses 2 thing(s) this game build lacks, e.g. SeaPower.Globals::_heightMultiplier; SeaPower.Globals::_underWaterDepthFactor. Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Topographic Map (flat map) 1.5.0 (dev.sewerlabs.seapowertopo.flatmap) – SeaPowerTopo, SeaPowerTopoFlat.dll, AnchorChain, started in 3 ms
+    warning: Uses 13 thing(s) this game build lacks, e.g. SeaPower.Globals::_alliedTaskforce; SeaPower.Globals::_heightMultiplier (and 11 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] Sea Power Cities and Borders 1.1.0 (dev.sewerlabs.seapowerborders) – SeaPowerBorders, SeaPowerBorders.dll, AnchorChain, started in 159 ms
+[RUNNING] Sea Power Cities and Borders (flat map) 1.1.0 (dev.sewerlabs.seapowerborders.flatmap) – SeaPowerBorders, SeaPowerBordersFlat.dll, AnchorChain, started in 3 ms
+    warning: Uses 7 thing(s) this game build lacks, e.g. SeaPower.LiveMap.ThemeTracker; SeaPower.LiveMap.ThemeTracker::get_CurrentTheme() (and 5 more). Fine if the mod checks the game version itself; otherwise expect errors when that part runs.
+[RUNNING] KeelTest Globe Only 1.0.0 (dev.keeltest.globeonly) – KeelTest, KeelTestGlobe.dll, BepInEx, started in 2 ms

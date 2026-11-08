@@ -2,6 +2,13 @@
 
 ## 0.1.0 – 2026-11-07 (not released; run in the game on 0.8.7)
 
+Fixed after the run on the 3D globe beta 261107 (2026-11-08):
+- Ctrl+Shift+K did not reach the report window on the globe build: the key is now also read from the keyboard (Input System,
+  else the old Input class), counted once per press.
+- A mod logging the same line every frame (IdentifyExpanded on that beta) grew Keel-log.txt by ~1 MB a minute: repeats are
+  counted ("the line above repeated N more times"), about 20 times less.
+- The report window has a solid background (the menu showed through) – not yet seen in the game.
+
 Fixed after the first run in the game (2026-11-07):
 - The scanner could not read `[BepInDependency]` (Cecil needs BepInEx.dll for the enum argument) and dropped the whole DLL;
   it now resolves from Managed, BepInEx\core and the mod folders, and one unreadable type no longer hides the others.

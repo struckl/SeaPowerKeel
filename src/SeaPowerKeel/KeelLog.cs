@@ -19,6 +19,8 @@ internal sealed class KeelLog : ILogListener
     private readonly DateTime gameStart;
     private StreamWriter writer;
     private DateTime lastFlush = DateTime.UtcNow;
+    private string lastKey;
+    private int repeats;
 
     /// <summary>Set once plugins run: the display name of the mod an error text belongs to, or null.</summary>
     public Func<string, string> OwnerOf;
@@ -67,6 +69,18 @@ internal sealed class KeelLog : ILogListener
             return;
         DateTime now = DateTime.Now;
         string text = e.Data?.ToString() ?? "";
+        // A mod that logs the same line every frame would fill the disk: repeats are counted, not written.
+        string key = (e.Source?.SourceName ?? "?") + "|" + e.Level + "|" + text;
+        lock (gate)
+        {
+            if (key == lastKey)
+            {
+                repeats++;
+                return;
+            }
+            WriteRepeats();
+            lastKey = key;
+        }
         string owner = null;
         if ((e.Level & (LogLevel.Error | LogLevel.Fatal)) != 0 && OwnerOf != null && e.Source?.SourceName != Keel.Name)
         {
@@ -107,10 +121,28 @@ internal sealed class KeelLog : ILogListener
         }
     }
 
+    // Called under the lock.
+    private void WriteRepeats()
+    {
+        if (repeats == 0 || writer == null)
+            return;
+        try
+        {
+            writer.WriteLine($"      … the line above repeated {repeats} more time(s), until {DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture)}");
+        }
+        catch (Exception)
+        {
+            writer = null;
+        }
+        repeats = 0;
+    }
+
     public void Flush()
     {
         lock (gate)
         {
+            WriteRepeats();
+            lastKey = null;
             try
             {
                 writer?.Flush();
