@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.5 - 2026-11-08 (built, not released: not run in the game yet)
 
+- **Loading window.** While the game starts, a small window of its own (Windows, own thread, so it keeps going while a mod blocks the game's main thread) shows the start-up step, the mods as Keel starts them with the time each took, a bar, and the name of the mod being started and for how long. It opens when Keel does, before Anchor Chain's preloader and the mods, only reads log lines, never takes the keyboard focus, and closes after the last mod (or on a click). Settings under `Loading window` (show, corner, opacity, seconds after the last mod, longest time, click hides). Drawn offline from a real log and its thread smoke-tested; not yet run in the game. [docs/loading-window.md](docs/loading-window.md) has the timeline that led to it: a 12.7 s disk scan in Anchor Chain's preloader, the game's own load screen, and two mods that block the main thread for 15 s and 23 s.
+- **`STARTING i/n: name` in the log.** Keel logs it before each mod starts, so `Keel-log.txt` names the mod that was running when the game stood still.
+- Version 0.1.5; one DLL for both game builds as before (`modtool compat` clean).
 - **Docs:** README and Workshop description now say that the game must be restarted after Keel or any mod is switched on or off, and what the "switched off in the game's mod list" log line means.
 
 ## 0.1.4 – 2026-11-08

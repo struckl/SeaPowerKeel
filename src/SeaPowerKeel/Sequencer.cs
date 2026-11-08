@@ -23,6 +23,9 @@ internal sealed class Sequencer
     /// <summary>Is Anchor Chain running now? If so it marks the pending Anchor Chain mods <see cref="PluginState.LeftToAnchorChain"/> and returns true.</summary>
     public Func<string, bool> HandOver = _ => false;
 
+    /// <summary>Called right before a mod starts: its place (1-based) among the mods still waiting when the start phase began, and their number.</summary>
+    public Action<PluginEntry, int, int> Starting = (p, index, total) => { };
+
     public Action<PluginEntry> Prepared = _ => { };
     public Action<PluginEntry> Started = _ => { };
 
@@ -41,12 +44,14 @@ internal sealed class Sequencer
 
         if (HandOver("right before Keel started the mods"))
             order = Replan();
+        int total = order.Count(p => p.State == PluginState.Pending), index = 0;
         foreach (PluginEntry p in order)
         {
             if (p.Kind == PluginKind.AnchorChain)
                 HandOver("while Keel was starting mods");
             if (p.State != PluginState.Pending)
                 continue;
+            Starting(p, ++index, Math.Max(total, index));
             Start(p);
             StartedCount++;
             Started(p);

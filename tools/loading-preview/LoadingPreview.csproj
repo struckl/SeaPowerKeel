@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--Replays a Keel-log.txt through the loading window's model and draws the window into BMP files (no window is shown, the game
+      is not touched). Run it with dotnet run on this project, giving the Keel-log.txt, an output folder and optionally a scale.-->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>SeaPowerKeel.Loading</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\SeaPowerKeel\Loading\Progress.cs" Link="Progress.cs" />
+    <Compile Include="..\..\src\SeaPowerKeel\Loading\Native.cs" Link="Native.cs" />
+    <Compile Include="..\..\src\SeaPowerKeel\Loading\Overlay.cs" Link="Overlay.cs" />
+  </ItemGroup>
+
+</Project>

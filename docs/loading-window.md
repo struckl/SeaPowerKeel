@@ -1,0 +1,56 @@
+# The loading window (0.1.5)
+
+With a few dozen mods the game sits on a blank or frozen screen for a minute or two while it starts. Keel opens a small window of its own
+that shows what is going on, and closes it when every mod has started. Written 2026-11-08; **drawn offline from a real `Keel-log.txt` and the
+window thread smoke-tested, not yet run in the game.**
+
+## Where the start-up time goes
+
+From the start at 21:14:03 (3D-globe build 261107, 16 mod folders on, Keel 0.1.4, Anchor Chain's preloader still in `BepInEx\plugins`).
+Times are seconds since the game process started.
+
+| From | To | What | Notes |
+| --- | --- | --- | --- |
+| 0 | 3.7 | Unity and BepInEx start | nothing of ours can run yet |
+| 3.7 | 16.4 | **Anchor Chain's preloader** | 12.7 s, ending in "Could not find AnchorChain chainloader" (no Anchor Chain item installed). Its `FindLoader` runs `Directory.GetFiles(folder, "AnchorChain.dll", SearchOption.AllDirectories)` over every StreamingAssets mod folder and every Workshop item folder: a recursive disk scan. A likely cause, not proven; deleting the preloader (README, "Switching from Anchor Chain") should show it |
+| 16.4 | 22.4 | Sentry, Vuplex web view | the engine coming up |
+| 22.4 | 38.8 | the game's own start-up load screen | Keel waits for it on purpose (mods started during it can break the unit data on the globe build) |
+| 38.8 | 88.6 | Keel starts 19 plugins "one per frame" | 49.8 s: **VopSound 15.4 s** in one call, then **Dynamic Campaign Mod ~23 s** of its own Harmony patching after Keel logged it as running; the rest 0.03 to 1.8 s |
+
+So the "freeze" is three things: a disk scan before the game has a window, the game's own load screen, and two mods whose start-up code blocks
+the main thread. Only the last cannot be covered by anything drawn inside the game: **while a mod's code runs on the main thread nothing in
+Unity redraws**, IMGUI included (Keel's own report window and notice are IMGUI for that reason: they come after).
+
+## How it works
+
+- **A window of its own.** `Loading/Overlay.cs`: a topmost, tool-window, never-activated Win32 popup (user32/gdi32 through P/Invoke) on a thread
+  of its own, drawn ten times a second into a memory bitmap. It keeps counting while the main thread is stuck in a mod. A click closes it;
+  it never takes the keyboard focus. Windows only; DPI scale from the system; the corner, opacity, linger time and longest time are settings.
+- **Opens early.** `KeelHost.Awake` starts it, which runs when the stub does. BepInEx starts plugins in GUID order
+  (`dev.sewerlabs.seapowerkeel.stub` < `io.github.seapower_modders.anchorchain_preloader`, as the log shows), so it is there before the
+  12.7 s preloader.
+- **Reads log lines only.** `Loading/LoadingWindow.cs` adds a BepInEx log listener; `Loading/Progress.cs` turns the lines into a phase, a list
+  of mods and a count. Nothing in the game or in any other mod is touched, so a mod that logs oddly cannot break it (a bad line is ignored).
+- **Names the slow mod while it is slow.** Keel now logs `STARTING i/n: name version (folder)` before each start (`Sequencer.Starting`);
+  `i/n` counts the mods still waiting when the start phase began. The window shows "Starting 17/19: VopSound 1.96.29  8 s" and the bar
+  fills exactly. The line is in `Keel-log.txt` too, so a log shows which mod was running when the game stood still. (A mod that goes on
+  working after its start returns, like Dynamic Campaign Mod's patching, delays the *next* step: the window then names the next mod.)
+- **Closes by itself.** After Keel's "Done:" line plus the linger time (2.5 s), after the longest time (300 s from the process start), or on a click.
+
+Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIPPED: name version (folder)`, `STARTING i/n: name`,
+`Found N plugin(s)`, `N of M mod folders are on`, `The game's mod list is there`, `Start-up load screen done`, `Done:`; Anchor Chain's preloader's
+"started" line; the game's `FileManager.OnStart`, `FileManager.CheckFileValidity`, `(C) Triassic Games` and `3D WebView` lines for the early steps.
+
+## Testing without the game
+
+`tools/loading-preview` (net8, no game): `dotnet run --project tools/loading-preview -c Release -- <Keel-log.txt> <out folder> [scale]`
+replays a log through the window's model (adding the `STARTING` lines older logs lack) and draws the window into BMP files at chosen seconds;
+`... -- live` opens the real window thread far off every monitor, feeds a few lines and checks it closes itself after "Done".
+
+## Not done
+
+- Run in the game. Only the game can show: the window over the game's borderless window at 4K, that it really opens before the preloader,
+  and the early phase (0 to 16 s).
+- The preloader's 12.7 s are outside Keel (`tools/anchorchain-fix`); worth a look on its own.
+- Exclusive full screen hides the window; the game's "fullscreen window" mode shows it.
+- A mod that works on after its start returns (Dynamic Campaign Mod) is not named for that work.

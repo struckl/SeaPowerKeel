@@ -112,6 +112,7 @@ internal sealed class KeelHost : MonoBehaviour
         uiScale = config.Bind("Report", "Scale", 0f, "Size of the report window and notice; 0 = by screen height (2 on a 4K screen).");
         ParseHotkey(hotkey.Value);
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
+        Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
         StartCoroutine(Run());
     }
@@ -195,6 +196,8 @@ internal sealed class KeelHost : MonoBehaviour
         {
             Prepare = runner.Prepare,
             Start = runner.Start,
+            // Logged before the start: a mod that holds the game up for seconds is named while it does (the loading window shows it).
+            Starting = (p, index, total) => log.LogInfo($"STARTING {index}/{total}: {p.Display} {p.Version} ({p.Folder.Label})"),
             Replan = () => Planner.Replan(Keel.Plugins, elsewhere),
             HandOver = when => LeaveToAnchorChain(runner, elsewhere, when),
             Prepared = p =>

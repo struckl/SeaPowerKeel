@@ -63,6 +63,22 @@ is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor C
 | `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |
 | `Report.Hotkey` | `Ctrl+Shift+K` | Report window |
 | `Report.NoticeOnProblems` | `true` | Notice after start-up when a mod did not start or threw |
+| `Loading window.Show` | `true` | The loading window ([docs/loading-window.md](docs/loading-window.md)) |
+| `Loading window.Corner` | `TopLeft` | `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight` of the main monitor |
+| `Loading window.Opacity` | `0.92` | 0.4 to 1 |
+| `Loading window.SecondsAfterLastMod` | `2.5` | How long it stays after every mod has started |
+| `Loading window.LongestSeconds` | `300` | It is gone this long after the game process started, whatever happens |
+| `Loading window.ClickHides` | `true` | A click on the window closes it |
+
+## Loading window
+
+While the game starts, a small window of its own shows the start-up step, the mods as Keel starts them (newest eight, with the time each took), a
+bar, and, when a mod holds the game up, its name and for how long ("Starting 17/19: VopSound 1.96.29  8 s"). It is a Windows window on its own
+thread, so it keeps going while a mod blocks the game's main thread, and it opens before the slow steps (Anchor Chain's preloader, the mods). It
+only reads log lines, never takes the keyboard focus, and closes by itself after the last mod; a click closes it earlier. Keel also logs a
+`STARTING i/n: name` line before each mod now, so `Keel-log.txt` names the mod that was running when the game stood still. New in 0.1.5: drawn
+offline from a real log and its thread smoke-tested, **not yet run in the game**. Where the start-up time goes and how it works:
+[docs/loading-window.md](docs/loading-window.md). `tools/loading-preview` draws the window from a log without the game.
 
 ## How it works
 
