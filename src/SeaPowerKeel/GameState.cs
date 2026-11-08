@@ -115,6 +115,22 @@ internal static class GameState
         catch (Exception) { return false; }
     }
 
+    /// <summary>
+    /// True while the main menu shows a page other than its top one (Scenarios, Options, Campaign ...): the game keeps one
+    /// <c>MenuSystemViewModel</c> whose <c>CurrentWindow</c> is the page. False on the top page, on a blank page and when unknown.
+    /// </summary>
+    public static bool OnMenuSubPage()
+    {
+        try
+        {
+            object menu = Find(T("SeapowerUI.ViewModels.MenuSystemViewModel"));
+            object page = menu?.GetType().GetProperty("CurrentWindow", Any)?.GetValue(menu);
+            string name = page?.GetType().Name;
+            return name != null && name != "MainMenuView" && name != "BlankMenuView";
+        }
+        catch (Exception) { return false; }
+    }
+
     /// <summary>The game's <c>SeaPower.IniHandler</c> type (null if this build has none under that name).</summary>
     public static Type IniHandlerType => T("SeaPower.IniHandler");
 

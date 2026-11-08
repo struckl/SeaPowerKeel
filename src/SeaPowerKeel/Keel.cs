@@ -484,7 +484,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (Time.unscaledTime > nextMissionCheck)
         {
             nextMissionCheck = Time.unscaledTime + 0.5f;
-            Loading.LoadingWindow.MissionRunning = GameState.InMission();
+            Loading.LoadingWindow.MissionRunning = GameState.InMission() || GameState.OnMenuSubPage();     // the summary belongs to the main menu's top page only
         }
         if (Loading.LoadingWindow.ReportRequested)      // a click on the loading window's summary
         {
