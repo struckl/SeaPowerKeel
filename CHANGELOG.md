@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased - Anchor Chain compatibility (offline-checked only, not run in the game)
+
+Reports on Discord said big Anchor Chain mods (Euromod's Anchorchain Expansion Pack, sonar systems) did not work under Keel.
+Compared with Anchor Chain's loader (released 1.1.0 DLL and the current source), these differences are fixed:
+- Only the exact `AnchorChain.dll` and `AnchorChain.Preloader.dll` are left out of the scan, not every DLL whose name starts with
+  "AnchorChain"; every DLL left out is listed with the reason in the report (window, file, log).
+- The entry point is called through `IAnchorChainMod`, so explicit implementations work; a mod whose entry point cannot be found is
+  FAILED, not RUNNING.
+- Only public (exported) Anchor Chain plugin classes count, as in Anchor Chain; others are listed as SKIPPED with the reason.
+- Every DLL is loaded and every Anchor Chain mod created before the first one starts, then they start in dependency order (still one
+  per frame); a mod that cannot be loaded keeps the mods that need it out.
+- `[ACConfig]` is implemented (it was refused while Anchor Chain was not running): default and player config files, merge of new keys,
+  `[AnchorChain.ResetValues]`, `Required`. The game's `IniHandler` is bound by reflection (checked on 0.8.7, 26223125, 261107), with a
+  logged fallback when a member is missing.
+- Anchor Chain is looked for again right before Keel starts mods (and before each Anchor Chain mod), so the two cannot both start them;
+  Keel's own load of Anchor Chain's DLL as a library does not count as "running".
+- `[ACIncompatibility]`: Anchor Chain drops every mod that declares one even when the named mod is absent (upstream bug). Keel keeps
+  its correct behaviour and now says so in the report.
+- Mods that call `AnchorChainLoader.FindFile` (Euromod's Sonar Audio Loader, for audio in other mods' folders) could not load that class
+  without Anchor Chain's `AnchorChain.Preloader` assembly (removed when switching to Keel) and then found nothing: Keel provides the one
+  interface needed and fills the folder list.
+- `tools/offline-check --selftest` (71 checks) and `--inicheck`.
+
 ## 0.1.0 – 2026-11-07 (not released; run in the game on 0.8.7)
 
 Fixed after the run on the 3D globe beta 261107 (2026-11-08):

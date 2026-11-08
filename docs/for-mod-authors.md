@@ -25,8 +25,14 @@ the plugin to `Chainloader.PluginInfos`, so other plugins find it the BepInEx wa
 `[ACPlugin]` on an `IAnchorChainMod`, with `[ACDependency]` / `[ACIncompatibility]`, as Anchor Chain describes. While
 Anchor Chain runs, Keel leaves these to it. When Anchor Chain is not running (for example when its preloader cannot start
 on a game build), Keel starts them itself: it takes the types from Anchor Chain's DLL (so Anchor Chain must still be
-subscribed) and calls `TriggerEntryPoint`. Differences: `before`/`after` only order the start (an absent plugin named
-there does not keep yours from starting); mods with `[ACConfig]` are left to Anchor Chain.
+subscribed) and calls `TriggerEntryPoint` through the `IAnchorChainMod` interface (an explicit implementation works). Like Anchor
+Chain it loads every DLL and creates every mod before the first one starts, only looks at public plugin classes, and handles
+`[ACConfig]` (default `<id>.ini` in your mod folder, the player's copy `<id>_user.ini` in `StreamingAssets/ACConfigs`, new keys
+merged in, `[AnchorChain.ResetValues]` applied once; a missing default file keeps the mod from starting). `AnchorChainLoader.FindFile`
+works too. Differences: `before`/`after` only order the start (an absent plugin named there does not keep yours from
+starting); `[ACIncompatibility]` only keeps your mod out when a named mod is really installed (Anchor Chain drops every mod that
+declares one, even when none is installed: an upstream bug); only mod folders that are switched on are loaded. The Keel report
+lists every DLL it left out on purpose (Keel's own and Anchor Chain's `AnchorChain.dll` / `AnchorChain.Preloader.dll`).
 
 A DLL that has both an `[ACPlugin]` and a `[BepInPlugin]` entry runs through its Anchor Chain entry only.
 

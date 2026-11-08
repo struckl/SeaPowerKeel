@@ -24,10 +24,12 @@ folders, sort out dependencies and start order, start them), and on top of that:
 - **The hand-installed part never changes.** The stub in `BepInEx\plugins` only finds and starts Keel; every update comes
   through the Workshop.
 - **Runs plain BepInEx plugins and Anchor Chain mods.** While Anchor Chain runs, Keel leaves its mods to it, so nothing
-  starts twice. When Anchor Chain is not running (its preloader cannot start on the 3D globe build yet), Keel starts those
-  mods itself.
+  starts twice (checked again right before Keel starts them). When Anchor Chain is not running (its preloader cannot start
+  on the 3D globe build yet), Keel starts those mods itself, the way Anchor Chain does: every DLL is loaded and every mod
+  created before the first one starts, `TriggerEntryPoint` is called through the `IAnchorChainMod` interface (explicit
+  implementations work), `[ACConfig]` config files are prepared, and `AnchorChainLoader.FindFile` works for mods that call it.
 
-Status: **0.1.0, run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
+Status: **0.1.0 plus unreleased Anchor Chain compatibility changes (offline-checked, not run in the game yet)**. 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
 a mission on each. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
 
 ## Install
@@ -64,11 +66,35 @@ Anchor Chain). With the preloader left in place, Anchor Chain loads its mods as 
 3. It reads the plugin attributes of every DLL in the enabled folders **without loading them** (Mono.Cecil, which BepInEx
    ships), and checks each DLL against the game's `Managed` assemblies.
 4. Duplicates (newest copy wins), plugins already running from `BepInEx\plugins`, switched-off ids, dependencies with
-   version ranges and conflicts are worked out until nothing changes; the rest starts in dependency order, otherwise in the
-   game's mod-list order.
+   version ranges and conflicts are worked out until nothing changes. Then every DLL is loaded and every Anchor Chain mod
+   created (a mod that cannot be loaded, or has no `IAnchorChainMod.TriggerEntryPoint`, is FAILED and takes the mods that
+   need it with it), and only then the rest starts in dependency order, otherwise in the game's mod-list order.
 
 Writing a mod for it: [docs/for-mod-authors.md](docs/for-mod-authors.md) (BepInEx plugins, Anchor Chain mods, `keel.ini`
 for mods with one DLL per game build).
+
+## Differences from Anchor Chain's loader
+
+Keel is meant to run the same mods; where it deliberately does not behave like Anchor Chain 1.1.0 / 1.2.0, the report says so:
+
+- **Only the exact `AnchorChain.dll` and `AnchorChain.Preloader.dll` are left out** (and Keel's own DLLs); every DLL left out is
+  listed with the reason in the report. A mod called `AnchorChainSomething.dll` is scanned like any other.
+- **Only public classes count** as Anchor Chain plugins, as in Anchor Chain (`GetExportedTypes`); a non-public plugin class is
+  listed as SKIPPED with that reason.
+- **`[ACIncompatibility]`:** Anchor Chain drops *every* mod that declares one, whether or not the named mod is installed (its
+  `toRemove.Add` sits outside the `if`, in the released 1.1.0 and in the current source: an upstream bug). Keel skips a mod only
+  when a named mod is really there; a mod that starts only because of this carries a warning in the report.
+- **`before` / `after`** only order the start; an absent plugin named there does not keep the mod from starting (Anchor Chain
+  treats them as dependencies).
+- **Switched-off mod folders** are not loaded. (Anchor Chain loads the DLLs of every folder the game lists, switched on or
+  not; mods that check the Mod Manager themselves, like Euromod's, behave the same either way.)
+- **`[ACConfig]`:** like Anchor Chain (default `<id>.ini` in the mod folder, the player's `<id>_user.ini` in
+  `StreamingAssets\ACConfigs`, missing keys merged in, `[AnchorChain.ResetValues]` applied once). The game's `IniHandler` is
+  used by reflection; it has everything needed on 0.8.7, the globe build 26223125 and 261107 (`tools/offline-check --inicheck`).
+  Should a build lack a member, Keel copies the default file, says what it could not do, and starts the mod.
+- **`AnchorChainLoader.FindFile`** (Euromod's Sonar Audio Loader uses it for audio in other mods' folders) works: Keel
+  provides the one interface of Anchor Chain's preloader that Anchor Chain's DLL needs to load that class, and fills the
+  class's folder list.
 
 ## Development
 
@@ -84,6 +110,16 @@ folders on disk against a game build's `Managed` folder, without the game:
 ```
 dotnet run -c Release --project tools/offline-check -- "<Managed>" "<Sea Power>\BepInEx\core" "<steamapps>\workshop\content\1286220"
 ```
+
+Keel's own tests (the scanner, entry point, start order, `[ACConfig]`, Anchor Chain hand-over ... on stand-in mods and a stand-in
+`IniHandler`; no game needed), and the check that the game's real `IniHandler` has what `[ACConfig]` needs (one build per run):
+
+```
+dotnet run -c Release --project tools/offline-check -- --selftest "<Managed>" "<Sea Power>\BepInEx\core"
+dotnet run -c Release --project tools/offline-check -- --inicheck "<Managed>"
+```
+
+The Anchor Chain compatibility changes (CHANGELOG, "Unreleased") are checked offline only; they have not been run in the game.
 
 ## Credits
 
