@@ -475,6 +475,11 @@ internal sealed class KeelHost : MonoBehaviour
                 ToggleWindow();
             keyWasDown = down;
         }
+        if (Loading.LoadingWindow.ReportRequested)      // a click on the loading window's summary
+        {
+            Loading.LoadingWindow.ReportRequested = false;
+            if (!showWindow) ToggleWindow();
+        }
         if (Time.unscaledTime > nextFlush)
         {
             nextFlush = Time.unscaledTime + 1f;

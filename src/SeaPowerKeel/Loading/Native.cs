@@ -31,6 +31,30 @@ internal static class Native
     public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
     public const uint DT_RIGHT = 0x2, DT_VCENTER = 0x4, DT_SINGLELINE = 0x20, DT_NOPREFIX = 0x800, DT_END_ELLIPSIS = 0x8000;
     public const int TRANSPARENT = 1;
+    public const uint WM_RBUTTONDOWN = 0x204;
+    public const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4;
+    public const int GWLP_HWNDPARENT = -8, SM_CXSCREEN = 0, SM_CYSCREEN = 1, HALFTONE = 4;
+    public static readonly IntPtr HWND_TOP = IntPtr.Zero;
+
+    public delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassNameW(IntPtr hwnd, System.Text.StringBuilder name, int max);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] private static extern IntPtr SetWindowLongPtr64(IntPtr hwnd, int index, IntPtr value);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] private static extern int SetWindowLong32(IntPtr hwnd, int index, int value);
+    [DllImport("gdi32.dll")] public static extern bool StretchBlt(IntPtr dst, int x, int y, int w, int h, IntPtr src, int sx, int sy, int sw, int sh, uint rop);
+    [DllImport("gdi32.dll")] public static extern int SetStretchBltMode(IntPtr dc, int mode);
+
+    /// <summary>Makes <paramref name="owner"/> the owner of <paramref name="hwnd"/>: an owned window stays above its owner (and goes with it when the game is minimized or another program is in front), but not above other programs.</summary>
+    public static void SetOwner(IntPtr hwnd, IntPtr owner)
+    {
+        if (IntPtr.Size == 8) SetWindowLongPtr64(hwnd, GWLP_HWNDPARENT, owner);
+        else SetWindowLong32(hwnd, GWLP_HWNDPARENT, owner.ToInt32());
+    }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)] public static extern ushort RegisterClassExW(ref WNDCLASSEXW cls);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

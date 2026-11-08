@@ -7,27 +7,36 @@ namespace SeaPowerKeel.Loading;
 
 /// <summary>
 /// The loading window: a window of its own (Win32, own thread) that shows the start-up steps and the mods as Keel starts them, so the
-/// first minute of the game is not a frozen screen. Keel opens it in <c>KeelHost.Awake</c>, which runs when the stub starts, before
-/// Anchor Chain's preloader (BepInEx starts plugins in GUID order). It reads only log lines; see docs/loading-window.md.
+/// first minute of the game is not a frozen screen; when every mod has started it shrinks into a summary card in the bottom left corner.
+/// Keel opens it in <c>KeelHost.Awake</c>, which runs when the stub does, before Anchor Chain's preloader (BepInEx starts plugins in GUID
+/// order). It reads only log lines; see docs/loading-window.md.
 /// </summary>
 internal static class LoadingWindow
 {
+    /// <summary>Set by a click on the summary card; Keel's host (main thread) opens its report window.</summary>
+    public static volatile bool ReportRequested;
+
     public static void Start(ConfigFile config, ManualLogSource log)
     {
         try
         {
             ConfigEntry<bool> show = config.Bind("Loading window", "Show", true,
-                "Show a small window with the start-up steps and the mods as they start, until every mod has started.");
-            ConfigEntry<string> corner = config.Bind("Loading window", "Corner", "TopLeft",
-                new ConfigDescription("Corner of the main monitor the window sits in.", new AcceptableValueList<string>("TopLeft", "TopRight", "BottomLeft", "BottomRight")));
+                "Show a small window with the start-up steps and the mods as they start. When every mod has started it shrinks into a summary in the bottom left corner.");
+            ConfigEntry<string> spot = config.Bind("Loading window", "Spot", "Marker",
+                new ConfigDescription("Where the window sits while the game starts. Marker = the blank band under the main menu's news box; or a corner of the game's window.",
+                    new AcceptableValueList<string>("Marker", "TopLeft", "TopRight", "BottomLeft", "BottomRight")));
+            ConfigEntry<float> scale = config.Bind("Loading window", "Scale", 0f,
+                new ConfigDescription("Size of the window; 0 = by the height of the game's window (1.5 on a 4K screen).", new AcceptableValueRange<float>(0f, 4f)));
             ConfigEntry<float> opacity = config.Bind("Loading window", "Opacity", 0.92f,
                 new ConfigDescription("0.4 = see-through, 1 = solid.", new AcceptableValueRange<float>(0.4f, 1f)));
-            ConfigEntry<float> linger = config.Bind("Loading window", "SecondsAfterLastMod", 2.5f,
-                new ConfigDescription("The window closes this long after Keel reports that every mod has started.", new AcceptableValueRange<float>(0f, 60f)));
+            ConfigEntry<float> linger = config.Bind("Loading window", "SecondsAfterLastMod", 2f,
+                new ConfigDescription("The full window stays this long after Keel reports that every mod has started, then glides to the corner.", new AcceptableValueRange<float>(0f, 60f)));
+            ConfigEntry<float> summary = config.Bind("Loading window", "SummarySeconds", 60f,
+                new ConfigDescription("How long the summary stays in the corner before it fades away. 0 = until you click it away (right click).", new AcceptableValueRange<float>(0f, 3600f)));
             ConfigEntry<float> max = config.Bind("Loading window", "LongestSeconds", 300f,
-                new ConfigDescription("Whatever happens, the window is gone this many seconds after the game process started.", new AcceptableValueRange<float>(30f, 1800f)));
+                new ConfigDescription("Whatever happens, the full window is done this many seconds after the game process started.", new AcceptableValueRange<float>(30f, 1800f)));
             ConfigEntry<bool> click = config.Bind("Loading window", "ClickHides", true,
-                "A click on the window closes it (it never takes the keyboard focus from the game).");
+                "A click on the full window hides it; a right click hides the summary. A click on the summary opens Keel's report. (The window never takes the keyboard focus from the game.)");
             if (!show.Value)
                 return;
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
@@ -38,10 +47,11 @@ internal static class LoadingWindow
             catch (Exception) { started = DateTime.Now; }
             var progress = new Progress(() => (DateTime.Now - started).TotalSeconds);
             BepInEx.Logging.Logger.Listeners.Add(new Feed(progress));
-            if (!Enum.TryParse(corner.Value, out Corner c)) c = Corner.TopLeft;
+            if (!Enum.TryParse(spot.Value, out Spot s)) s = Spot.Marker;
             new Overlay(progress, new OverlayOptions
             {
-                Corner = c, Opacity = opacity.Value, LingerSeconds = linger.Value, MaxSeconds = max.Value, ClickToHide = click.Value,
+                Spot = s, Scale = scale.Value, Opacity = opacity.Value, LingerSeconds = linger.Value, SummarySeconds = summary.Value,
+                MaxSeconds = max.Value, ClickToHide = click.Value, OnSummaryClick = () => ReportRequested = true,
             }).Start(m => log.LogWarning(m));
         }
         catch (Exception ex)

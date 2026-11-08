@@ -30,7 +30,11 @@ internal sealed class Progress
     private double lastEvent;
     private string lastEventText = "";
     private bool done;
-    private int startIndex;                       // "STARTING i/n" seen: the step Keel is in
+    private string keelVersion = "";
+    private int running, withErrors, skipped, notStarted;
+    private double keelMs, doneElapsed, slowestSeconds;
+    private string slowestName = "";
+    private int startIndex;                      // "STARTING i/n" seen: the step Keel is in
     private string current;                       // the mod Keel is starting right now (null between two)
     private double currentSince;
     private double doneAt;
@@ -49,7 +53,11 @@ internal sealed class Progress
         public double Elapsed, Idle;
         public string LastEvent;
         public bool Done;
-        public string Current;                    // the mod being started now
+        // what the summary shows once every mod has started
+        public string KeelVersion, SlowestName;
+        public int Running, WithErrors, Skipped, NotStarted;
+        public double KeelSeconds, DoneElapsed, SlowestSeconds;
+        public string Current;                  // the mod being started now
         public double CurrentFor;                 // for how long
         public int CurrentIndex;
         public double SinceDone;
@@ -65,7 +73,9 @@ internal sealed class Progress
             var s = new Snapshot
             {
                 Phase = phase, Total = total, Handled = handled, Elapsed = now, Idle = now - lastEvent,
-                LastEvent = lastEventText, Done = done, Current = current, CurrentFor = current != null ? now - currentSince : 0, CurrentIndex = startIndex, SinceDone = done ? now - doneAt : 0, Dismissed = dismissed,
+                LastEvent = lastEventText, Done = done, KeelVersion = keelVersion, SlowestName = slowestName,
+                Running = running, WithErrors = withErrors, Skipped = skipped, NotStarted = notStarted,
+                KeelSeconds = keelMs / 1000.0, DoneElapsed = doneElapsed, SlowestSeconds = slowestSeconds, Current = current, CurrentFor = current != null ? now - currentSince : 0, CurrentIndex = startIndex, SinceDone = done ? now - doneAt : 0, Dismissed = dismissed,
             };
             for (int i = Math.Max(0, mods.Count - lines); i < mods.Count; i++)
                 s.Recent.Add(mods[i]);
@@ -78,7 +88,9 @@ internal sealed class Progress
     // ---- log lines ----------------------------------------------------------------------------------------------------
 
     private static readonly Regex ModResult = new Regex(@"^(RUNNING WITH ERRORS|RUNNING|NOT STARTED|SKIPPED|FAILED|LEFT TO ANCHOR CHAIN)\b[:\s]+(.+)$", RegexOptions.Compiled);
-    private static readonly Regex Found = new Regex(@"^Found (\d+) plugin", RegexOptions.Compiled);
+    private static readonly Regex Started = new Regex(@"^Started (\d+) plugin\(s\) in (\d+) ms", RegexOptions.Compiled);
+    private static readonly Regex KeelLine = new Regex(@"^R\.A\.T\.S\. Keel (\d+\.\d+\.\d+)", RegexOptions.Compiled);
+    private static readonly Regex Found =new Regex(@"^Found (\d+) plugin", RegexOptions.Compiled);
     private static readonly Regex FoldersOn = new Regex(@"^(\d+) of (\d+) mod folders are on", RegexOptions.Compiled);
     private static readonly Regex Starting = new Regex(@"^STARTING\s+(\d+)\s*/\s*(\d+)\s*:\s*(.+)$", RegexOptions.Compiled);   // a line Keel may log before each start (see docs/design.md)
 
@@ -121,6 +133,12 @@ internal sealed class Progress
                 mods.Add(new ModLine { Name = name, State = state, TookSeconds = current != null ? now - currentSince : now - lastEvent });
                 handled = startIndex > 0 ? startIndex : handled + 1;
                 current = null;
+                double took = mods[mods.Count - 1].TookSeconds;
+                if (state == ModState.Running) running++;
+                else if (state == ModState.RunningWithErrors) { running++; withErrors++; }
+                else if (state == ModState.Skipped) skipped++;
+                else notStarted++;
+                if (took > slowestSeconds) { slowestSeconds = took; slowestName = name; }
                 phase = "Starting mods";
                 Event(name);
             }
@@ -150,12 +168,20 @@ internal sealed class Progress
                 done = true;
                 current = null;
                 doneAt = clock();
+                doneElapsed = doneAt;
                 phase = "All mods started";
                 Event(line);
             }
             else if (line.StartsWith("Start-up load screen done", StringComparison.Ordinal)) { phase = "Looking for mods"; Event(line); }
             else if (line.StartsWith("The game's mod list is there", StringComparison.Ordinal)) { phase = "Waiting for the game's load screen"; Event(line); }
-            else if (line.StartsWith("R.A.T.S. Keel ", StringComparison.Ordinal)) { phase = "Mod loader (Keel) started"; Event(line); }
+            else if ((m = Started.Match(line)).Success) keelMs = double.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+            else if (line.StartsWith("R.A.T.S. Keel ", StringComparison.Ordinal))
+            {
+                Match v = KeelLine.Match(line);
+                if (v.Success) keelVersion = v.Groups[1].Value;
+                phase = "Mod loader (Keel) started";
+                Event(line);
+            }
             return;
         }
 

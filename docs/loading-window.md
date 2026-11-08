@@ -23,9 +23,20 @@ Unity redraws**, IMGUI included (Keel's own report window and notice are IMGUI f
 
 ## How it works
 
-- **A window of its own.** `Loading/Overlay.cs`: a topmost, tool-window, never-activated Win32 popup (user32/gdi32 through P/Invoke) on a thread
-  of its own, drawn ten times a second into a memory bitmap. It keeps counting while the main thread is stuck in a mod. A click closes it;
-  it never takes the keyboard focus. Windows only; DPI scale from the system; the corner, opacity, linger time and longest time are settings.
+- **A window of its own.** `Loading/Overlay.cs`: a tool-window, never-activated Win32 popup (user32/gdi32 through P/Invoke) on a thread
+  of its own, drawn 30 times a second into a memory bitmap. It keeps counting while the main thread is stuck in a mod. It never takes the
+  keyboard focus. Windows only.
+- **Above the game, not above everything.** It is not topmost. As soon as the game's window exists (class `UnityWndClass` of this process,
+  looked for every 0.2 s) that window becomes its *owner*: an owned window stays above its owner, goes when the game is minimized and sits
+  behind a program you put in front. The game's window rectangle also sizes and places it (scale by its height: 1.5 on 4K, so the 460 x 276
+  window fits the marker's band, never below the system's DPI scale).
+- **On the marker.** Default `Spot = Marker`: centred at 58.8 % of the game's width and 77 % of its height, the blank band under the main
+  menu's news box (the spot the author marked in a screenshot); or a corner.
+- **A summary instead of vanishing.** After Keel's "Done:" plus `SecondsAfterLastMod` the full window shrinks and glides to the bottom left, above
+  the game's version text (0.9 s, ease out; the full window is squeezed along with StretchBlt, then the card's own content takes over). The card
+  says "Keel 0.1.5 started 19 mods in 40 s", "Game ready after 1:00" (+ skipped), and either the number of mods with problems or the slowest mod;
+  a click on it opens Keel's report (Keel's host reads a flag on the main thread and opens the IMGUI window), a right click hides it, and it
+  fades after `SummarySeconds` (60; 0 = stay).
 - **Opens early.** `KeelHost.Awake` starts it, which runs when the stub does. BepInEx starts plugins in GUID order
   (`dev.sewerlabs.seapowerkeel.stub` < `io.github.seapower_modders.anchorchain_preloader`, as the log shows), so it is there before the
   12.7 s preloader.
@@ -35,7 +46,7 @@ Unity redraws**, IMGUI included (Keel's own report window and notice are IMGUI f
   `i/n` counts the mods still waiting when the start phase began. The window shows "Starting 17/19: VopSound 1.96.29  8 s" and the bar
   fills exactly. The line is in `Keel-log.txt` too, so a log shows which mod was running when the game stood still. (A mod that goes on
   working after its start returns, like Dynamic Campaign Mod's patching, delays the *next* step: the window then names the next mod.)
-- **Closes by itself.** After Keel's "Done:" line plus the linger time (2.5 s), after the longest time (300 s from the process start), or on a click.
+- **Ends by itself.** After the summary's time, or on a right click; the full window also ends after the longest time (300 s from the process start).
 
 Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIPPED: name version (folder)`, `STARTING i/n: name`,
 `Found N plugin(s)`, `N of M mod folders are on`, `The game's mod list is there`, `Start-up load screen done`, `Done:`; Anchor Chain's preloader's
