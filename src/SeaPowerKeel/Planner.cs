@@ -39,7 +39,26 @@ internal static class Planner
                 p.Stop(PluginState.Skipped, $"Made for another program ({string.Join(", ", p.Processes)}).");
         }
 
-        // Dependencies and conflicts; a plugin that cannot start can take others with it, so repeat until stable.
+        Resolve(all, runningElsewhere);
+        List<PluginEntry> order = Order(live());
+        NoteAcIncompatibilities(order);
+        return order;
+    }
+
+    /// <summary>
+    /// The plan again after plugins dropped out since <see cref="Plan"/> (one that could not be loaded or created takes the
+    /// plugins that need it with it): dependencies and conflicts until stable, then the start order of what is left.
+    /// </summary>
+    public static List<PluginEntry> Replan(List<PluginEntry> all, ISet<string> runningElsewhere)
+    {
+        Resolve(all, runningElsewhere);
+        return Order(all.Where(p => p.State == PluginState.Pending).ToList());
+    }
+
+    // Dependencies and conflicts; a plugin that cannot start can take others with it, so repeat until stable.
+    private static void Resolve(List<PluginEntry> all, ISet<string> runningElsewhere)
+    {
+        List<PluginEntry> live() => all.Where(p => p.State == PluginState.Pending).ToList();
         for (bool changed = true; changed;)
         {
             changed = false;
@@ -79,7 +98,19 @@ internal static class Planner
             }
         }
 
-        return Order(live());
+    }
+
+    /// <summary>
+    /// Anchor Chain's loader drops every mod that declares <c>[ACIncompatibility]</c>, whether or not the mod it names is
+    /// installed (its check <c>toRemove.Add(plugin)</c> sits outside the <c>if</c> that tests for the other mod, in 1.1.0 and
+    /// in the current source). That is a mistake upstream; Keel starts such a mod unless a named mod is really there. The report
+    /// says so, because the same mod does not start under Anchor Chain.
+    /// </summary>
+    private static void NoteAcIncompatibilities(IEnumerable<PluginEntry> starting)
+    {
+        foreach (PluginEntry p in starting.Where(p => p.Kind == PluginKind.AnchorChain && p.Incompatible.Count > 0))
+            p.Warnings.Add($"Declares [ACIncompatibility] ({string.Join(", ", p.Incompatible)}), but none of those mods is installed, so Keel starts it. " +
+                           "Anchor Chain's loader would not: it drops every mod with an [ACIncompatibility], named mod present or not (an upstream bug).");
     }
 
     /// <summary>Dependencies (hard and soft) and "load before" first, ties in mod-list order; a cycle is broken in mod-list order.</summary>
@@ -105,8 +136,10 @@ internal static class Planner
             if (next == null)
             {
                 next = rest[0];
-                next.Warnings.Add("Its start order is circular with: " +
-                                  string.Join(", ", after[next].Where(x => !done.Contains(x)).Select(x => x.Display)) + ". Started in mod-list order.");
+                string circular = "Its start order is circular with: " +
+                                  string.Join(", ", after[next].Where(x => !done.Contains(x)).Select(x => x.Display)) + ". Started in mod-list order.";
+                if (!next.Warnings.Contains(circular))
+                    next.Warnings.Add(circular);
             }
             result.Add(next);
             done.Add(next);

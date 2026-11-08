@@ -67,6 +67,7 @@ internal sealed class KeelHost : MonoBehaviour
     private float nextFlush;
     private readonly List<string> notes = new();
     private bool done;
+    private readonly List<SkippedDll> skippedDlls = new();
     private float noticeUntil;
     private bool showWindow;
     private Rect window = new(60, 60, 960, 600);
@@ -149,8 +150,10 @@ internal sealed class KeelHost : MonoBehaviour
 
         // 3. Find the plugins (metadata only).
         watch.Restart();
-        Keel.Plugins.AddRange(Scanner.Scan(enabled, Warn, Paths.ManagedPath, Paths.BepInExAssemblyDirectory));
+        Keel.Plugins.AddRange(Scanner.Scan(enabled, Warn, skippedDlls, Paths.ManagedPath, Paths.BepInExAssemblyDirectory));
         log.LogInfo($"Found {Keel.Plugins.Count} plugin(s) in {Keel.Plugins.Select(p => p.Dll).Distinct().Count()} DLL(s) ({watch.ElapsedMilliseconds} ms).");
+        foreach (SkippedDll d in skippedDlls)
+            log.LogInfo($"DLL left out: {d.Path} - {d.Reason}");
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
@@ -168,23 +171,48 @@ internal sealed class KeelHost : MonoBehaviour
         log.LogInfo($"Game-version check done ({watch.ElapsedMilliseconds} ms, frames included).");
         watch.Restart();
 
-        // 5. Plan and start.
+        // 5. Plan, then load everything, then start in order.
         var elsewhere = new HashSet<string>(Chainloader.PluginInfos.Keys);
         elsewhere.UnionWith(Keel.Plugins.Where(p => p.State == PluginState.LeftToAnchorChain).Select(p => p.Guid));
-        var off = new HashSet<string>(disabled.Value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0));
+        var off = new HashSet<string>(disabled.Value.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0));
         List<PluginEntry> order = Planner.Plan(Keel.Plugins, elsewhere, off, Process.GetCurrentProcess().ProcessName);
-        foreach (PluginEntry p in order)
+
+        // Anchor Chain may have started in the meantime (the version check took frames): then it starts its mods, not Keel.
+        if (LeaveToAnchorChain(runner, elsewhere, "before Keel loaded the mods"))
+            order = Planner.Replan(Keel.Plugins, elsewhere);
+
+        // 5a. What Anchor Chain's own loader would have set up for its mods: the folder list behind AnchorChainLoader.FindFile,
+        // then the [ACConfig] mods' config files (Anchor Chain's first pass).
+        PrimeAnchorChainLoader(runner, enabled, folders, order);
+        PrepareAcConfigs(enabled, folders, order);
+        if (order.Any(p => p.State != PluginState.Pending))
+            order = Planner.Replan(Keel.Plugins, elsewhere);
+
+        // 5b. Load every DLL and create every Anchor Chain mod before any of them starts (as Anchor Chain does: a mod that looks
+        // for another mod's assembly when it starts finds it); then start in dependency order. One step per frame, which changes
+        // nothing about the order (see Sequencer). Anchor Chain is looked for again right before the first start.
+        var sequence = new Sequencer
         {
-            runner.Start(p);
-            log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
-                    $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " – " + p.Reason : "")}");
+            Prepare = runner.Prepare,
+            Start = runner.Start,
+            Replan = () => Planner.Replan(Keel.Plugins, elsewhere),
+            HandOver = when => LeaveToAnchorChain(runner, elsewhere, when),
+            Prepared = p =>
+            {
+                if (p.State == PluginState.Failed)
+                    log.LogError($"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}) - {p.Reason}");
+            },
+            Started = p => log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
+                                   $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " - " + p.Reason : "")}"),
+        };
+        foreach (PluginEntry _ in sequence.Run(order))
             yield return null;
-        }
+        int started = sequence.StartedCount;
         foreach (PluginEntry p in Keel.Plugins.Where(p => p.State is PluginState.NotStarted))
             log.LogWarning($"NOT STARTED: {p.Display} {p.Version} ({p.Folder.Label}) – {p.Reason}");
 
         done = true;
-        log.LogInfo($"Started {order.Count} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
+        log.LogInfo($"Started {started} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();
         // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
@@ -197,7 +225,7 @@ internal sealed class KeelHost : MonoBehaviour
         List<PluginEntry> acMods = Keel.Plugins.Where(p => p.Kind == PluginKind.AnchorChain && p.State == PluginState.Pending).ToList();
         if (acMods.Count == 0)
             return;
-        if (GameState.AnchorChainRunning(null))
+        if (runner.AnchorChainRunning())
         {
             foreach (PluginEntry p in acMods)
                 p.Stop(PluginState.LeftToAnchorChain, "Anchor Chain is running and starts this mod.");
@@ -220,8 +248,52 @@ internal sealed class KeelHost : MonoBehaviour
         }
         runner.AnchorChainDll = acDll;
         notes.Add($"Anchor Chain is not running: Keel starts its mods (types from {acDll}).");
-        foreach (PluginEntry p in acMods.Where(p => p.UsesAcConfig))
-            p.Stop(PluginState.NotStarted, "Uses Anchor Chain's config files, which only Anchor Chain provides; it needs Anchor Chain running.");
+    }
+
+    // Anchor Chain started after Keel's first look: its mods are its own from then on (never started twice).
+    private bool LeaveToAnchorChain(Runner runner, HashSet<string> elsewhere, string when)
+    {
+        List<PluginEntry> mine = Keel.Plugins.Where(p => p.Kind == PluginKind.AnchorChain && p.State == PluginState.Pending).ToList();
+        if (mine.Count == 0 || !runner.AnchorChainRunning())
+            return false;
+        foreach (PluginEntry p in mine)
+        {
+            p.Stop(PluginState.LeftToAnchorChain, "Anchor Chain is running and starts this mod.");
+            elsewhere.Add(p.Guid);
+        }
+        Warn($"Anchor Chain started {when}: its {mine.Count} mod(s) are left to it.");
+        return true;
+    }
+
+    private void PrimeAnchorChainLoader(Runner runner, List<ModFolder> enabled, List<ModFolder> all, List<PluginEntry> order)
+    {
+        if (!order.Any(p => p.Kind == PluginKind.AnchorChain && p.State == PluginState.Pending))
+            return;
+        string streaming = GameState.StreamingAssets(out _);
+        string why = runner.PrimeAnchorChainLoader(enabled.Concat(all.Except(enabled)).Select(f => f.Path), Path.Combine(streaming, AcConfig.ConfigFolder));
+        if (why == null)
+            log.LogInfo("AnchorChainLoader.FindFile now searches the mod folders (as under Anchor Chain).");
+        else
+            Warn("AnchorChainLoader.FindFile will find nothing, so mods that use it for files in other mods' folders (Sonar Audio Loader's fallback) cannot find them: " + why);
+    }
+
+    private void PrepareAcConfigs(List<ModFolder> enabled, List<ModFolder> all, List<PluginEntry> order)
+    {
+        List<PluginEntry> withConfig = order.Where(p => p.Kind == PluginKind.AnchorChain && p.UsesAcConfig && p.State == PluginState.Pending).ToList();
+        if (withConfig.Count == 0)
+            return;
+        string streaming = GameState.StreamingAssets(out string how);
+        var config = new AcConfig(GameState.IniHandlerType, Path.Combine(streaming, AcConfig.ConfigFolder),
+                                  enabled.Concat(all.Except(enabled)).Select(f => f.Path),
+                                  log.LogInfo, log.LogWarning, log.LogError);
+        log.LogInfo($"[ACConfig] {withConfig.Count} mod(s) use config files; player files go to {config.ConfigDir} (from {how}).");
+        if (config.MissingMembers.Count > 0)
+            Warn("[ACConfig] This game build's IniHandler lacks: " + string.Join(", ", config.MissingMembers) + ". Keel handles it with a fallback (see the mods' warnings).");
+        foreach (PluginEntry p in withConfig)
+        {
+            if (!config.Load(p, out string reason))
+                p.Stop(PluginState.NotStarted, reason);
+        }
     }
 
     private IEnumerator Check()
@@ -282,7 +354,7 @@ internal sealed class KeelHost : MonoBehaviour
     {
         try
         {
-            File.WriteAllText(reportPath, Report.Text(Keel.Plugins, Header(), notes));
+            File.WriteAllText(reportPath, Report.Text(Keel.Plugins, Header(), notes, skippedDlls));
         }
         catch (Exception ex)
         {
@@ -491,10 +563,17 @@ internal sealed class KeelHost : MonoBehaviour
         }
         if (Keel.Plugins.Count == 0)
             GUILayout.Label(done ? "No mod with a plugin is switched on." : "", wrap);
+        if (skippedDlls.Count > 0)
+        {
+            GUILayout.Space(6);
+            GUILayout.Label($"<b>DLLs left out on purpose ({skippedDlls.Count})</b>", wrap);
+            foreach (SkippedDll d in skippedDlls)
+                GUILayout.Label($"{Path.GetFileName(d.Path)} <color=#a0a0a0>({d.Folder?.Label})</color>: {d.Reason}", small);
+        }
         GUILayout.EndScrollView();
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Copy report", GUILayout.Width(140)))
-            GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes);
+            GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         GUILayout.Label($"<size=11>Also in {reportPath}</size>", wrap);
         if (GUILayout.Button("Close", GUILayout.Width(100)))
             showWindow = false;

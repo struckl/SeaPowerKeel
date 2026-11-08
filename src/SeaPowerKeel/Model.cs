@@ -49,6 +49,8 @@ internal sealed class PluginEntry
     public readonly List<string> Incompatible = new();
     public readonly List<string> Processes = new();    // [BepInProcess]: empty = any
     public bool UsesAcConfig;
+    public bool AcConfigRequired = true;               // [ACConfig(required)]: a config file that cannot be made keeps the mod from starting
+    public bool Exported = true;                        // Anchor Chain only sees public (exported) plugin classes
 
     public PluginState State = PluginState.Pending;
     public string Reason = "";
@@ -65,4 +67,12 @@ internal sealed class PluginEntry
         State = state;
         Reason = reason;
     }
+}
+
+/// <summary>A DLL the scanner did not read as a plugin source, and why (shown in the report).</summary>
+internal sealed class SkippedDll
+{
+    public string Path;
+    public ModFolder Folder;
+    public string Reason;
 }

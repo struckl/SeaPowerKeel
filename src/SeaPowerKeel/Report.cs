@@ -36,7 +36,7 @@ internal static class Report
         return string.Join(", ", parts);
     }
 
-    public static string Text(IReadOnlyCollection<PluginEntry> all, string header, IEnumerable<string> notes)
+    public static string Text(IReadOnlyCollection<PluginEntry> all, string header, IEnumerable<string> notes, IReadOnlyCollection<SkippedDll> skipped = null)
     {
         var sb = new StringBuilder();
         sb.AppendLine(header);
@@ -54,6 +54,13 @@ internal static class Report
                 sb.AppendLine("    warning: " + w);
             if (p.LaterErrors > 0)
                 sb.AppendLine($"    {p.LaterErrors} error(s) since it started, first: {p.FirstLaterError}");
+        }
+        if (skipped != null && skipped.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"DLLs left out on purpose ({skipped.Count}):");
+            foreach (SkippedDll d in skipped)
+                sb.AppendLine($"[SKIPPED DLL] {System.IO.Path.GetFileName(d.Path)} – {d.Folder?.Label}, {d.Path}{Environment.NewLine}    {d.Reason}");
         }
         return sb.ToString();
     }

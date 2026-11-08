@@ -103,7 +103,36 @@ internal static class GameState
         }
     }
 
-    /// <summary>Anchor Chain's loader is in the game (its preloader found and started it).</summary>
-    public static bool AnchorChainRunning(Assembly ours) =>
-        AppDomain.CurrentDomain.GetAssemblies().Any(a => a != ours && a.GetName().Name == "AnchorChain");
+    /// <summary>The game's <c>SeaPower.IniHandler</c> type (null if this build has none under that name).</summary>
+    public static Type IniHandlerType => T("SeaPower.IniHandler");
+
+    /// <summary>
+    /// The game's StreamingAssets folder as the game itself has it (<c>Globals._streamingAssetsPath</c>, which Anchor Chain
+    /// builds its <c>ACConfigs</c> folder on), else Unity's path.
+    /// </summary>
+    public static string StreamingAssets(out string how)
+    {
+        try
+        {
+            object path = T("SeaPower.Globals")?.GetField("_streamingAssetsPath", Any)?.GetValue(null);
+            if (path is DirectoryInfo info)
+            {
+                how = "Globals._streamingAssetsPath";
+                return info.FullName;
+            }
+        }
+        catch (Exception)
+        {
+            // fall through
+        }
+        how = "Application.streamingAssetsPath (Globals._streamingAssetsPath not found)";
+        return Path.GetFullPath(Application.streamingAssetsPath);
+    }
+
+    /// <summary>
+    /// Anchor Chain's loader is in the game (its preloader found and started it): an assembly named AnchorChain that
+    /// <paramref name="ours"/> does not claim. Keel's own load of Anchor Chain's DLL as a library does not count.
+    /// </summary>
+    public static bool AnchorChainRunning(Func<Assembly, bool> ours) =>
+        AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "AnchorChain" && (ours == null || !ours(a)));
 }

@@ -14,17 +14,28 @@ internal static class Scanner
 {
     public const string ManifestFile = "keel.ini";
 
-    // Never plugins of their own: Keel itself and Anchor Chain's loader (which Keel only uses as a library).
-    private static bool Excluded(string file)
+    // Never plugins of their own: Keel itself and Anchor Chain's two loader DLLs (which Keel only uses as a library).
+    // Only these exact names: a mod called AnchorChainSomething.dll is a mod.
+    private static string ExcludedReason(string file)
     {
         string name = Path.GetFileName(file);
-        return name.StartsWith("SeaPowerKeel", StringComparison.OrdinalIgnoreCase)
-               || name.StartsWith("AnchorChain", StringComparison.OrdinalIgnoreCase);
+        if (name.StartsWith("SeaPowerKeel", StringComparison.OrdinalIgnoreCase))
+            return "Keel itself.";
+        if (name.Equals("AnchorChain.dll", StringComparison.OrdinalIgnoreCase))
+            return "Anchor Chain's own library: Keel uses it as a library for Anchor Chain mods and never as a plugin.";
+        if (name.Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase))
+            return "Anchor Chain's preloader (the BepInEx stub that starts Anchor Chain): not a mod.";
+        return null;
     }
+
+    /// <summary>Scans without a list of skipped DLLs (the offline tools).</summary>
+    public static List<PluginEntry> Scan(IList<ModFolder> folders, Action<string> warn, params string[] searchDirs) =>
+        Scan(folders, warn, null, searchDirs);
 
     /// <param name="searchDirs">Where Cecil looks for assemblies a DLL's attributes refer to (an enum argument such as
     /// BepInDependency's flags needs BepInEx.dll): the game's Managed folder and BepInEx\core. The mod folders are added.</param>
-    public static List<PluginEntry> Scan(IList<ModFolder> folders, Action<string> warn, params string[] searchDirs)
+    /// <param name="skipped">Receives every DLL left out on purpose, with the reason (may be null).</param>
+    public static List<PluginEntry> Scan(IList<ModFolder> folders, Action<string> warn, List<SkippedDll> skipped, params string[] searchDirs)
     {
         var all = new List<PluginEntry>();
         int order = 0;
@@ -37,7 +48,7 @@ internal static class Scanner
             List<string> dlls;
             try
             {
-                dlls = Directory.GetFiles(folder.Path, "*.dll", SearchOption.AllDirectories).Where(f => !Excluded(f))
+                dlls = Directory.GetFiles(folder.Path, "*.dll", SearchOption.AllDirectories)
                                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
             }
             catch (Exception ex)
@@ -47,11 +58,17 @@ internal static class Scanner
             }
             foreach (string dll in dlls)
             {
+                string why = ExcludedReason(dll);
+                if (why != null)
+                {
+                    skipped?.Add(new SkippedDll { Path = dll, Folder = folder, Reason = why });
+                    continue;
+                }
                 List<PluginEntry> found = ScanDll(dll, folder, warn, resolver);
                 // Some mods carry both entries in one DLL: the Anchor Chain one for the Workshop, the BepInEx one for players
                 // who copy the DLL into BepInEx\plugins. From a mod folder only the Anchor Chain entry is meant to run
                 // (the one Anchor Chain uses, the one the author tested); starting both would run the mod twice.
-                if (found.Any(p => p.Kind == PluginKind.AnchorChain))
+                if (found.Any(p => p.Kind == PluginKind.AnchorChain && p.Exported))
                     foreach (PluginEntry p in found.Where(p => p.Kind == PluginKind.BepInEx))
                         p.Stop(PluginState.Skipped, "The same DLL's Anchor Chain entry is the one that runs from a mod folder.");
                 string offBuild = manifest?.OtherBuildOnly(dll);
@@ -86,7 +103,15 @@ internal static class Scanner
                     if (bep != null && Inherits(type, "BepInEx.BaseUnityPlugin"))
                         entry = FromBepInEx(type, bep);
                     else if (ac != null && Implements(type, "AnchorChain.IAnchorChainMod"))
+                    {
                         entry = FromAnchorChain(type, ac);
+                        // Anchor Chain looks at the DLL's exported (public) types only; a plugin class that is not public never runs there.
+                        if (!IsExported(type))
+                        {
+                            entry.Exported = false;
+                            entry.Stop(PluginState.Skipped, "The plugin class is not public: Anchor Chain only looks at public classes and would not start it, so neither does Keel.");
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -159,8 +184,24 @@ internal static class Scanner
             e.Dependencies.Add(new Dependency { Guid = Str(a, 0), Min = ParseVersion(Str(a, 1)), Max = ParseVersion(Str(a, 2)) });
         foreach (CustomAttribute a in Attrs(type, "AnchorChain.ACIncompatibility"))
             e.Incompatible.Add(Str(a, 0));
-        e.UsesAcConfig = Attr(type, "AnchorChain.ACConfig") != null;
+        CustomAttribute config = Attr(type, "AnchorChain.ACConfig");
+        e.UsesAcConfig = config != null;
+        if (config != null && config.ConstructorArguments.Count > 0 && config.ConstructorArguments[0].Value is bool required)
+            e.AcConfigRequired = required;
         return e;
+    }
+
+    /// <summary>What <c>Assembly.GetExportedTypes</c> returns: a public type, or a public type nested in exported types only.</summary>
+    internal static bool IsExported(TypeDefinition t)
+    {
+        for (; t != null; t = t.DeclaringType)
+        {
+            if (t.DeclaringType == null)
+                return t.IsPublic;
+            if (!t.IsNestedPublic)
+                return false;
+        }
+        return true;
     }
 
     private static CustomAttribute Attr(TypeDefinition t, string fullName) => Attrs(t, fullName).FirstOrDefault();

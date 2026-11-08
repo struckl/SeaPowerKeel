@@ -97,6 +97,7 @@ internal sealed class Runner
             }
         }
         AppDomain.CurrentDomain.AssemblyResolve += Resolve;
+        AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
         Application.logMessageReceived += OnLog;
     }
 
@@ -110,6 +111,8 @@ internal sealed class Runner
             return already;
         string path = name == "AnchorChain" && AnchorChainDll != null ? AnchorChainDll
                     : libraryIndex.TryGetValue(name, out string p) ? p : null;
+        if (path == null && name == AcLoaderShim.PreloaderAssembly && AnchorChainDll != null)
+            return PreloaderStub();   // Anchor Chain's DLL needs its preloader's interface to load AnchorChainLoader (see AcLoaderShim)
         if (path == null)
             return null;
         try
@@ -123,12 +126,137 @@ internal sealed class Runner
         }
     }
 
+    private Assembly preloaderStub;
+
+    private Assembly PreloaderStub()
+    {
+        if (preloaderStub == null)
+        {
+            try
+            {
+                preloaderStub = AcLoaderShim.BuildPreloaderStub();
+                keelLoaded.Add(preloaderStub);
+                log.LogInfo("Anchor Chain's preloader is not installed: Keel provides the one interface of it that Anchor Chain's DLL needs (AnchorChain.Preloader.IPluginLoader).");
+            }
+            catch (Exception ex)
+            {
+                log.LogWarning($"Could not make the AnchorChain.Preloader stand-in: {ex.Message}");
+            }
+        }
+        return preloaderStub;
+    }
+
+    /// <summary>
+    /// Mods that call <c>AnchorChainLoader.FindFile</c> (Sonar Audio Loader does, for audio in other mods' folders) need its list
+    /// of mod folders, which only Anchor Chain's own loader fills. Null when done, else why not.
+    /// </summary>
+    public string PrimeAnchorChainLoader(IEnumerable<string> folders, string configDir)
+    {
+        if (AnchorChainDll == null)
+            return "Anchor Chain's DLL was not found";
+        try
+        {
+            return AcLoaderShim.Prime(Load(AnchorChainDll), folders, configDir);
+        }
+        catch (Exception ex)
+        {
+            Exception inner = ex is TargetInvocationException t && t.InnerException != null ? t.InnerException : ex;
+            return $"{inner.GetType().Name}: {inner.Message}";
+        }
+    }
+
+    private readonly HashSet<Assembly> keelLoaded = new();
+    private readonly HashSet<PluginEntry> ownerRegistered = new();
+
+    private static string LocationOf(Assembly a)
+    {
+        try
+        {
+            return a.IsDynamic ? null : a.Location;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     private Assembly Load(string path)
     {
         string full = Path.GetFullPath(path);
         if (!loaded.TryGetValue(full, out Assembly a))
-            loaded[full] = a = Assembly.LoadFrom(full);
+        {
+            // Already in the game (someone else loaded that very file): use that one, it is not ours.
+            a = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(x => string.Equals(LocationOf(x), full, StringComparison.OrdinalIgnoreCase));
+            if (a == null)
+            {
+                a = Assembly.LoadFrom(full);
+                keelLoaded.Add(a);
+            }
+            loaded[full] = a;
+        }
         return a;
+    }
+
+    // Everything that gets loaded while Keel loads or starts a plugin is Keel's doing (an AnchorChain.dll copy next to a mod,
+    // found by the runtime's own probing, included): it must not make Keel think Anchor Chain is running.
+    private void OnAssemblyLoad(object sender, AssemblyLoadEventArgs e)
+    {
+        if (starting != null)
+            keelLoaded.Add(e.LoadedAssembly);
+    }
+
+    /// <summary>Did Keel itself load this assembly (as opposed to Anchor Chain's preloader, BepInEx or the game)?</summary>
+    public bool OwnsAssembly(Assembly a) => keelLoaded.Contains(a);
+
+    /// <summary>Is an Anchor Chain loader in the game that Keel did not bring in itself?</summary>
+    public bool AnchorChainRunning() => GameState.AnchorChainRunning(OwnsAssembly);
+
+    private void RegisterOwner(PluginEntry p, Assembly asm)
+    {
+        if (ownerRegistered.Add(p))
+            owners.Add((Namespaces(asm), p));
+    }
+
+    /// <summary>
+    /// First phase for every plugin: load its DLL and, for an Anchor Chain mod, create the instance (Anchor Chain does this
+    /// for all mods before any of them starts, so a mod's start already sees every other mod's DLL loaded). Nothing of the
+    /// mod's entry point runs. A mod that cannot be loaded or created, or has no <c>IAnchorChainMod.TriggerEntryPoint</c>,
+    /// is marked <see cref="PluginState.Failed"/>.
+    /// </summary>
+    public void Prepare(PluginEntry p)
+    {
+        var watch = Stopwatch.StartNew();
+        starting = p;
+        startErrors.Clear();
+        try
+        {
+            Assembly asm = Load(p.Dll);
+            Type type = asm.GetType(p.TypeName, throwOnError: true);
+            RegisterOwner(p, asm);
+            if (p.Kind == PluginKind.AnchorChain)
+            {
+                if (AcEntry.FindEntryPoint(type) == null)
+                {
+                    p.Stop(PluginState.Failed, $"Entry point not found: {type.FullName} does not implement {AcEntry.InterfaceName}.{AcEntry.MethodName}() (the DLL's copy of Anchor Chain's interface differs?).");
+                    log.LogError($"{p.Display} ({p.Guid}): {p.Reason}");
+                    return;
+                }
+                p.Instance = Activator.CreateInstance(type);
+                if (startErrors.Count > 0)
+                    p.Stop(PluginState.Failed, "Threw while being created: " + startErrors[0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            Exception inner = ex is TargetInvocationException t && t.InnerException != null ? t.InnerException : ex;
+            p.Stop(PluginState.Failed, Explain(inner));
+            log.LogError($"{p.Display} ({p.Guid}) failed to load: {inner}");
+        }
+        finally
+        {
+            starting = null;
+            p.StartMs += (float)watch.Elapsed.TotalMilliseconds;
+        }
     }
 
     public void Start(PluginEntry p)
@@ -140,7 +268,7 @@ internal sealed class Runner
         {
             Assembly asm = Load(p.Dll);
             Type type = asm.GetType(p.TypeName, throwOnError: true);
-            owners.Add((Namespaces(asm), p));
+            RegisterOwner(p, asm);
             if (p.Kind == PluginKind.BepInEx)
             {
                 var plugin = (BaseUnityPlugin)host.AddComponent(type);
@@ -150,9 +278,8 @@ internal sealed class Runner
             }
             else
             {
-                object mod = Activator.CreateInstance(type);
-                p.Instance = mod;
-                type.GetMethod("TriggerEntryPoint", BindingFlags.Public | BindingFlags.Instance)?.Invoke(mod, null);
+                p.Instance ??= Activator.CreateInstance(type);
+                AcEntry.Invoke(p.Instance);   // through the interface: explicit implementations work; a missing entry point throws
             }
             if (startErrors.Count > 0)
                 p.Stop(PluginState.Failed, "Threw while starting: " + startErrors[0]);
@@ -162,13 +289,13 @@ internal sealed class Runner
         catch (Exception ex)
         {
             Exception inner = ex is TargetInvocationException t && t.InnerException != null ? t.InnerException : ex;
-            p.Stop(PluginState.Failed, Explain(inner));
+            p.Stop(PluginState.Failed, inner is MissingMethodException && inner.Message.Contains(AcEntry.MethodName) ? "Entry point not found: " + inner.Message : Explain(inner));
             log.LogError($"{p.Display} ({p.Guid}) failed to start: {inner}");
         }
         finally
         {
             starting = null;
-            p.StartMs = (float)watch.Elapsed.TotalMilliseconds;
+            p.StartMs += (float)watch.Elapsed.TotalMilliseconds;
         }
     }
 
