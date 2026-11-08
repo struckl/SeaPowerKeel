@@ -456,10 +456,94 @@ internal sealed class KeelHost : MonoBehaviour
         return null;
     }
 
+    // ---- the report's mouse and Esc, read from the device ----
+    // Like the hotkey: the globe build does not reliably hand clicks and keys to IMGUI, so the report's buttons did nothing. Update
+    // reads the mouse button, the pointer and Esc straight from the Input System (else the old Input) and hit-tests the two
+    // buttons itself; IMGUI's own handling stays as it was.
+
+    private Rect closeRect, copyRect;      // in the report's GUI units (screen pixels / scale), set while the report draws
+    private float guiScale = 1f;
+    private Func<(bool click, Vector2 pos, bool esc)> pointer;
+    private bool pointerProbed;
+
+    private Func<(bool click, Vector2 pos, bool esc)> ProbePointer()
+    {
+        const BindingFlags pub = BindingFlags.Public | BindingFlags.Instance;
+        try
+        {
+            Type mouseType = Type.GetType("UnityEngine.InputSystem.Mouse, Unity.InputSystem");
+            Type kbType = Type.GetType("UnityEngine.InputSystem.Keyboard, Unity.InputSystem");
+            PropertyInfo mouseNow = mouseType?.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
+            PropertyInfo kbNow = kbType?.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
+            if (mouseNow != null && kbNow != null)
+            {
+                return () =>
+                {
+                    object m = mouseNow.GetValue(null), k = kbNow.GetValue(null);
+                    bool click = false, esc = false;
+                    Vector2 pos = default;
+                    if (m != null)
+                    {
+                        object left = m.GetType().GetProperty("leftButton", pub)?.GetValue(m);
+                        click = left?.GetType().GetProperty("wasPressedThisFrame", pub)?.GetValue(left) is bool c && c;
+                        object p = m.GetType().GetProperty("position", pub)?.GetValue(m);
+                        if (p?.GetType().GetMethod("ReadValue", Type.EmptyTypes)?.Invoke(p, null) is Vector2 v) pos = v;
+                    }
+                    if (k != null)
+                    {
+                        object escKey = k.GetType().GetProperty("escapeKey", pub)?.GetValue(k);
+                        esc = escKey?.GetType().GetProperty("wasPressedThisFrame", pub)?.GetValue(escKey) is bool e && e;
+                    }
+                    return (click, pos, esc);
+                };
+            }
+        }
+        catch (Exception)
+        {
+            // no Input System package: try the old input
+        }
+        try
+        {
+            Type input = Type.GetType("UnityEngine.Input, UnityEngine.InputLegacyModule");
+            MethodInfo mouseDown = input?.GetMethod("GetMouseButtonDown", new[] { typeof(int) });
+            MethodInfo keyDown = input?.GetMethod("GetKeyDown", new[] { typeof(KeyCode) });
+            PropertyInfo mousePos = input?.GetProperty("mousePosition", BindingFlags.Public | BindingFlags.Static);
+            if (mouseDown != null && keyDown != null && mousePos != null)
+            {
+                mouseDown.Invoke(null, new object[] { 0 });      // throws right away when the old input is switched off
+                return () => ((bool)mouseDown.Invoke(null, new object[] { 0 }), (Vector3)mousePos.GetValue(null),
+                              (bool)keyDown.Invoke(null, new object[] { KeyCode.Escape }));
+            }
+        }
+        catch (Exception)
+        {
+            // old input switched off
+        }
+        return null;
+    }
+
+    private void PollReportInput()
+    {
+        if (!showWindow) return;
+        if (!pointerProbed) { pointerProbed = true; pointer = ProbePointer(); }
+        if (pointer == null) return;
+        try
+        {
+            var (click, pos, esc) = pointer();
+            if (esc) { showWindow = false; return; }
+            if (!click) return;
+            var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom
+            if (closeRect.Contains(gui)) showWindow = false;
+            else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
+        }
+        catch (Exception) { pointer = null; }
+    }
+
     private float nextMissionCheck;
 
     private void Update()
     {
+        PollReportInput();
         if (!hotkeyProbed)
         {
             hotkeyProbed = true;
@@ -539,6 +623,7 @@ internal sealed class KeelHost : MonoBehaviour
         // IMGUI draws in screen pixels: scale it so the report reads the same on 1080p and 4K (Report.Scale, 0 = by screen height).
         float scale = uiScale.Value > 0 ? uiScale.Value : Mathf.Max(1f, Screen.height / 1080f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+        guiScale = scale;
         float screenW = Screen.width / scale, screenH = Screen.height / scale;
         wrap ??= new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true };
         small ??= new GUIStyle(GUI.skin.label) { wordWrap = true, richText = true, fontSize = 11 };
@@ -615,11 +700,21 @@ internal sealed class KeelHost : MonoBehaviour
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Copy report", GUILayout.Width(140)))
             GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
+        if (Event.current.type == EventType.Repaint)
+        {
+            Rect r = GUILayoutUtility.GetLastRect();
+            copyRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
+        }
         // A fixed width: a wrapping label in a row takes all the width a long path wants and pushed Close out of the window.
         GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f)));
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("Close", GUILayout.Width(100)))
             showWindow = false;
+        if (Event.current.type == EventType.Repaint)
+        {
+            Rect r = GUILayoutUtility.GetLastRect();
+            closeRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
+        }
         GUILayout.EndHorizontal();
         GUI.DragWindow(new Rect(0, 0, 10000, 22));
     }

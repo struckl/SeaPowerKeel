@@ -95,7 +95,7 @@ internal sealed class Overlay
 
         // Not topmost: that put it above every program. The game's window becomes its owner as soon as that exists (see FindOwner).
         hwnd = Native.CreateWindowExW(Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE | Native.WS_EX_LAYERED,
-            ClassName, "R.A.T.S. Loading", Native.WS_POPUP, full.Left, full.Top, full.Right - full.Left, full.Bottom - full.Top,
+            ClassName, "R.A.T.S. Keel Loading", Native.WS_POPUP, full.Left, full.Top, full.Right - full.Left, full.Bottom - full.Top,
             IntPtr.Zero, IntPtr.Zero, instance, IntPtr.Zero);
         if (hwnd == IntPtr.Zero) throw new InvalidOperationException("CreateWindow failed");
         SetAlpha(options.Opacity);
@@ -403,7 +403,7 @@ internal sealed class Overlay
         Native.SetBkMode(dc, Native.TRANSPARENT);
         int pad = S(14), y = S(12);
 
-        Put(dc, fontBold, Amber, "R.A.T.S. Loading", pad, y, w - 2 * pad - S(70), S(24), 0);
+        Put(dc, fontBold, Amber, "R.A.T.S. Keel Loading", pad, y, w - 2 * pad - S(70), S(24), 0);
         Put(dc, fontText, Dim, Clock(s.Elapsed), pad, y, w - 2 * pad, S(24), Native.DT_RIGHT);
         y += S(24);
 
