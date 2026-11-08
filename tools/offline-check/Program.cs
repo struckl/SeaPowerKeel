@@ -50,8 +50,13 @@ internal static class Program
                 {
                     if (r.ClassLoad.Count > 0)
                         p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.ClassLoad)}.");
-                    else if (r.Uses.Count > 0)
-                        p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}.");
+                    else
+                    {
+                        if (r.Uses.Count > 0)
+                            p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}.");
+                        if (r.Patches.Count > 0)
+                            p.Warnings.Add($"Patches {r.Patches.Count} method(s) this game build lacks, e.g. {Report.Short(r.Patches)}.");
+                    }
                 }
             }
         }

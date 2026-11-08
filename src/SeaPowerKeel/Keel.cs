@@ -265,11 +265,17 @@ internal sealed class KeelHost : MonoBehaviour
                     if (r.ClassLoad.Count > 0)
                         p.Stop(PluginState.NotStarted,
                                $"Made for another game version: this build has no {Report.Short(r.ClassLoad)}. Loading it would stop missions from loading, so Keel leaves it out.");
-                    else if (r.Uses.Count > 0 && mode == "Strict")
-                        p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.Uses)} (GameVersionCheck = Strict).");
-                    else if (r.Uses.Count > 0)
-                        p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}. Fine if the mod checks the game version itself; " +
-                                       "otherwise expect errors when that part runs.");
+                    else if ((r.Uses.Count > 0 || r.Patches.Count > 0) && mode == "Strict")
+                        p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.Uses.Concat(r.Patches).ToList())} (GameVersionCheck = Strict).");
+                    else
+                    {
+                        if (r.Uses.Count > 0)
+                            p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}. Fine if the mod checks the game version itself; " +
+                                           "otherwise expect errors when that part runs.");
+                        if (r.Patches.Count > 0)
+                            p.Warnings.Add($"Patches {r.Patches.Count} method(s) this game build lacks, e.g. {Report.Short(r.Patches)}. That patch cannot be applied here; " +
+                                           "expect errors from the mod, or a part of it that does nothing. (Keel does not check whether a transpiler still matches.)");
+                    }
                 }
                 yield return null;
             }
