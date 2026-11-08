@@ -7,7 +7,9 @@ folders, sort out dependencies and start order, start them), and on top of that:
 
 - **Checks every mod against your game version before loading it.** A mod built for the other game build used to be able
   to stop *every* mission from loading (one of its types built on something this build lacks makes the game's start-up
-  throw). Keel leaves such a DLL out and says why. Smaller mismatches are listed as warnings.
+  throw). Keel leaves such a DLL out and says why. Smaller mismatches are listed as warnings, including Harmony patches and by-name
+  reflection lookups (also of internal classes) whose target this build no longer has (a transpiler that no longer matches
+  its target's code is not detected).
 - **One broken mod cannot stop the others.** Each mod starts on its own; one that throws is marked and the next one starts.
   No endless load loop, no frozen game.
 - **Says what happened.** Ctrl+Shift+K in the game shows every mod: running, running with errors, not started and why
@@ -29,8 +31,8 @@ folders, sort out dependencies and start order, start them), and on top of that:
   created before the first one starts, `TriggerEntryPoint` is called through the `IAnchorChainMod` interface (explicit
   implementations work), `[ACConfig]` config files are prepared, and `AnchorChainLoader.FindFile` works for mods that call it.
 
-Status: **0.1.0 plus unreleased Anchor Chain compatibility changes (offline-checked, not run in the game yet)**. 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
-a mission on each. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
+Status: **0.1.3 plus unreleased Anchor Chain compatibility changes. 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
+a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-name lookup checks) were run offline against the installed game and mods, not yet in the game. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
 
 ## Install
 
@@ -40,8 +42,9 @@ a mission on each. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md
 3. Start the game. Ctrl+Shift+K shows the report.
 
 **Switching from Anchor Chain:** delete `AnchorChain.Preloader.dll` from `BepInEx\plugins`; Keel then loads the Anchor Chain
-mods. Keep Anchor Chain subscribed and on: its mods are built against its DLL, which Keel uses as a library (it does not start
-Anchor Chain). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
+mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
+is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). A
+mod that uses Anchor Chain's `ACConfig` still needs Anchor Chain itself. With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
 
 ## Settings
 
@@ -50,7 +53,7 @@ Anchor Chain). With the preloader left in place, Anchor Chain loads its mods as 
 | Setting | Default | What |
 |---|---|---|
 | `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods when Anchor Chain is not running |
-| `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part; `Off` |
+| `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part (also a missing Harmony patch target or by-name lookup); `Off` |
 | `Loading.DisabledPlugins` | empty | Plugin ids Keel does not start although their folder is on |
 | `Logging.TimestampedLog` | `true` | Write `BepInEx\Keel-log.txt` with times and the mod each exception came from |
 | `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |

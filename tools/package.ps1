@@ -31,6 +31,8 @@ Copy-Item (Join-Path $root 'src\SeaPowerKeel\bin\Release\netstandard2.1\SeaPower
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $dist 'copy-to-BepInEx-plugins')
 Copy-Item (Join-Path $root 'src\SeaPowerKeel\mod\_info.ini') $dist
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $dist 'LICENSE.txt')
+New-Item -ItemType Directory -Force (Join-Path $dist 'lib') | Out-Null
+Copy-Item (Join-Path $root 'lib\AnchorChain.keel.bin'), (Join-Path $root 'lib\THIRD-PARTY.txt') (Join-Path $dist 'lib')
 $preview = Join-Path $root 'workshop\preview.jpg'
 if (Test-Path $preview) { Copy-Item $preview $dist } else { Write-Warning 'workshop\preview.jpg missing.' }
 

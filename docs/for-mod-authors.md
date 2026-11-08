@@ -24,8 +24,8 @@ the plugin to `Chainloader.PluginInfos`, so other plugins find it the BepInEx wa
 
 `[ACPlugin]` on an `IAnchorChainMod`, with `[ACDependency]` / `[ACIncompatibility]`, as Anchor Chain describes. While
 Anchor Chain runs, Keel leaves these to it. When Anchor Chain is not running (for example when its preloader cannot start
-on a game build), Keel starts them itself: it takes the types from Anchor Chain's DLL (so Anchor Chain must still be
-subscribed) and calls `TriggerEntryPoint` through the `IAnchorChainMod` interface (an explicit implementation works). Like Anchor
+on a game build), Keel starts them itself: it takes the types from Anchor Chain's DLL (a subscribed copy, else the
+one Keel ships) and calls `TriggerEntryPoint` through the `IAnchorChainMod` interface (an explicit implementation works). Like Anchor
 Chain it loads every DLL and creates every mod before the first one starts, only looks at public plugin classes, and handles
 `[ACConfig]` (default `<id>.ini` in your mod folder, the player's copy `<id>_user.ini` in `StreamingAssets/ACConfigs`, new keys
 merged in, `[AnchorChain.ResetValues]` applied once; a missing default file keeps the mod from starting). `AnchorChainLoader.FindFile`
@@ -59,8 +59,14 @@ build (the same check as `modtool compat`):
   Keep such types out of the DLL for the other build (see `docs/both-versions.md` in the workspace).
 - **A method or field use this build lacks**: a warning in the report. Fine if your mod checks the build before that code
   runs; otherwise that part throws.
+- **A type or method looked up by name that this build lacks**: a warning in the report. Keel reads `[HarmonyPatch(typeof(X), "Name", ...)]`,
+  `AccessTools.Method/Field/...(typeof(X), "Name")`, `AccessTools.Method("Ns.X:Name")`, and the literal name in
+  `AccessTools.TypeByName`, `Type.GetType` and `Assembly.GetType` (an internal class is usually reached this way; the Type is
+  followed into later `AccessTools` calls through a local variable or a static field). Names built at run time and
+  `TargetMethod()` are not checked, and neither is whether a transpiler still matches the target's code. A mod that tries
+  several names on purpose (one per game build) will show a warning for the ones that miss; that is expected.
 
-Players can switch to `Strict` (any missing use keeps the DLL out) or `Off` in `BepInEx\config\dev.sewerlabs.seapowerkeel.cfg`.
+Players can switch to `Strict` (any missing use or patch target keeps the DLL out) or `Off` in `BepInEx\config\dev.sewerlabs.seapowerkeel.cfg`.
 
 ## Errors
 

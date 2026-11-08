@@ -238,12 +238,12 @@ internal sealed class KeelHost : MonoBehaviour
                 p.Stop(PluginState.Skipped, "An Anchor Chain mod; Keel's AnchorChainMods setting is off and Anchor Chain is not running.");
             return;
         }
-        string acDll = enabled.SelectMany(f => ModFolders.FindFile(f.Path, "AnchorChain.dll")).FirstOrDefault();
+        string acDll = enabled.SelectMany(f => ModFolders.FindFile(f.Path, "AnchorChain.dll")).FirstOrDefault() ?? BundledAnchorChain();
         if (acDll == null)
         {
             foreach (PluginEntry p in acMods)
                 p.Stop(PluginState.NotStarted,
-                       "An Anchor Chain mod: subscribe to Anchor Chain on the Workshop and switch it on. Keel runs the mod, but its types live in Anchor Chain's DLL.");
+                       "An Anchor Chain mod, but Keel's copy of Anchor Chain's library is missing from its folder: verify Keel's files on the Workshop (unsubscribe and subscribe again).");
             return;
         }
         runner.AnchorChainDll = acDll;
@@ -296,6 +296,13 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
+    // Anchor Chain's library (MIT), shipped with Keel so its mods run without the Anchor Chain item; a subscribed copy is preferred.
+    private static string BundledAnchorChain()
+    {
+        string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(Keel).Assembly.Location) ?? "", "lib", "AnchorChain.keel.bin");
+        return System.IO.File.Exists(path) ? path : null;
+    }
+
     private IEnumerator Check()
     {
         string mode = versionCheck.Value;
@@ -330,14 +337,22 @@ internal sealed class KeelHost : MonoBehaviour
                     if (r.ClassLoad.Count > 0)
                         p.Stop(PluginState.NotStarted,
                                $"Made for another game version: this build has no {Report.Short(r.ClassLoad)}. Loading it would stop missions from loading, so Keel leaves it out.");
-                    else if (r.Uses.Count > 0 && mode == "Strict")
-                        p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.Uses)} (GameVersionCheck = Strict).");
-                    else if (r.Uses.Count > 0)
-                        p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}. Fine if the mod checks the game version itself; " +
-                                       "otherwise expect errors when that part runs.");
+                    else if ((r.Uses.Count > 0 || r.Lookups.Count > 0) && mode == "Strict")
+                        p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.Uses.Concat(r.Lookups).ToList())} (GameVersionCheck = Strict).");
+                    else
+                    {
+                        if (r.Uses.Count > 0)
+                            p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}. Fine if the mod checks the game version itself; " +
+                                           "otherwise expect errors when that part runs.");
+                        if (r.Lookups.Count > 0)
+                            p.Warnings.Add($"Looks up {r.Lookups.Count} type(s)/method(s) by name that this game build lacks, e.g. {Report.Short(r.Lookups)} (Harmony patch targets, AccessTools and reflection lookups). " +
+                                           "That code cannot find its target here: expect errors from the mod, or a part of it that does nothing. (Keel does not check whether a transpiler still matches.)");
+                    }
                 }
                 yield return null;
             }
+            if (preflight.IndexMs > 0)
+                log.LogInfo($"Index of the game's type names for by-name lookups: {preflight.IndexMs} ms.");
         }
     }
 

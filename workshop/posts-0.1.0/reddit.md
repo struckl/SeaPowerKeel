@@ -23,7 +23,7 @@ You can use it instead of Anchor Chain's loader, or keep both side by side while
 
 1. Subscribe to R.A.T.S. Keel and switch it on in Mods.
 2. Once: copy `SeaPowerKeel.Stub.dll` from the `copy-to-BepInEx-plugins` folder in Keel's Workshop folder into `Sea Power\BepInEx\plugins`.
-3. To let Keel do all the loading: remove `AnchorChain.Preloader.dll` from that folder. Keep Anchor Chain subscribed – your mods list it as a requirement and Keel uses its files.
+3. To let Keel do all the loading: remove `AnchorChain.Preloader.dll` from that folder. On the 3D globe beta you no longer need the Anchor Chain item, Keel brings its library along; on 0.8.7 keep it subscribed.
 
 Keel changes nothing in missions or saves; it only decides which mods start and tells you about it.
 

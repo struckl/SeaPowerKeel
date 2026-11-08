@@ -5,7 +5,7 @@ Anchor Chain got Sea Power's code mods started, and I built Keel to take that fu
 
 [h2]Why it is better[/h2]
 [list]
-[*][b]A mod made for the other game version can no longer break your missions.[/b] Before a mod is loaded, Keel checks everything it uses from the game against the version you are running. A DLL that would stop missions from loading is left out, and the report tells you why. Smaller mismatches show up as a warning.
+[*][b]A mod made for the other game version can no longer break your missions.[/b] Before a mod is loaded, Keel checks everything it uses from the game against the version you are running. A DLL that would stop missions from loading is left out, and the report tells you why. Smaller mismatches, including Harmony patches whose target method is gone, show up as a warning.
 [*][b]The right build for your game version.[/b] Mods that ship one DLL for the flat map (0.8.7) and one for the 3D globe say which is which in a small keel.ini, and Keel starts only the one that fits your game. No more two copies fighting it out.
 [*][b]Only the mods you switched on.[/b] Keel follows the game's Mods menu. Mods you switched off stay off; their files are not even opened.
 [*][b]One broken mod cannot take the others down.[/b] Every mod starts on its own. One that fails is marked and the next one starts. No endless loading loop, no frozen game.
@@ -24,7 +24,7 @@ Anchor Chain got Sea Power's code mods started, and I built Keel to take that fu
 [*]Subscribe and switch R.A.T.S. Keel on in the game's Mods menu.
 [*]Once: copy [b]SeaPowerKeel.Stub.dll[/b] from the folder [i]copy-to-BepInEx-plugins[/i] in Keel's Workshop folder (or from the GitHub release) into [i]Sea Power\BepInEx\plugins[/i].
 [*]Delete [b]AnchorChain.Preloader.dll[/b] from [i]Sea Power\BepInEx\plugins[/i]. From now on Keel does the loading.
-[*]Keep Anchor Chain subscribed and switched on: Anchor Chain mods are built against its files, and Keel uses them (it does not start Anchor Chain).
+[*]You no longer need the Anchor Chain item: Keel brings its own copy of Anchor Chain's library (MIT) for the mods built against it. Run in the game on the 3D globe public beta (build 261107) with no Anchor Chain on the PC. On 0.8.7 keep Anchor Chain subscribed, that is the tested way there. A mod that uses Anchor Chain's ACConfig still needs Anchor Chain itself.
 [*]Start the game. Ctrl+Shift+K shows the report.
 [/olist]
 If you keep Anchor Chain's preloader, Anchor Chain loads its mods as before and Keel steps aside for them, so nothing starts twice.
