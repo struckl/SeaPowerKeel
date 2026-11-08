@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Anchor Chain mods no longer need the Anchor Chain Workshop item: Keel ships Anchor Chain's library (MIT, `lib\AnchorChain.keel.bin`) and uses it when no Anchor Chain folder is on. Mods that use Anchor Chain's ACConfig still need Anchor Chain. Run in the game on globe beta 261107 on 2026-11-08 with no AnchorChain.dll on the machine: 7 plugins started (Sensor Views, Radio, Topo, Shot Director). README and Workshop texts change with the next release.
+
 ## 0.1.0 – 2026-11-07 (not released; run in the game on 0.8.7)
 
 Fixed after the run on the 3D globe beta 261107 (2026-11-08):

@@ -210,18 +210,25 @@ internal sealed class KeelHost : MonoBehaviour
                 p.Stop(PluginState.Skipped, "An Anchor Chain mod; Keel's AnchorChainMods setting is off and Anchor Chain is not running.");
             return;
         }
-        string acDll = enabled.SelectMany(f => ModFolders.FindFile(f.Path, "AnchorChain.dll")).FirstOrDefault();
+        string acDll = enabled.SelectMany(f => ModFolders.FindFile(f.Path, "AnchorChain.dll")).FirstOrDefault() ?? BundledAnchorChain();
         if (acDll == null)
         {
             foreach (PluginEntry p in acMods)
                 p.Stop(PluginState.NotStarted,
-                       "An Anchor Chain mod: subscribe to Anchor Chain on the Workshop and switch it on. Keel runs the mod, but its types live in Anchor Chain's DLL.");
+                       "An Anchor Chain mod, but Keel's copy of Anchor Chain's library is missing from its folder: verify Keel's files on the Workshop (unsubscribe and subscribe again).");
             return;
         }
         runner.AnchorChainDll = acDll;
         notes.Add($"Anchor Chain is not running: Keel starts its mods (types from {acDll}).");
         foreach (PluginEntry p in acMods.Where(p => p.UsesAcConfig))
             p.Stop(PluginState.NotStarted, "Uses Anchor Chain's config files, which only Anchor Chain provides; it needs Anchor Chain running.");
+    }
+
+    // Anchor Chain's library (MIT), shipped with Keel so its mods run without the Anchor Chain item; a subscribed copy is preferred.
+    private static string BundledAnchorChain()
+    {
+        string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(Keel).Assembly.Location) ?? "", "lib", "AnchorChain.keel.bin");
+        return System.IO.File.Exists(path) ? path : null;
     }
 
     private IEnumerator Check()
