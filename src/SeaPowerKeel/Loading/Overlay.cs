@@ -165,6 +165,7 @@ internal sealed class Overlay
         stageStart = Now;
         if (next == Stage.Moving)
         {
+            summaryStartTicks = DateTime.UtcNow.Ticks;
             summary = progress.Take(0);
             TakeSnapshot();
             from = now;
@@ -172,8 +173,14 @@ internal sealed class Overlay
         }
     }
 
+    private long summaryStartTicks;
+
     private void OnTick()
     {
+        // The summary card belongs to the main menu: when a mission runs or the game loads a scene of its own (mission, editor,
+        // campaign), it goes.
+        if ((stage == Stage.Moving || stage == Stage.Summary) && (LoadingWindow.MissionRunning || LoadingWindow.SceneLoadedTicks > summaryStartTicks))
+            Begin(Stage.Fading);
         if (owner == IntPtr.Zero && ++ticks % 6 == 1) FindOwner();
         Progress.Snapshot s = progress.Take(0);
         double t = Now - stageStart;
