@@ -155,6 +155,8 @@ The Anchor Chain compatibility changes (CHANGELOG, "Unreleased") are checked off
 Written from scratch. Anchor Chain (SeaPower-Modders, MIT) is the community chainloader Sea Power code mods are built on;
 Keel reads Anchor Chain mods through their public attributes and interface so players can use both.
 
+Made by **Kanalratte** (GitHub: struckl) - [Steam profile](https://steamcommunity.com/profiles/76561198169349193) - [Discord: BuOrd Naval Modding Community, #sp-mods](https://discord.gg/vc8uAVH6Sh) - [GitHub](https://github.com/struckl).
+
 MIT license.
 
 *R.A.T.S. – Ratte's Assorted Tactical Systems*

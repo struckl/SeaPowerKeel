@@ -282,7 +282,7 @@ internal sealed class Overlay
     {
         int gh = game.Bottom - game.Top;
         int w = (int)(Layout.SummaryWidth * scale), h = (int)(Layout.SummaryHeight * scale);
-        int x = game.Left + (int)(8 * scale), y = game.Bottom - (int)(gh * 0.034) - h;
+        int x = game.Left + (int)(8 * scale), y = game.Bottom - (int)(gh * 0.075) - h;
         return new Native.RECT { Left = x, Top = y, Right = x + w, Bottom = y + h };
     }
 
@@ -377,7 +377,7 @@ internal sealed class Overlay
         Native.SetBkMode(dc, Native.TRANSPARENT);
         int pad = S(14), y = S(12);
 
-        Put(dc, fontBold, Amber, "R.A.T.S. Loading", pad, y, w - 2 * pad - S(70), S(24), 0);
+        Put(dc, fontBold, Amber, "R.A.T.S. Loading  -  Kanalratte", pad, y, w - 2 * pad - S(70), S(24), 0);
         Put(dc, fontText, Dim, Clock(s.Elapsed), pad, y, w - 2 * pad, S(24), Native.DT_RIGHT);
         y += S(24);
 
@@ -462,11 +462,6 @@ internal sealed class Overlay
         {
             line3 = (s.WithErrors + s.NotStarted) + (s.WithErrors + s.NotStarted == 1 ? " mod has" : " mods have") + " problems - click for the report";
             c3 = Amber;
-        }
-        else if (s.SlowestSeconds >= 2 && !string.IsNullOrEmpty(s.SlowestName))
-        {
-            line3 = "Slowest: " + Shorten(s.SlowestName, 30) + " " + s.SlowestSeconds.ToString("0") + " s  -  click for the report";
-            c3 = Dim;
         }
         else { line3 = "No problems  -  click for the report"; c3 = Dim; }
         Put(dc, fontSmall, c3, line3, pad, y, w - 2 * pad, lineH, Native.DT_END_ELLIPSIS);
