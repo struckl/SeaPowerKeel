@@ -40,6 +40,8 @@ internal static class SelfTest
         try
         {
             Console.WriteLine("1. Scanner: only the exact Anchor Chain DLL names are left out, and every one is listed");
+            Console.WriteLine("0. _info.ini [Compatibility], by the game's rules");
+            InfoIni();
             ScannerExclusions(tmp, managed, core);
             Console.WriteLine("3. Scanner: Anchor Chain plugin classes must be public (exported)");
             ExportedTypes(tmp, managed, core);
@@ -131,6 +133,30 @@ internal static class SelfTest
         Planner.Plan(all, new HashSet<string>(elsewhere), new HashSet<string>(), "Sea Power");
 
     // ---- 1. exclusions ----
+
+    private static void InfoIni()
+    {
+        string[] Ini(string body) => ("[Language_en]\nName=X\n[Compatibility]\n;comment\n" + body).Split('\n');
+        bool Off(string body, string app = "0.8.7") => InfoVersion.Mismatch(Ini(body), app) != null;
+        Check(!Off("ApproximateVersion=0.8.4"), "approximate: older patch of this minor fits (the game's rule)");
+        Check(Off("ApproximateVersion=0.7.9"), "approximate: another minor is flagged");
+        Check(Off("ApproximateVersion=0.8.9"), "approximate: a newer patch than the game is flagged");
+        Check(Off("ExactVersion=0.8.6"), "exact: another version is flagged");
+        Check(!Off("ExactVersion=0.8.7"), "exact: this version fits");
+        Check(!Off("ExactVersion=0.8.7\nExcludeVersions=0.8.7"), "exact decides before the exclude list (the game's order)");
+        Check(Off("ExcludeVersions=0.8.5, 0.8.7"), "exclude list: this version is flagged");
+        Check(Off("GreaterThanVersion=0.8.7"), "greater than: equal is flagged");
+        Check(!Off("GreaterThanEqualToVersion=0.8.7"), "greater or equal: equal fits");
+        Check(Off("LessThanVersion=0.8.7"), "less than: equal is flagged");
+        Check(Off("LessThanEqualToVersion=0.8.6"), "less or equal: older limit is flagged");
+        Check(!Off(""), "no statement: no verdict");
+        Check(!Off("ApproximateVersion=nonsense"), "unreadable statement: no verdict");
+        Check(!Off("ApproximateVersion=0.7.0", "not-a-version"), "unreadable game version: no verdict");
+        Check(!Off("ApproximateVersion=0.7.0".Replace("Approximate", "Other")), "other keys are ignored");
+        Check(InfoVersion.Mismatch(new[] { "[Other]", "ApproximateVersion=0.1.0" }, "0.8.7") == null, "only the [Compatibility] section counts");
+        Check(InfoVersion.Mismatch(Ini("ApproximateVersion=0.7.9"), "0.8.7").Contains("0.7.9"), "the warning names the version");
+        Check(InfoVersion.MismatchInFolder(@"Z:\\no\\such\\folder", "0.8.7") == null, "a missing file is no verdict");
+    }
 
     private static void ScannerExclusions(string tmp, string managed, string core)
     {

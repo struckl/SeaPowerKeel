@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased - Anchor Chain compatibility (run in the game on globe beta 261107 on 2026-11-08 with Euromod: 25 mods started, a mission ran; 0.8.7 offline only)
+## 0.1.4 – 2026-11-08
+
+- **Euromod and other big Anchor Chain mods.** Run in the game on globe beta 261107 with Euromod's Expansion Pack: 25 mods started and a mission ran. The Sonar Audio Loader can search other mods' folders again (`AnchorChainLoader.FindFile`). 0.8.7 was checked offline only.
+- **Keel reads `_info.ini` too.** The `[Compatibility]` section (Exact, Approximate, GreaterThan, LessThan, Exclude), judged by the game's own rules, is a backup for what the DLL check cannot see, such as a transpiler that no longer matches. A mod that says it does not fit gets a warning in the report; `GameVersionCheck = Strict` leaves it out. An unreadable statement is ignored. Checked offline, not yet run in the game.
+- **`[ACConfig]` mods no longer need Anchor Chain** (checked offline; no mod in the game run used it).
+
+### Anchor Chain compatibility in detail
 
 Reports on Discord said big Anchor Chain mods (Euromod's Anchorchain Expansion Pack, sonar systems) did not work under Keel.
 Compared with Anchor Chain's loader (released 1.1.0 DLL and the current source), these differences are fixed:

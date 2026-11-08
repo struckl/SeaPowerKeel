@@ -31,7 +31,7 @@ folders, sort out dependencies and start order, start them), and on top of that:
   created before the first one starts, `TriggerEntryPoint` is called through the `IAnchorChainMod` interface (explicit
   implementations work), `[ACConfig]` config files are prepared, and `AnchorChainLoader.FindFile` works for mods that call it.
 
-Status: **0.1.3 plus unreleased Anchor Chain compatibility changes (run in the game with Euromod on globe beta 261107). 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
+Status: **0.1.4 (Anchor Chain compatibility run in the game with Euromod on globe beta 261107; the `_info.ini` check offline only). 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
 a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-name lookup checks) were run offline against the installed game and mods, not yet in the game. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
 
 ## Install
