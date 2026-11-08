@@ -53,9 +53,12 @@ build (the same check as `modtool compat`):
   Keep such types out of the DLL for the other build (see `docs/both-versions.md` in the workspace).
 - **A method or field use this build lacks**: a warning in the report. Fine if your mod checks the build before that code
   runs; otherwise that part throws.
-- **A Harmony patch whose target method this build lacks**: a warning in the report. Keel reads `[HarmonyPatch(typeof(X), "Name", ...)]`
-  and `AccessTools.Method/Field/...(typeof(X), "Name")` with literal names. Targets built at run time, `TargetMethod()` and
-  `"Type:Method"` strings are not checked, and neither is whether a transpiler still matches the target's code.
+- **A type or method looked up by name that this build lacks**: a warning in the report. Keel reads `[HarmonyPatch(typeof(X), "Name", ...)]`,
+  `AccessTools.Method/Field/...(typeof(X), "Name")`, `AccessTools.Method("Ns.X:Name")`, and the literal name in
+  `AccessTools.TypeByName`, `Type.GetType` and `Assembly.GetType` (an internal class is usually reached this way; the Type is
+  followed into later `AccessTools` calls through a local variable or a static field). Names built at run time and
+  `TargetMethod()` are not checked, and neither is whether a transpiler still matches the target's code. A mod that tries
+  several names on purpose (one per game build) will show a warning for the ones that miss; that is expected.
 
 Players can switch to `Strict` (any missing use or patch target keeps the DLL out) or `Off` in `BepInEx\config\dev.sewerlabs.seapowerkeel.cfg`.
 

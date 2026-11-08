@@ -54,11 +54,12 @@ internal static class Program
                     {
                         if (r.Uses.Count > 0)
                             p.Warnings.Add($"Uses {r.Uses.Count} thing(s) this game build lacks, e.g. {Report.Short(r.Uses)}.");
-                        if (r.Patches.Count > 0)
-                            p.Warnings.Add($"Patches {r.Patches.Count} method(s) this game build lacks, e.g. {Report.Short(r.Patches)}.");
+                        if (r.Lookups.Count > 0)
+                            p.Warnings.Add($"Looks up {r.Lookups.Count} type(s)/method(s) by name that this game build lacks: {string.Join("; ", r.Lookups)}.");
                     }
                 }
             }
+            Console.WriteLine($"Type index for by-name lookups: {(pre.IndexMs > 0 ? pre.IndexMs + " ms" : "not needed")}");
         }
         List<PluginEntry> order = Planner.Plan(all, new HashSet<string>(), new HashSet<string>(), "Sea Power");
         foreach (PluginEntry p in order)

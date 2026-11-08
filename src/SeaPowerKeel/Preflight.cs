@@ -21,9 +21,9 @@ internal sealed class Preflight : IDisposable
     {
         public readonly List<string> ClassLoad = new();
         public readonly List<string> Uses = new();
-        /// <summary>Harmony patch targets (attributes, and AccessTools lookups with literal names) this build lacks.</summary>
-        public readonly List<string> Patches = new();
-        public bool Clean => ClassLoad.Count == 0 && Uses.Count == 0 && Patches.Count == 0;
+        /// <summary>Types and methods named by string (Harmony patch targets, AccessTools and reflection lookups) that this build lacks.</summary>
+        public readonly List<string> Lookups = new();
+        public bool Clean => ClassLoad.Count == 0 && Uses.Count == 0 && Lookups.Count == 0;
     }
 
     private readonly HashSet<string> gameAssemblies;
@@ -38,6 +38,7 @@ internal sealed class Preflight : IDisposable
             Directory.GetFiles(managedDir, "*.dll").Select(Path.GetFileNameWithoutExtension)
                      .Where(n => !(n == "mscorlib" || n == "netstandard" || n == "System" || n.StartsWith("System.") || n.StartsWith("Mono."))),
             StringComparer.OrdinalIgnoreCase);
+        this.managedDir = managedDir;
         resolver.AddSearchDirectory(managedDir);
         resolver.AddSearchDirectory(bepInExCore);
     }
@@ -149,28 +150,31 @@ internal sealed class Preflight : IDisposable
         }
         r.ClassLoad.AddRange(classLoad);
         r.Uses.AddRange(uses.Except(classLoad));
-        r.Patches.AddRange(patches);
+        r.Lookups.AddRange(patches);
         return r;
     }
 
-    // ---- Harmony patch targets -------------------------------------------------------------------------------------------
-    // The IL scan above only sees what the code references. A Harmony patch names its target as a string, so a method that was
-    // renamed or removed in this build passes it and fails when the patch is applied. Checked here, from the attributes
-    // ([HarmonyPatch(typeof(X), "Name", ...)], class and method level merged the way Harmony does) and from AccessTools lookups
-    // with a type and a literal name. Not checked: targets built at run time, TargetMethod(), "Type:Method" strings, and whether
-    // a transpiler's code still matches the target's IL.
+    // ---- Targets named by string: Harmony patches and reflection lookups ------------------------------------------------
+    // The IL scan above only sees what the code references. A Harmony patch or a reflection lookup names its target as a string,
+    // so a method or type that this build renamed or removed passes it and fails when the code runs. Checked here:
+    //  - [HarmonyPatch(typeof(X), "Name", ...)] (class and method level merged the way Harmony does, also ("Ns.X", "Name"));
+    //  - AccessTools.Method/DeclaredMethod/Field/DeclaredField/PropertyGetter/PropertySetter with typeof(X) and a literal name,
+    //    with "Ns.X:Name", or with a Type that came from a literal name (the usual way to reach an internal class);
+    //  - AccessTools.TypeByName / Type.GetType / Assembly.GetType with a literal name.
+    // Not checked: names built at run time, TargetMethod(), and whether a transpiler's code still matches the target's IL.
 
     private sealed class PatchSpec
     {
         public TypeReference Type;
+        public string TypeName;
         public string Name;
         public List<TypeReference> Args;
         public int Kind;   // HarmonyLib.MethodType: 0 Normal, 1 Getter, 2 Setter, 3 Constructor, 4 StaticConstructor, 5 Enumerator
-        public bool Any => Type != null || Name != null || Args != null || Kind != 0;
 
         public PatchSpec Over(PatchSpec outer) => new()
         {
             Type = Type ?? outer.Type,
+            TypeName = TypeName ?? outer.TypeName,
             Name = Name ?? outer.Name,
             Args = Args ?? outer.Args,
             Kind = Kind != 0 ? Kind : outer.Kind,
@@ -186,6 +190,7 @@ internal sealed class Preflight : IDisposable
         foreach (CustomAttribute a in attributes.Where(x => x.AttributeType.Name == "HarmonyPatch" && x.AttributeType.Namespace == "HarmonyLib"))
         {
             spec ??= new PatchSpec();
+            var strings = new List<string>();
             foreach (CustomAttributeArgument arg in a.ConstructorArguments)
             {
                 switch (arg.Value)
@@ -194,7 +199,7 @@ internal sealed class Preflight : IDisposable
                         spec.Type = t;
                         break;
                     case string s:
-                        spec.Name = s;
+                        strings.Add(s);
                         break;
                     case CustomAttributeArgument[] list when arg.Type.GetElementType().Name == "Type":
                         spec.Args = list.Select(x => x.Value as TypeReference).ToList();
@@ -204,12 +209,22 @@ internal sealed class Preflight : IDisposable
                         break;
                 }
             }
+            if (strings.Count >= 2)
+            {
+                spec.TypeName = strings[0];
+                spec.Name = strings[1];
+            }
+            else if (strings.Count == 1)
+            {
+                spec.Name = strings[0];
+            }
         }
         return spec;
     }
 
     private void CheckPatches(ModuleDefinition mod, SortedSet<string> into, Func<TypeReference, bool> game)
     {
+        var fieldTypes = new Dictionary<string, string>();   // static fields holding a Type found by a literal name
         foreach (TypeDefinition type in mod.GetTypes())
         {
             PatchSpec onClass = ReadSpec(type.CustomAttributes);
@@ -221,31 +236,42 @@ internal sealed class Preflight : IDisposable
                 if (!isPatch)
                     continue;
                 PatchSpec spec = (onMethod ?? new PatchSpec()).Over(onClass ?? new PatchSpec());
-                if (spec.Type == null || !game(spec.Type))
-                    continue;
-                string problem = MissingTarget(spec);
+                string problem = MissingTarget(spec, game);
                 if (problem != null)
                     into.Add(problem);
             }
-            foreach (MethodDefinition method in type.Methods.Where(m => m.HasBody))
-                CheckLookups(method, into, game);
         }
+        // Twice: the first pass learns which static fields hold a Type found by name, the second reports.
+        for (int pass = 0; pass < 2; pass++)
+            foreach (TypeDefinition type in mod.GetTypes())
+                foreach (MethodDefinition method in type.Methods.Where(m => m.HasBody))
+                    CheckLookups(method, pass == 1 ? into : new SortedSet<string>(), game, fieldTypes);
     }
 
-    private string MissingTarget(PatchSpec spec)
+    private string MissingTarget(PatchSpec spec, Func<TypeReference, bool> game)
     {
         TypeDefinition target;
-        try
+        string typeName;
+        if (spec.Type != null)
         {
-            target = spec.Type.GetElementType().Resolve();
+            if (!game(spec.Type))
+                return null;
+            typeName = spec.Type.GetElementType().FullName;
+            target = ResolveType(spec.Type);
+            if (target == null)
+                return typeName;
         }
-        catch (Exception)
+        else if (spec.TypeName != null)
         {
-            target = null;
+            typeName = spec.TypeName;
+            target = FindType(typeName);
+            if (target == null)
+                return IsGameName(typeName) ? typeName : null;
         }
-        string typeName = spec.Type.GetElementType().FullName;
-        if (target == null)
-            return typeName;
+        else
+        {
+            return null;
+        }
         if (spec.Kind == 4)
             return target.Methods.Any(m => m.Name == ".cctor") ? null : $"{typeName}::.cctor";
         string name = spec.Kind switch
@@ -269,60 +295,15 @@ internal sealed class Preflight : IDisposable
         return $"{typeName}::{name}({args})";
     }
 
-    // AccessTools.Method / DeclaredMethod / Field / DeclaredField / PropertyGetter / PropertySetter (typeof(X), "Name", ...).
-    private void CheckLookups(MethodDefinition method, SortedSet<string> into, Func<TypeReference, bool> game)
+    private static TypeDefinition ResolveType(TypeReference type)
     {
-        var instructions = method.Body.Instructions;
-        for (int i = 0; i < instructions.Count; i++)
+        try
         {
-            if (!(instructions[i].Operand is MethodReference call) || call.DeclaringType.FullName != "HarmonyLib.AccessTools")
-                continue;
-            string kind = call.Name;
-            bool declaredOnly = kind.StartsWith("Declared");
-            string shape = kind.StartsWith("Declared") ? kind.Substring("Declared".Length) : kind;
-            if (shape != "Method" && shape != "Field" && shape != "PropertyGetter" && shape != "PropertySetter")
-                continue;
-            if (call.Parameters.Count == 0 || call.Parameters[0].ParameterType.FullName != "System.Type")
-                continue;
-            string name = null;
-            TypeReference type = null;
-            // Only the literal form counts: ldtoken X; call Type.GetTypeFromHandle; ldstr "name" (then the other arguments).
-            // A Type held in a variable is not known here, so it is left alone rather than guessed from an earlier typeof.
-            for (int j = i - 1; j >= 2 && j >= i - 8; j--)
-            {
-                if (instructions[j].OpCode.Code != Code.Ldstr)
-                    continue;
-                if (instructions[j - 1].Operand is MethodReference g && g.Name == "GetTypeFromHandle"
-                    && instructions[j - 2].OpCode.Code == Code.Ldtoken && instructions[j - 2].Operand is TypeReference t)
-                {
-                    name = (string)instructions[j].Operand;
-                    type = t;
-                }
-                break;
-            }
-            if (name == null || type == null || !game(type))
-                continue;
-            TypeDefinition def;
-            try
-            {
-                def = type.GetElementType().Resolve();
-            }
-            catch (Exception)
-            {
-                def = null;
-            }
-            string typeName = type.GetElementType().FullName;
-            if (def == null)
-            {
-                into.Add(typeName);
-                continue;
-            }
-            string member = shape == "PropertyGetter" ? "get_" + name : shape == "PropertySetter" ? "set_" + name : name;
-            bool found = false;
-            for (TypeDefinition t = def; t != null && !found; t = declaredOnly ? null : Base(t))
-                found = shape == "Field" ? t.Fields.Any(f => f.Name == name) : t.Methods.Any(m => m.Name == member);
-            if (!found)
-                into.Add($"{typeName}::{member}");
+            return type.GetElementType().Resolve();
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 
@@ -338,5 +319,238 @@ internal sealed class Preflight : IDisposable
         }
     }
 
-    public void Dispose() => resolver.Dispose();
+    // ---- Index of the game's type names, built the first time a mod looks a type up by name ----------------------------
+
+    private Dictionary<string, TypeDefinition> typeIndex;
+    private HashSet<string> gameRoots;
+    private readonly List<ModuleDefinition> indexed = new();
+    private readonly string managedDir;
+    /// <summary>Milliseconds spent building the type index (0 until a mod needed it).</summary>
+    public long IndexMs { get; private set; }
+
+    private void EnsureIndex()
+    {
+        if (typeIndex != null)
+            return;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        typeIndex = new Dictionary<string, TypeDefinition>(StringComparer.Ordinal);
+        gameRoots = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string name in gameAssemblies)
+        {
+            try
+            {
+                ModuleDefinition m = ModuleDefinition.ReadModule(Path.Combine(managedDir, name + ".dll"),
+                    new ReaderParameters { AssemblyResolver = resolver, ReadingMode = ReadingMode.Deferred });
+                indexed.Add(m);
+                foreach (TypeDefinition t in m.GetTypes())
+                {
+                    typeIndex.TryAdd(t.FullName.Replace('/', '+'), t);
+                    if (t.Namespace.Length > 0)
+                        gameRoots.Add(t.Namespace.Split('.')[0]);
+                }
+            }
+            catch (Exception)
+            {
+                // A file Cecil cannot read just stays out of the index.
+            }
+        }
+        gameRoots.ExceptWith(new[] { "System", "Microsoft", "Mono" });
+        IndexMs = watch.ElapsedMilliseconds;
+    }
+
+    /// <summary>A type of the game by its full name ("Ns.Type", nested "Ns.Outer+Inner"; ", Assembly" is ignored).</summary>
+    private TypeDefinition FindType(string name)
+    {
+        EnsureIndex();
+        int comma = name.IndexOf(',');
+        if (comma >= 0)
+            name = name.Substring(0, comma);
+        return typeIndex.TryGetValue(name.Trim(), out TypeDefinition t) ? t : null;
+    }
+
+    /// <summary>Does this name look like one of the game's own namespaces? (Names outside them are not ours to judge.)</summary>
+    private bool IsGameName(string name)
+    {
+        EnsureIndex();
+        int comma = name.IndexOf(',');
+        if (comma >= 0)
+            name = name.Substring(0, comma);
+        int dot = name.IndexOf('.');
+        return dot > 0 && gameRoots.Contains(name.Substring(0, dot));
+    }
+
+    // The literal name a call takes a type by: AccessTools.TypeByName, Type.GetType, Assembly.GetType.
+    private static string TypeNameCall(MethodReference call, Mono.Collections.Generic.Collection<Instruction> ins, int i)
+    {
+        bool byName = (call.DeclaringType.FullName == "HarmonyLib.AccessTools" && call.Name == "TypeByName")
+                   || (call.DeclaringType.FullName == "System.Type" && call.Name == "GetType")
+                   || (call.DeclaringType.FullName == "System.Reflection.Assembly" && call.Name == "GetType");
+        if (!byName || call.Parameters.Count == 0 || call.Parameters[0].ParameterType.FullName != "System.String")
+            return null;
+        for (int j = i - 1; j >= 0 && j >= i - 3; j--)
+            if (ins[j].OpCode.Code == Code.Ldstr)
+                return (string)ins[j].Operand;
+        return null;
+    }
+
+    // The literal name of the type the instruction at k leaves on the stack, when that is a by-name call (or its dup).
+    private static string TypeNameBefore(Mono.Collections.Generic.Collection<Instruction> ins, int k)
+    {
+        if (k >= 1 && ins[k].OpCode.Code == Code.Dup)
+            k--;
+        return k >= 0 && ins[k].Operand is MethodReference m ? TypeNameCall(m, ins, k) : null;
+    }
+
+    // Cecil gives the variable as the operand of ldloc/ldloc.s/stloc/stloc.s but not of the short forms ldloc.0 .. stloc.3.
+    private static VariableDefinition LocalOf(Instruction ins, MethodBody body)
+    {
+        switch (ins.OpCode.Code)
+        {
+            case Code.Ldloc_0:
+            case Code.Stloc_0:
+                return body.Variables.Count > 0 ? body.Variables[0] : null;
+            case Code.Ldloc_1:
+            case Code.Stloc_1:
+                return body.Variables.Count > 1 ? body.Variables[1] : null;
+            case Code.Ldloc_2:
+            case Code.Stloc_2:
+                return body.Variables.Count > 2 ? body.Variables[2] : null;
+            case Code.Ldloc_3:
+            case Code.Stloc_3:
+                return body.Variables.Count > 3 ? body.Variables[3] : null;
+            default:
+                return ins.Operand as VariableDefinition;
+        }
+    }
+
+    private static bool IsStloc(Instruction ins) =>
+        ins.OpCode.Code is Code.Stloc or Code.Stloc_S or Code.Stloc_0 or Code.Stloc_1 or Code.Stloc_2 or Code.Stloc_3;
+
+    private static bool IsLdloc(Instruction ins) =>
+        ins.OpCode.Code is Code.Ldloc or Code.Ldloc_S or Code.Ldloc_0 or Code.Ldloc_1 or Code.Ldloc_2 or Code.Ldloc_3;
+
+    private void CheckLookups(MethodDefinition method, SortedSet<string> into, Func<TypeReference, bool> game, Dictionary<string, string> fieldTypes)
+    {
+        var ins = method.Body.Instructions;
+        var locals = new Dictionary<VariableDefinition, string>();   // locals holding a Type found by a literal name
+        for (int i = 0; i < ins.Count; i++)
+        {
+            if (!(ins[i].Operand is MethodReference call))
+                continue;
+
+            string byName = TypeNameCall(call, ins, i);
+            if (byName != null)
+            {
+                if (FindType(byName) == null && IsGameName(byName))
+                    into.Add(byName);
+                if (i + 1 < ins.Count)
+                {
+                    Instruction next = ins[i + 1];
+                    if (IsStloc(next) && LocalOf(next, method.Body) != null)
+                        locals[LocalOf(next, method.Body)] = byName;
+                    else if (next.OpCode.Code == Code.Stsfld && next.Operand is FieldReference f)
+                        fieldTypes[f.FullName] = byName;
+                }
+                continue;
+            }
+
+            if (call.DeclaringType.FullName != "HarmonyLib.AccessTools")
+                continue;
+            bool declaredOnly = call.Name.StartsWith("Declared");
+            string shape = declaredOnly ? call.Name.Substring("Declared".Length) : call.Name;
+            if (shape != "Method" && shape != "Field" && shape != "PropertyGetter" && shape != "PropertySetter")
+                continue;
+            if (call.Parameters.Count == 0)
+                continue;
+            string first = call.Parameters[0].ParameterType.FullName;
+
+            // The name and where the type comes from: the nearest literal string before the call.
+            int s = -1;
+            for (int j = i - 1; j >= 0 && j >= i - 8; j--)
+                if (ins[j].OpCode.Code == Code.Ldstr)
+                {
+                    s = j;
+                    break;
+                }
+            if (s < 0)
+                continue;
+            string literal = (string)ins[s].Operand;
+            TypeDefinition def = null;
+            string typeName = null, member = null;
+            bool missingType = false;
+
+            if (first == "System.String")
+            {
+                // AccessTools.Method("Ns.Type:Name")
+                int colon = literal.IndexOf(':');
+                if (colon <= 0)
+                    continue;
+                typeName = literal.Substring(0, colon);
+                member = literal.Substring(colon + 1);
+                def = FindType(typeName);
+                missingType = def == null && IsGameName(typeName);
+            }
+            else if (first == "System.Type" && s >= 1)
+            {
+                member = literal;
+                Instruction before = ins[s - 1];
+                if (before.Operand is MethodReference g && g.Name == "GetTypeFromHandle" && s >= 2
+                    && ins[s - 2].OpCode.Code == Code.Ldtoken && ins[s - 2].Operand is TypeReference t)
+                {
+                    if (!game(t))
+                        continue;
+                    typeName = t.GetElementType().FullName;
+                    def = ResolveType(t);
+                    missingType = def == null;
+                }
+                else if (IsLdloc(before) && LocalOf(before, method.Body) != null && locals.TryGetValue(LocalOf(before, method.Body), out string viaLocal))
+                {
+                    typeName = viaLocal;
+                    def = FindType(viaLocal);
+                    missingType = def == null && IsGameName(viaLocal);
+                }
+                else if (TypeNameBefore(ins, s - 1) is string viaCall)
+                {
+                    // AccessTools.Method(AccessTools.TypeByName("Ns.X"), "Name"), or the same with the type kept on the stack (dup)
+                    typeName = viaCall;
+                    def = FindType(viaCall);
+                    missingType = def == null && IsGameName(viaCall);
+                }
+                else if (before.OpCode.Code == Code.Ldsfld && before.Operand is FieldReference sf && fieldTypes.TryGetValue(sf.FullName, out string viaField))
+                {
+                    typeName = viaField;
+                    def = FindType(viaField);
+                    missingType = def == null && IsGameName(viaField);
+                }
+                else
+                {
+                    continue;   // a Type that is not known here: left alone rather than guessed
+                }
+            }
+            else
+            {
+                continue;
+            }
+
+            if (def == null)
+            {
+                if (missingType)
+                    into.Add(typeName);
+                continue;
+            }
+            string memberName = shape == "PropertyGetter" ? "get_" + member : shape == "PropertySetter" ? "set_" + member : member;
+            bool found = false;
+            for (TypeDefinition t2 = def; t2 != null && !found; t2 = declaredOnly ? null : Base(t2))
+                found = shape == "Field" ? t2.Fields.Any(f2 => f2.Name == member) : t2.Methods.Any(m => m.Name == memberName);
+            if (!found)
+                into.Add($"{typeName}::{memberName}");
+        }
+    }
+
+    public void Dispose()
+    {
+        foreach (ModuleDefinition m in indexed)
+            m.Dispose();
+        resolver.Dispose();
+    }
 }
