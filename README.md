@@ -41,6 +41,11 @@ a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-n
    into `Sea Power\BepInEx\plugins`.
 3. Start the game. Ctrl+Shift+K shows the report.
 
+**Restart after every change to the mod list.** The stub runs once, while the game starts, and reads the mod list then. If Keel
+(or any mod) was switched off at that moment, nothing loads, and switching it on in the running game does not start it: restart the
+game. The same goes for subscribing to, removing or reinstalling a mod, and for Steam re-downloading Keel's folder. If the game
+log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on in Mods and restart.
+
 **Switching from Anchor Chain:** delete `AnchorChain.Preloader.dll` from `BepInEx\plugins`; Keel then loads the Anchor Chain
 mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
 is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). Keel now handles ACConfig files itself (checked offline; no mod in the game test used it). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.

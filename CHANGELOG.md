@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Docs:** README and Workshop description now say that the game must be restarted after Keel or any mod is switched on or off, and what the "switched off in the game's mod list" log line means.
+
 ## 0.1.4 – 2026-11-08
 
 - **Euromod and other big Anchor Chain mods.** Run in the game on globe beta 261107 with Euromod's Expansion Pack: 25 mods started and a mission ran. The Sonar Audio Loader can search other mods' folders again (`AnchorChainLoader.FindFile`). 0.8.7 was checked offline only.
