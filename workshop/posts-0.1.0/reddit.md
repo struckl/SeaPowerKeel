@@ -1,36 +1,35 @@
-Title: [Mod] R.A.T.S. Keel – a new mod loader for Sea Power: loads your Anchor Chain mods on the 3D globe beta, checks every mod against your game version first
+Title: [Mod] R.A.T.S. Keel – replaces Anchor Chain: your mods on the 3D globe beta today, faster start, and no more broken missions from outdated mods
 
 Hi all,
 
-Since the 3D globe beta, Anchor Chain's preloader can't find its loader, so no code mod starts there. I wrote a new mod loader from scratch: **R.A.T.S. Keel**. It loads your existing Anchor Chain mods (nothing to change in them) and a lot more carefully.
+**R.A.T.S. Keel replaces Anchor Chain** as the loader for Sea Power's code mods. Your existing mods work with it as they are. Not sure yet? Both can run side by side – Keel then simply steps aside for Anchor Chain's mods – but Anchor Chain's loader is no longer needed.
 
-**What it does better**
+**Updated regularly**: Keel follows every game update and every beta build, and updates reach you through the Workshop by themselves.
 
-- **A mod made for the other game version can't break your missions anymore.** Before anything is loaded, Keel checks every mod against the game version you are running. A DLL that would stop missions from loading is left out, and you're told why.
-- **The right build for your game version.** Mods that ship a flat-map DLL and a globe DLL get only the matching one started.
-- **Your mods on the 3D globe beta, today** – run in the game on the public beta (build 261107) with eight Anchor Chain mods and a mission. Also run on 0.8.7.
-- **Always works on the beta branch.** Keel uses nothing of the game that changes between builds and is run on new betas as they come out.
-- **Only the mods you switched on** in the Mods menu load. Switched-off mods stay off.
-- **One broken mod can't take the others down** – no endless load loop, no frozen game.
-- **Faster start:** in my test the mods were running 37 s after launch, against 116 s with Anchor Chain (which also loaded the switched-off ones).
-- **See what happened:** Ctrl+Shift+K shows every mod – running, errors, not started and why (missing mod and the version it needs, a conflict, wrong game version).
-- **Logs with timestamps**, naming the mod each error came from. On the globe build BepInEx's own log misses the game's lines – Keel's has them. Old sessions are kept.
-- **Maintained, updates by themselves** through the Workshop. The one file you copy by hand never changes again.
+**What you get**
 
-**Install / switch over**
+- **Your mods work on the new 3D globe beta – today.** Anchor Chain can't start there, so no code mod loads. With Keel they do: tested on the public beta (build 261107) with eight mods and a mission, and on 0.8.7.
+- **Outdated mods can't break your missions anymore.** Keel checks every mod against your game version *before* loading it. One that would stop missions from loading is left out, and you're told which one and why.
+- **Faster start.** In my test the mods were ready 37 seconds after launch instead of 116.
+- **One broken mod can't freeze your game** or stop the others from loading.
+- **Only the mods you ticked** in the Mods menu load – switched-off mods really stay off.
+- **Picks the right version of a mod for your game** when the mod ships one for the flat map and one for the globe.
+- **Press Ctrl+Shift+K** to see every mod: running, problems, not started – and why, in plain words.
+- **Logs with timestamps** that name the mod behind each error – handy when you ask a mod maker for help.
+
+**Install**
 
 1. Subscribe to R.A.T.S. Keel and switch it on in Mods.
-2. Copy `SeaPowerKeel.Stub.dll` from the `copy-to-BepInEx-plugins` folder in Keel's Workshop folder into `Sea Power\BepInEx\plugins` (once).
-3. Delete `AnchorChain.Preloader.dll` from that folder.
-4. Keep Anchor Chain subscribed – its mods are built against its files, Keel uses them.
+2. Once: copy `SeaPowerKeel.Stub.dll` from the `copy-to-BepInEx-plugins` folder in Keel's Workshop folder into `Sea Power\BepInEx\plugins`.
+3. To switch fully: delete `AnchorChain.Preloader.dll` from that folder. (Leave Anchor Chain subscribed – your mods list it as a requirement and Keel uses its files.)
 
-Keel changes nothing in missions or saves; it only decides which code mods start and tells you about it.
+Keel changes nothing in missions or saves; it only decides which mods start and tells you about it.
 
-Credit where it's due: Anchor Chain is what Sea Power code mods grew up on. Keel reads Anchor Chain mods through their public attributes, so both keep working. Mod makers: plain BepInEx plugins work too, docs in the source.
+Thanks to Anchor Chain, which Sea Power code mods grew up on. Mod makers: Anchor Chain mods and plain BepInEx plugins both work, details in the source.
 
 Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459
 Source (MIT): https://github.com/struckl/SeaPowerKeel
 
-Feedback welcome – the Ctrl+Shift+K report has a "Copy report" button, paste it here if something doesn't start.
+If something doesn't start, press Ctrl+Shift+K, hit "Copy report" and paste it here.
 
 *R.A.T.S. – Ratte's Assorted Tactical Systems*
