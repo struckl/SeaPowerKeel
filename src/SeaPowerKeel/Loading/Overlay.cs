@@ -444,7 +444,7 @@ internal sealed class Overlay
         }
         else if (s.Idle >= 2.5)
         {
-            foot = "Nothing new for " + s.Idle.ToString("0") + " s" + (string.IsNullOrEmpty(s.LastEvent) ? "" : " (last message: " + Shorten(s.LastEvent, 34) + ")") + " - the game is busy with a slow step";
+            foot = "Still loading  -  " + s.Idle.ToString("0") + " s since the last message" + (string.IsNullOrEmpty(s.LastEvent) ? "" : ": " + Shorten(s.LastEvent, 34));
             footColor = Amber;
         }
         else { foot = "Click to hide."; footColor = Dim; }
