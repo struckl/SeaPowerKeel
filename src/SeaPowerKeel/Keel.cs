@@ -87,6 +87,9 @@ internal sealed class KeelHost : MonoBehaviour
             "Standard: a DLL that would stop missions from loading on this game build (a type of it is built on something this build " +
             "lacks) is not loaded; other missing parts are a warning. Strict: any missing part keeps the DLL from loading. Off: no check.",
             new AcceptableValueList<string>("Standard", "Strict", "Off")));
+        Runner.GuardPatches = config.Bind("Loading", "RemoveBrokenPatches", true,
+            "When the game throws 'Method not found' / 'Field not found' because a mod's Harmony patch uses something this game build lacks, Keel takes that mod's patch off the failing " +
+            "game method again, names the mod in the report and keeps the game going (instead of the same error popup on every frame). Off: Keel only names the mod.").Value;
         disabled = config.Bind("Loading", "DisabledPlugins", "",
             "Plugin ids (comma separated) Keel does not start, even though their mod folder is on.");
         hotkey = config.Bind("Report", "Hotkey", "Ctrl+Shift+K", "Shows and hides the report window.");

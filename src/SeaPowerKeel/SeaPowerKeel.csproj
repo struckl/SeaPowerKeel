@@ -5,12 +5,13 @@
     <AssemblyName>SeaPowerKeel</AssemblyName>
     <RootNamespace>SeaPowerKeel</RootNamespace>
     <Product>R.A.T.S. Keel: a mod loader for Sea Power that checks every mod against the running game before it starts it.</Product>
-    <Version>0.1.5</Version>
+    <Version>0.1.6</Version>
     <!--Local mod folder for testing: the game lists every StreamingAssets sub folder as a mod.-->
     <ModDeployDir>$(GameDir)\Sea Power_Data\StreamingAssets\SeaPowerKeel</ModDeployDir>
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="0Harmony"><HintPath>$(BepInExCore)\0Harmony.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Mono.Cecil"><HintPath>$(BepInExCore)\Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(ManagedDir)\UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>

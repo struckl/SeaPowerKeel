@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6 - 2026-11-09
+
+Run in the game on the globe beta (build 261107) on 2026-11-09 with a test mod that patches `GameMain.FixedUpdate` with code reading a field the game no longer has (the error a player reported from Dynamic Campaign / Real Air Combat Tactics): Keel named the test mod and took its patch off (the mod's patch count on that method went from 1 to 0). Not run with those two mods themselves; 0.8.7 not run.
+
+- **A mod's broken patch is taken off instead of throwing on every frame.** When the game throws 'Method not found' / 'Field not found' (for example a mod that patches `GameMain.FixedUpdate` and reads a field the new game build turned into a property: a popup on every frame), Keel finds the mod whose patch sits on the failing game method (from the stack's `DMD<Type::Method>` and the patches Harmony holds for it), takes that mod's patch off that method, names the mod in the report and the log, and the game goes on. The rest of the mod keeps running. Before, Keel only named the first mod that uses the member, which could be a mod that guards the call and is innocent. When the stack does not show which patch it was, Keel names every mod that uses the member and changes nothing. Setting `Loading / RemoveBrokenPatches` (on by default); off = only names the mod. Offline checks cover the error and stack parsing (95 of 95 pass). **Fixed on the way:** Unity logs the error on ONE line (`… _objectToDestroy Due to: Could not find field in class`), and the parser took the last word, 'class', for the member, so 0.1.5's naming of such errors did not work either; it cuts the ' Due to:' part off now.
+
 ## 0.1.5 - 2026-11-09
 
 Run in the game on the globe beta (build 261107) on 2026-11-09: the loading summary card on the main menu and the 18 mods starting one by one under Keel, then a mission. Not run: the report window's Close button and Esc, the 'Method not found' naming, 0.8.7.
