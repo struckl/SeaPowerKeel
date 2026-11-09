@@ -211,6 +211,9 @@ internal sealed class Runner
     /// <summary>Is an Anchor Chain loader in the game that Keel did not bring in itself?</summary>
     public bool AnchorChainRunning() => GameState.AnchorChainRunning(OwnsAssembly);
 
+    /// <summary>The name of the other loader that is running, or null.</summary>
+    public string OtherLoader() => GameState.OtherLoader(OwnsAssembly);
+
     private void RegisterOwner(PluginEntry p, Assembly asm)
     {
         if (ownerRegistered.Add(p))

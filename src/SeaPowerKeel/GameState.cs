@@ -161,6 +161,18 @@ internal static class GameState
     /// Anchor Chain's loader is in the game (its preloader found and started it): an assembly named AnchorChain that
     /// <paramref name="ours"/> does not claim. Keel's own load of Anchor Chain's DLL as a library does not count.
     /// </summary>
-    public static bool AnchorChainRunning(Func<Assembly, bool> ours) =>
-        AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "AnchorChain" && (ours == null || !ours(a)));
+    public static bool AnchorChainRunning(Func<Assembly, bool> ours) => OtherLoader(ours) != null;
+
+    private const string AlpineGuid = "alpine.seapower.modloader";
+
+    /// <summary>
+    /// The loader other than Keel that is starting mods in this game, or null. Alpine's Mod Loader sits where Anchor Chain's preloader
+    /// does (BepInEx\plugins\AnchorChain.Preloader.dll) and registers as a BepInEx plugin with its own id, so it is asked for first.
+    /// </summary>
+    public static string OtherLoader(Func<Assembly, bool> ours)
+    {
+        if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(AlpineGuid))
+            return "Alpine's Mod Loader";
+        return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "AnchorChain" && (ours == null || !ours(a))) ? "Anchor Chain" : null;
+    }
 }

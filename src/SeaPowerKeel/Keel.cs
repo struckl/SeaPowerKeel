@@ -338,8 +338,8 @@ internal sealed class KeelHost : MonoBehaviour
         if (runner.AnchorChainRunning())
         {
             foreach (PluginEntry p in acMods)
-                p.Stop(PluginState.LeftToAnchorChain, "Anchor Chain is running and starts this mod.");
-            notes.Add("Anchor Chain is running: its mods are left to it.");
+                p.Stop(PluginState.LeftToAnchorChain, $"{runner.OtherLoader()} is running and starts this mod.");
+            notes.Add($"{runner.OtherLoader()} is running: its mods are left to it. Use one loader at a time.");
             return;
         }
         if (!loadAcMods.Value)
@@ -368,10 +368,10 @@ internal sealed class KeelHost : MonoBehaviour
             return false;
         foreach (PluginEntry p in mine)
         {
-            p.Stop(PluginState.LeftToAnchorChain, "Anchor Chain is running and starts this mod.");
+            p.Stop(PluginState.LeftToAnchorChain, $"{runner.OtherLoader()} is running and starts this mod.");
             elsewhere.Add(p.Guid);
         }
-        Warn($"Anchor Chain started {when}: its {mine.Count} mod(s) are left to it.");
+        Warn($"{runner.OtherLoader()} started {when}: its {mine.Count} mod(s) are left to it.");
         return true;
     }
 

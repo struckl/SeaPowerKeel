@@ -157,7 +157,7 @@ internal sealed class SetupForm : Form
         if (core.HasOtherPreloader)
             lines.Add("Another loader's preloader will be set aside, so only one loader is active. Restore brings it back.");
         if (core.HasAlpine)
-            lines.Add("Alpine's Mod Loader is on this PC. Use one loader at a time.");
+            lines.Add(core.HasOtherPreloader ? "Alpine's Mod Loader is on this PC. Keel will run your mods instead; Restore switches back." : "Alpine's Mod Loader is on this PC, but it is not active in this game.");
         status.Text = string.Join("\n", lines);
     }
 }

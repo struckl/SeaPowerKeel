@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Alpine's Mod Loader is recognized.** When it is active, Keel leaves its mods to it and says so, so nothing starts twice. KeelSetup.exe sets Alpine's preloader aside, so Keel runs the mods, and Restore switches back.
+
 ## 0.3.0 - 2026-11-09
 
 - **KeelSetup.exe.** One window and one file: finds Sea Power, adds BepInEx if the game has none, installs the starter file and sets another loader's preloader aside. Restore undoes exactly what it changed. Run on a clean copy of the game (globe beta 261107) with no BepInEx: Install added it, Keel 0.2.0 started 8 mods, and Restore removed what setup had added.
