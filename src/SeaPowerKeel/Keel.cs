@@ -668,8 +668,9 @@ internal sealed class KeelHost : MonoBehaviour
         if (!showWindow && Time.realtimeSinceStartup < noticeUntil)
         {
             int bad = Keel.Plugins.Count(Report.IsProblem);
-            float height = crashNotice != null ? 150 : 70;
-            var r = new Rect(20, screenH - 20 - height, 470, height);
+            // Above the loading summary card, which sits at the bottom left of the main menu for the same half minute.
+            float height = crashNotice != null ? 170 : 70;
+            var r = new Rect(20, screenH - 135 - height, 470, height);
             GUI.Box(r, GUIContent.none);
             GUI.Label(new Rect(r.x + 10, r.y + 6, r.width - 20, r.height - 12),
                       (crashNotice != null ? $"<b>{crashNotice}</b>\n" : "") +

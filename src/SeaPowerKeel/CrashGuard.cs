@@ -220,7 +220,7 @@ internal sealed class CrashGuard
             else
             {
                 note($"The last game did not end normally{where}, and Keel cannot name a mod: no mod was being loaded or started and no mod's code is on the crash's stack" +
-                     (block == null ? " (the game's log shows no crash report; it may have been closed from outside)" : "") +
+                     (block == null ? " (the game's log holds no stack for it: the game's own crash handler keeps none, or the game was closed from outside)" : "") +
                      ". A pack without code (units, models, textures) cannot be named this way. Details: Keel-crash.txt.");
             }
         }

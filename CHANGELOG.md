@@ -2,7 +2,7 @@
 
 ## 0.1.7 - not released
 
-Checked offline only (`--selftest`, 108 checks); not run in the game yet.
+Run in the game on the globe beta (build 261107) on 2026-11-09 with a test mod that forces a real native crash (`Utils.ForceCrash`). Crash while the mod starts: the next start named it, kept it out and the game started. Crash later, on the main menu: the next start reported the crash without a name. Naming a mod from the crash's stack is only checked offline: this game's crash handler left no stack in `Player-prev.log` in either test, so that path did not fire. 0.8.7 not run.
 
 - **A mod that takes the game down is named and kept out.** Keel journals each step to `BepInEx\Keel-session.txt`. When the last game did not quit normally, the next start says so in a notice and in the report and writes `BepInEx\Keel-crash.txt` with the crash part of Unity's `Player-prev.log`. If the game died while Keel was loading or starting a mod (the frame after the start included), or a mod's code is on the crash's stack, that mod is named and held out until its DLL changes (`BepInEx\Keel-held.txt`, setting `HoldOutCrashers`). A later crash with no mod code on its stack, or from a pack without code, is reported without a name.
 
