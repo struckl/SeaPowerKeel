@@ -57,6 +57,8 @@ internal static class SelfTest
             LoaderShim(tmp);
             Console.WriteLine("7. [ACIncompatibility]: Keel's behaviour, said in the report");
             Incompatibility();
+            Console.WriteLine("9. Patch guard: the member and the patched method come out of the error and its stack, (taking a patch off is run in the game: Harmony does not start outside it)");
+            PatchGuard();
         }
         finally
         {
@@ -103,6 +105,19 @@ internal static class SelfTest
     }
 
     // ---- helpers ----
+
+
+    private static void PatchGuard()
+    {
+        Check(Runner.MissingKey("MissingFieldException: Field not found: SeaPower.ObjectBase SeaPower.AI._objectToDestroy\nDue to: Could not find field in class") == "SeaPower.AI::_objectToDestroy",
+              "'Field not found: ObjectBase SeaPower.AI._objectToDestroy' -> SeaPower.AI::_objectToDestroy");
+        Check(Runner.MissingKey("MissingMethodException: Method not found: SeaPower.IniHandler SeaPower.Utils.openIniFile(string,bool,bool)") == "SeaPower.Utils::openIniFile",
+              "'Method not found: IniHandler SeaPower.Utils.openIniFile(string,bool,bool)' -> SeaPower.Utils::openIniFile");
+        Check(Runner.MissingKey("NullReferenceException: Object reference not set") == null, "another exception gives no member");
+        var patched = Runner.PatchedMethodsIn("(wrapper dynamic-method) SeaPower.GameMain.DMD<SeaPower.GameMain::FixedUpdate>(SeaPower.GameMain)\nUnityEngine.DebugLogHandler:LogException(Exception, Object)");
+        Check(patched.Count == 1 && patched[0].type == "SeaPower.GameMain" && patched[0].method == "FixedUpdate", "the stack's DMD<SeaPower.GameMain::FixedUpdate> gives the patched game method");
+        Check(Runner.PatchedMethodsIn("at SomeMod.Thing.Run ()").Count == 0, "a stack without a patched method gives none");
+    }
 
     private static string ThisDll => typeof(SelfTest).Assembly.Location;
 
