@@ -23,7 +23,9 @@ internal sealed class Preflight : IDisposable
         public readonly List<string> Uses = new();
         /// <summary>Types and methods named by string (Harmony patch targets, AccessTools and reflection lookups) that this build lacks.</summary>
         public readonly List<string> Lookups = new();
-        public bool Clean => ClassLoad.Count == 0 && Uses.Count == 0 && Lookups.Count == 0;
+        /// <summary>Harmony patches whose parameters do not fit the game method: they read or write the wrong kind of memory, which can take the game down.</summary>
+        public readonly List<string> Fatal = new();
+        public bool Clean => ClassLoad.Count == 0 && Uses.Count == 0 && Lookups.Count == 0 && Fatal.Count == 0;
     }
 
     private readonly HashSet<string> gameAssemblies;
@@ -142,7 +144,7 @@ internal sealed class Preflight : IDisposable
         var patches = new SortedSet<string>();
         try
         {
-            CheckPatches(mod, patches, Game);
+            CheckPatches(mod, patches, r.Fatal, Game);
         }
         catch (Exception)
         {
@@ -222,7 +224,7 @@ internal sealed class Preflight : IDisposable
         return spec;
     }
 
-    private void CheckPatches(ModuleDefinition mod, SortedSet<string> into, Func<TypeReference, bool> game)
+    private void CheckPatches(ModuleDefinition mod, SortedSet<string> into, List<string> fatal, Func<TypeReference, bool> game)
     {
         var fieldTypes = new Dictionary<string, string>();   // static fields holding a Type found by a literal name
         foreach (TypeDefinition type in mod.GetTypes())
@@ -239,6 +241,8 @@ internal sealed class Preflight : IDisposable
                 string problem = MissingTarget(spec, game);
                 if (problem != null)
                     into.Add(problem);
+                else
+                    CheckSignature(method, spec, game, fatal);
             }
         }
         // Twice: the first pass learns which static fields hold a Type found by name, the second reports.
@@ -246,6 +250,76 @@ internal sealed class Preflight : IDisposable
             foreach (TypeDefinition type in mod.GetTypes())
                 foreach (MethodDefinition method in type.Methods.Where(m => m.HasBody))
                     CheckLookups(method, pass == 1 ? into : new SortedSet<string>(), game, fieldTypes);
+    }
+
+    // ---- Do a patch's parameters fit the method it patches? ----
+    // Harmony passes values by position and name without comparing their types. A patch that takes an int where the game has a float,
+    // or a struct where the game has an object, reads or writes the wrong memory, and that is a crash Keel cannot catch. Only sure cases
+    // count: "object" takes anything, and an enum may be taken as its underlying number (the usual way to reach a private enum).
+
+    private static TypeReference Plain(TypeReference t) => t is ByReferenceType r ? r.ElementType : t;
+
+    private static TypeDefinition Definition(TypeReference t)
+    {
+        try
+        {
+            return t is GenericParameter || t.IsGenericInstance || t.IsArray ? null : t.Resolve();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private static bool Fits(TypeReference patch, TypeReference game)
+    {
+        patch = Plain(patch);
+        game = Plain(game);
+        if (patch.FullName == game.FullName || patch.FullName == "System.Object" || patch is GenericParameter || game is GenericParameter)
+            return true;
+        TypeDefinition a = Definition(patch), b = Definition(game);
+        if (a == null || b == null || !(a.IsValueType || b.IsValueType))
+            return true;   // references to objects (the runtime checks those), or something Keel cannot judge
+        if (a.IsEnum != b.IsEnum && (a.IsEnum ? b : a).IsPrimitive)
+            return true;
+        return false;
+    }
+
+    private void CheckSignature(MethodDefinition patch, PatchSpec spec, Func<TypeReference, bool> game, List<string> fatal)
+    {
+        if (!patch.HasParameters || spec.Kind == 4 || spec.Kind == 5)
+            return;
+        TypeDefinition type = spec.Type != null ? (game(spec.Type) ? ResolveType(spec.Type) : null) : spec.TypeName != null ? FindType(spec.TypeName) : null;
+        string name = spec.Kind switch { 1 => "get_" + spec.Name, 2 => "set_" + spec.Name, 3 => ".ctor", _ => spec.Name };
+        if (type == null || name == null)
+            return;
+        List<MethodDefinition> found = type.Methods.Where(m => m.Name == name).ToList();
+        if (spec.Args != null)
+        {
+            var wanted = spec.Args.Select(a => a?.FullName).ToList();
+            found = found.Where(m => m.Parameters.Select(p => p.ParameterType.FullName).SequenceEqual(wanted)).ToList();
+        }
+        if (found.Count != 1)
+            return;   // Harmony's choice among overloads is not Keel's to guess
+        MethodDefinition target = found[0];
+        foreach (ParameterDefinition p in patch.Parameters)
+        {
+            TypeReference other = null;
+            if (p.Name == "__result")
+                other = target.ReturnType.FullName == "System.Void" ? null : target.ReturnType;
+            else if (p.Name.StartsWith("___"))
+            {
+                string field = p.Name.Substring(3);
+                for (TypeDefinition t = type; t != null && other == null; t = Base(t))
+                    other = t.Fields.FirstOrDefault(f => f.Name == field)?.FieldType;
+            }
+            else if (p.Name.StartsWith("__") && int.TryParse(p.Name.Substring(2), out int index))
+                other = index >= 0 && index < target.Parameters.Count ? target.Parameters[index].ParameterType : null;
+            else if (!p.Name.StartsWith("__"))
+                other = target.Parameters.FirstOrDefault(x => x.Name == p.Name)?.ParameterType;
+            if (other != null && !Fits(p.ParameterType, other))
+                fatal.Add($"{patch.DeclaringType.Name}.{patch.Name} takes '{p.Name}' as {Plain(p.ParameterType).Name}, but {type.Name}.{name} has {Plain(other).Name}");
+        }
     }
 
     private string MissingTarget(PatchSpec spec, Func<TypeReference, bool> game)

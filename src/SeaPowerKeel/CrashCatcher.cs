@@ -110,6 +110,7 @@ internal static class CrashCatcher
     {
         var sb = new StringBuilder(4096);
         sb.Append(CrashText.CrashPrefix).Append(Describe(pointers)).Append('\n');
+        FileTrail.AppendTo(sb);
         sb.Append(new StackTrace(false).ToString().Replace("\r\n", "\n"));
         return sb.ToString();
     }

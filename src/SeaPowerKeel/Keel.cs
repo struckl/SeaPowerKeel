@@ -109,6 +109,17 @@ internal sealed class KeelHost : MonoBehaviour
         {
             log.LogWarning($"No crash journal this session: {ex.Message}");
         }
+        // As early as possible: a crash in the game's own start-up load is caught too, and the files it opens are on the list.
+        if (crash != null)
+        {
+            string catcher = CrashCatcher.Install(Path.Combine(Paths.BepInExRootPath, CrashText.StackFile));
+            if (catcher != null)
+                log.LogWarning($"Crashes will not be caught this session: {catcher}");
+            string trail = FileTrail.Install();
+            if (trail != null)
+                log.LogWarning($"Keel will not see which file the game was loading in a crash: {trail}");
+            StartWatcher();
+        }
         // Here, in Awake: the game has not read its mod list yet.
         try
         {
@@ -120,6 +131,14 @@ internal sealed class KeelHost : MonoBehaviour
                 Loading.LoadingWindow.Alert = hunt.Short;
                 notes.Add(hunt.Message);
                 log.LogWarning(hunt.Message);
+            }
+            string packOff = CrashHunt.ApplyPackOff(Paths.BepInExRootPath, ModFolders.UserSettings);
+            if (packOff != null)
+            {
+                string off = $"{FolderLabel(packOff)} was switched off after the last crash. Switch it on again in the Mod Manager to try it after an update.";
+                crashNotice = crashNotice == null ? off : crashNotice + "\n" + off;
+                notes.Add(off);
+                log.LogWarning(off);
             }
         }
         catch (Exception ex)
@@ -211,11 +230,20 @@ internal sealed class KeelHost : MonoBehaviour
             if (crash.Short != null)
                 Loading.LoadingWindow.Alert = crash.Short;
             crash.WriteModsFile(Keel.Plugins);
-            string catcher = CrashCatcher.Install(Path.Combine(Paths.BepInExRootPath, CrashText.StackFile));
-            if (catcher != null)
-                log.LogWarning($"Crashes will not be caught this session: {catcher}");
-            StartWatcher();
         }
+        // On its own thread: on a first start it reads the head of every picture and sound in every mod.
+        string packCache = Path.Combine(Paths.BepInExRootPath, "Keel-packcheck.txt");
+        System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                packProblems = PackCheck.Scan(enabled, packCache);
+            }
+            catch (Exception)
+            {
+                packProblems = new List<string>();
+            }
+        });
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
@@ -434,6 +462,9 @@ internal sealed class KeelHost : MonoBehaviour
                     else if (r.ClassLoad.Count > 0)
                         p.Stop(PluginState.NotStarted,
                                $"Made for another game version: this build has no {Report.Short(r.ClassLoad)}. Loading it would stop missions from loading, so Keel leaves it out.");
+                    else if (r.Fatal.Count > 0)
+                        p.Stop(PluginState.NotStarted,
+                               $"A patch of this mod does not fit the game and would read or write the wrong memory: {Report.Short(r.Fatal)}. That can crash the game, so Keel leaves it out.");
                     else if ((r.Uses.Count > 0 || r.Lookups.Count > 0) && mode == "Strict")
                         p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.Uses.Concat(r.Lookups).ToList())} (GameVersionCheck = Strict).");
                     else
@@ -671,6 +702,7 @@ internal sealed class KeelHost : MonoBehaviour
         {
             nextFlush = Time.unscaledTime + 1f;
             CrashCatcher.KeepInstalled();
+            TakePackProblems();
             keelLog?.Flush();
             if (wantNotice && !noticeArmed && GameState.StartupDone())
             {
@@ -756,10 +788,63 @@ internal sealed class KeelHost : MonoBehaviour
 
     private bool HeldOffered => crash is { HeldActive: true };
 
+    private volatile List<string> packProblems;
+    private float lastButton = -10f;
+    private bool restarting;
+
+    // A click can arrive through IMGUI and through the device check alike.
+    private bool FreshClick()
+    {
+        if (Time.realtimeSinceStartup - lastButton < 0.7f)
+            return false;
+        lastButton = Time.realtimeSinceStartup;
+        return true;
+    }
+
+    private void TakePackProblems()
+    {
+        List<string> found = packProblems;
+        if (found == null)
+            return;
+        packProblems = null;
+        foreach (string problem in found.Take(20))
+            Warn("Broken file: " + problem);
+        if (found.Count > 20)
+            Warn($"... and {found.Count - 20} more broken file(s).");
+        if (found.Count > 0 && done)
+            WriteReport();
+    }
+
+    private void RestartGame()
+    {
+        if (restarting)
+            return;
+        restarting = true;
+        try
+        {
+            string exe = Path.Combine(Path.GetDirectoryName(OwnPath) ?? "", "KeelWatcher.exe");
+            string game = Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            Process.Start(new ProcessStartInfo(exe, $"--relaunch {Process.GetCurrentProcess().Id} \"{game}\"") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning($"Could not restart the game by itself: {ex.Message}");
+            notes.Add("Keel could not restart the game: please exit and start it yourself.");
+            restarting = false;
+            return;
+        }
+        Application.Quit();
+    }
+
     private void HeldButton()
     {
-        if (heldClicked || !HeldOffered)
+        if (!HeldOffered || !FreshClick())
             return;
+        if (heldClicked)
+        {
+            RestartGame();
+            return;
+        }
         heldClicked = true;
         crash.ClearHeld();
         notes.Add("The held mods run again from the next start: exit and start the game.");
@@ -792,9 +877,14 @@ internal sealed class KeelHost : MonoBehaviour
 
     private void HuntButton()
     {
-        if (huntClicked || !HuntOffered)
+        if (!HuntOffered || !FreshClick())
             return;
-        huntClicked = true;     // once: the game may deliver the click through IMGUI and through the device check alike
+        if (huntClicked)
+        {
+            RestartGame();
+            return;
+        }
+        huntClicked = true;
         if (hunt.Running)
         {
             hunt.Stop();

@@ -75,6 +75,7 @@ internal sealed class CrashGuard
         journalPath = Path.Combine(dir, "Keel-session.txt");
         heldPath = Path.Combine(dir, "Keel-held.txt");
         Previous = Read(ReadLines(journalPath));
+        KeepLastStack();
         try
         {
             journal = new FileStream(journalPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
@@ -84,6 +85,23 @@ internal sealed class CrashGuard
             // no journal this session: the next start simply has nothing to say
         }
         Mark("session", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    // The catcher empties its file when it is installed, which is before this game's mods are known.
+    private void KeepLastStack()
+    {
+        try
+        {
+            string stack = Path.Combine(dir, CrashText.StackFile), kept = Path.Combine(dir, CrashText.StackPrevFile);
+            if (File.Exists(stack) && new FileInfo(stack).Length > 0)
+                File.Copy(stack, kept, true);
+            else if (File.Exists(kept))
+                File.Delete(kept);
+        }
+        catch (Exception)
+        {
+            // then the next start has less to say
+        }
     }
 
     /// <summary>One step, handed to the operating system at once. Never throws.</summary>
@@ -213,7 +231,7 @@ internal sealed class CrashGuard
         var keptOn = new HashSet<string>(ReadLines(Path.Combine(dir, CrashText.KeepFile)).Select(l => l.Trim()));
         if (Previous.Unclean)
         {
-            string caught = ReadAll(Path.Combine(dir, CrashText.StackFile));
+            string caught = ReadAll(Path.Combine(dir, CrashText.StackPrevFile));
             string block = !string.IsNullOrWhiteSpace(caught) ? caught : CrashBlock(ReadAll(playerPrev));
             string detail = CrashText.CrashLine(block);
             WriteCrashFile(block);
@@ -243,7 +261,13 @@ internal sealed class CrashGuard
             {
                 Unnamed = true;
                 Short = "Last game crashed: cause unknown";
-                note($"The last game did not end normally{where}, and Keel cannot tell which mod did it{(detail != null ? $" ({detail})" : "")}. The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
+                string loading = "";
+                if (CrashText.LastPack(block, out string packFolder, out string packFile))
+                {
+                    Short = $"Last game crashed loading {Path.GetFileName(packFile)}";
+                    loading = $" It was loading {Path.GetFileName(packFile)} from mod folder {packFolder} just before.";
+                }
+                note($"The last game did not end normally{where}, and Keel cannot tell for certain which mod did it{(detail != null ? $" ({detail})" : "")}.{loading} The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
             }
         }
 

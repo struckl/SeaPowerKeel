@@ -61,6 +61,7 @@ internal static class SelfTest
             PatchGuard();
             CrashGuardChecks(tmp);
             CrashHuntChecks(tmp);
+            PreventionChecks(tmp, managed, core);
         }
         finally
         {
@@ -185,6 +186,47 @@ internal static class SelfTest
         run3.Apply(new[] { third }, true, notes.Add);
         run3.Mark("quit", "");
         Check(third.State == PluginState.Pending && !File.Exists(Path.Combine(dir, "Keel-held.txt")), "an updated mod gets another chance");
+    }
+
+    private static void PreventionChecks(string tmp, string managed, string core)
+    {
+        Check(CrashText.PackOf(@"C:\Steam\steamapps\workshop\content\1286220\123\vessels\a.ini") == "123", "a Workshop file belongs to its item");
+        Check(CrashText.PackOf(@"E:\G\Sea Power_Data\StreamingAssets\MyPack\vessels\a.ini") == "MyPack", "a local mod's file belongs to its folder");
+        Check(CrashText.PackOf(@"E:\G\Sea Power_Data\StreamingAssets\original\vessels\a.ini") == null, "the game's own files are nobody's pack");
+        Check(CrashText.PackOf(@"E:\G\Sea Power_Data\StreamingAssets\SeaPowerKeel\x.ini") == null, "Keel never blames itself");
+        string block = "Crash: access violation (0xC0000005) in UnityPlayer.dll\nFile: 900\tC:/x/workshop/content/1286220/77/assets/plan_j-35.ini\nFile: 2000\tC:/x/workshop/content/1286220/88/b.ini\n  at UnityEngine.Object.Destroy ()";
+        Check(CrashText.LastPack(block, out string f, out string p) && f == "77" && p.EndsWith("plan_j-35.ini"), "the newest mod file before the crash names the pack");
+        Check(!CrashText.LastPack("Crash: x\nFile: 60000\tC:/x/workshop/content/1286220/77/a.ini", out _, out _), "a file opened a minute before the crash says nothing");
+
+        string dir = Path.Combine(tmp, "packcheck");
+        Directory.CreateDirectory(dir);
+        void Bytes(string name, params byte[] b) => File.WriteAllBytes(Path.Combine(dir, name), b);
+        Bytes("empty.png");
+        Bytes("text.jpg", 0x68, 0x65, 0x6C, 0x6C, 0x6F);
+        Bytes("good.png", 0x89, 0x50, 0x4E, 0x47, 0, 0);
+        Bytes("jpeg-named-png.png", 0xFF, 0xD8, 0xFF, 0);
+        Bytes("bad.wav", 1, 2, 3, 4);
+        Bytes("good.wav", 0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45);
+        Bytes("notes.ini");
+        var folder = new ModFolder { Path = dir, Name = "Pack" };
+        string cache = Path.Combine(tmp, "packcheck.txt");
+        List<string> found = PackCheck.Scan(new[] { folder }, cache);
+        Check(found.Count == 3 && found.Any(x => x.Contains("empty.png")) && found.Any(x => x.Contains("text.jpg")) && found.Any(x => x.Contains("bad.wav")), "broken pictures and sounds are found, good ones and other files are not");
+        File.Delete(Path.Combine(dir, "empty.png"));
+        File.Delete(Path.Combine(dir, "text.jpg"));
+        File.Delete(Path.Combine(dir, "bad.wav"));
+        Check(PackCheck.Scan(new[] { folder }, cache).Count == 0, "a repaired folder is clean");
+
+        using var pre = new Preflight(managed, core);
+        Preflight.Result r = pre.Check(ThisDll);
+        Check(r.Fatal.Any(x => x.Contains("BadResultPatch") && x.Contains("__result")), "a patch taking __result as int on a float method is caught");
+        Check(r.Fatal.Any(x => x.Contains("BadArgumentPatch")), "a patch taking a float argument as int is caught");
+        Check(!r.Fatal.Any(x => x.Contains("GoodPatch")), "patches that fit, or take object, are left alone");
+
+        string ini = Path.Combine(tmp, "packoff.ini");
+        File.WriteAllText(ini, "Mod1Directory=77,True,77\r\nMod2Directory=88,True,88\r\n");
+        File.WriteAllText(Path.Combine(tmp, CrashText.PackOffFile), "77");
+        Check(CrashHunt.ApplyPackOff(tmp, ini) == "77" && CrashHunt.ListOn(File.ReadAllText(ini)).SequenceEqual(new[] { "88" }) && !File.Exists(Path.Combine(tmp, CrashText.PackOffFile)), "the crash window's choice switches the pack off in the game's list, once");
     }
 
     private static void CrashHuntChecks(string tmp)
@@ -754,3 +796,10 @@ public class InheritedMod : BaseMod, IAnchorChainMod { }
 public class NotAnAcMod { public bool Called; public void TriggerEntryPoint() => Called = true; }
 public class ThrowingMod : IAnchorChainMod { public void TriggerEntryPoint() => throw new InvalidTimeZoneException("boom"); }
 
+// Harmony patches for the preflight's signature check: read through Mono.Cecil, never applied.
+[HarmonyLib.HarmonyPatch("UnityEngine.Time", "get_timeScale")]
+public static class BadResultPatch { public static void Postfix(ref int __result) { } }
+[HarmonyLib.HarmonyPatch("UnityEngine.Mathf", "Repeat")]
+public static class BadArgumentPatch { public static void Prefix(int t) { } }
+[HarmonyLib.HarmonyPatch("UnityEngine.Mathf", "Repeat")]
+public static class GoodPatch { public static void Prefix(float t, object length) { } }

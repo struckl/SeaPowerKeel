@@ -30,23 +30,22 @@ internal static class Watcher
                 LogBundle.Reveal(zip);
             return 0;
         }
+        if (args.Length == 3 && args[0] == "--relaunch")      // the report window's Restart the game: wait for the game to quit, then start it
+        {
+            if (int.TryParse(args[1], out int old))
+                WaitFor(old);
+            Restart(args[2]);
+            return 0;
+        }
         if (args.Length < 3 || !int.TryParse(args[0], out int pid))
             return 2;
-        try
-        {
-            using (Process game = Process.GetProcessById(pid))
-                game.WaitForExit();
-        }
-        catch (ArgumentException)
-        {
-            // already gone: judge it all the same
-        }
+        WaitFor(pid);
         string dir = args[1], exe = args[2];
         string[] journal = Lines(Path.Combine(dir, CrashText.JournalFile));
         if (journal.Length == 0 || journal.Any(l => l.StartsWith("quit\t", StringComparison.Ordinal)))
             return 0;
 
-        string text = Explain(journal, dir, out string guid, out string name, out string detail);
+        string text = Explain(journal, dir, out string guid, out string name, out string detail, out string pack);
         SetProcessDPIAware();     // sharp text on a 4K screen
         Application.EnableVisualStyles();
         bool restart = Ask(text, name, detail, dir, out bool keepOff);
@@ -61,9 +60,33 @@ internal static class Watcher
                 // then the mod is held out as usual
             }
         }
+        if (pack != null && keepOff)
+        {
+            try
+            {
+                File.WriteAllText(Path.Combine(dir, CrashText.PackOffFile), pack);
+            }
+            catch (Exception)
+            {
+                // then the pack stays on
+            }
+        }
         if (restart)
             Restart(exe);
         return 0;
+    }
+
+    private static void WaitFor(int pid)
+    {
+        try
+        {
+            using (Process game = Process.GetProcessById(pid))
+                game.WaitForExit();
+        }
+        catch (ArgumentException)
+        {
+            // already gone
+        }
     }
 
     private static bool Ask(string text, string name, string detail, string dir, out bool keepOff)
@@ -130,9 +153,27 @@ internal static class Watcher
         return result == DialogResult.Yes;
     }
 
-    internal static string Explain(string[] journal, string dir, out string guid, out string name, out string detail)
+    private static string FolderName(string fullPath, string folder)
     {
-        guid = name = null;
+        try
+        {
+            string p = fullPath.Replace('\\', '/');
+            int at = p.IndexOf("/" + folder + "/", StringComparison.OrdinalIgnoreCase);
+            string ini = Path.Combine(p.Substring(0, at + folder.Length + 1), "_info.ini");
+            string line = File.Exists(ini) ? File.ReadLines(ini).FirstOrDefault(l => l.StartsWith("Name=", StringComparison.OrdinalIgnoreCase)) : null;
+            if (line != null && line.Length > 5)
+                return line.Substring(5).Trim();
+        }
+        catch (Exception)
+        {
+            // the folder's own name will do
+        }
+        return folder;
+    }
+
+    internal static string Explain(string[] journal, string dir, out string guid, out string name, out string detail, out string pack)
+    {
+        guid = name = pack = null;
         string block = CrashText.ReadAll(Path.Combine(dir, CrashText.StackFile));
         if (string.IsNullOrWhiteSpace(block))
             block = null;
@@ -159,6 +200,13 @@ internal static class Watcher
             guid = mods[hit][0];
             name = mods[hit][1];
             return $"{name} was running when the game crashed, so it is the most likely cause.";
+        }
+
+        if (CrashText.LastPack(block, out string folder, out string file))
+        {
+            pack = folder;
+            name = FolderName(file, folder);
+            return $"The game was loading {Path.GetFileName(file)} from {name} just before it crashed, so this mod is the most likely cause.";
         }
 
         return "Keel couldn't tell which mod caused this. It may be the game itself, or a mod's models or files.\n\n" +

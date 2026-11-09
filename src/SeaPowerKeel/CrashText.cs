@@ -9,6 +9,13 @@ namespace SeaPowerKeel;
 internal static class CrashText
 {
     public const string CrashPrefix = "Crash: ";
+    public const string FilePrefix = "File: ";
+    /// <summary>The last game's stack, kept when Keel installs the catcher (which empties the stack file) at the start of the next one.</summary>
+    public const string StackPrevFile = "Keel-crash-stack.prev.txt";
+    /// <summary>Written by the crash window: this pack folder is to be switched off in the game's mod list.</summary>
+    public const string PackOffFile = "Keel-packoff.txt";
+    /// <summary>How long before a crash a file may have been opened to count as the likely cause.</summary>
+    public const int PackWindowMs = 10000;
     public const string StackFile = "Keel-crash-stack.txt";
     public const string ModsFile = "Keel-mods.txt";
     public const string JournalFile = "Keel-session.txt";
@@ -50,6 +57,46 @@ internal static class CrashText
             return null;
         int nl = block.IndexOf('\n');
         return (nl < 0 ? block : block.Substring(0, nl)).Substring(CrashPrefix.Length).Trim();
+    }
+
+    private static readonly string[] NotPacks = { "original", "user", "EntityScenes", "SeaPowerKeel", "ACConfigs", "3835527459", "3380210757", "3832006068" };
+
+    /// <summary>The mod folder a full path lies in (a Workshop id or a StreamingAssets folder), or null for the game's own files.</summary>
+    public static string PackOf(string path)
+    {
+        string p = path.Replace('\\', '/');
+        foreach (string marker in new[] { "/workshop/content/1286220/", "/StreamingAssets/" })
+        {
+            int at = p.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (at < 0)
+                continue;
+            int start = at + marker.Length, end = p.IndexOf('/', start);
+            if (end < 0)
+                return null;
+            string folder = p.Substring(start, end - start);
+            return NotPacks.Contains(folder, StringComparer.OrdinalIgnoreCase) ? null : folder;
+        }
+        return null;
+    }
+
+    /// <summary>The mod file the game opened last, when that was shortly before the crash. The block is the catcher's.</summary>
+    public static bool LastPack(string block, out string folder, out string fullPath)
+    {
+        folder = fullPath = null;
+        if (block == null)
+            return false;
+        foreach (string line in block.Replace("\r\n", "\n").Split('\n').Where(l => l.StartsWith(FilePrefix, StringComparison.Ordinal)))
+        {
+            string[] parts = line.Substring(FilePrefix.Length).Split('\t');
+            if (parts.Length != 2 || !int.TryParse(parts[0], out int age) || age < 0 || age > PackWindowMs)
+                continue;
+            folder = PackOf(parts[1]);
+            if (folder == null)
+                continue;
+            fullPath = parts[1];
+            return true;
+        }
+        return false;
     }
 
     public static string ReadAll(string path)

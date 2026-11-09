@@ -157,6 +157,28 @@ internal sealed class CrashHunt
         }
     }
 
+    /// <summary>Carries out the crash window's choice to keep a pack off. Called when Keel starts, like every change to the list. Returns the folder, or null.</summary>
+    internal static string ApplyPackOff(string dir, string settingsPath)
+    {
+        string file = Path.Combine(dir, CrashText.PackOffFile);
+        try
+        {
+            if (!File.Exists(file))
+                return null;
+            string folder = File.ReadAllText(file).Trim();
+            File.Delete(file);
+            if (folder.Length == 0 || !File.Exists(settingsPath))
+                return null;
+            var one = new[] { folder };
+            File.WriteAllText(settingsPath, SetFolders(File.ReadAllText(settingsPath), one, one));
+            return folder;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The folders switched on in the game's mod list, in its order.</summary>
     internal static List<string> ListOn(string settings)
     {

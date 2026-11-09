@@ -21,6 +21,8 @@ folders, sort out dependencies and start order, start them), and on top of that:
   Keel's (`KeelWatcher.exe`, in Keel's folder, nothing to install) shows a window the moment the game dies, naming the mod when its code was running,
   with a tick box to keep it switched off for now, and offers a restart. The report window's *Let held mods run* releases it again. The game itself cannot be kept alive: a crash in native code ends the process.
 - **Logs in one click.** *Save logs*, in the crash window and the report window, makes one zip of all logs on your Desktop, ready to attach to a bug report. The logs contain file paths, so also your Windows user name.
+- **Stops what it can see coming.** A patch whose parameters do not fit the game method is kept out, because it would corrupt memory. Empty or broken pictures and sounds in mods are listed in the report.
+- **Crashes from packs get a name too:** if the game was loading a mod's file just before it crashed, the window says which one and can switch that mod off.
 - **Crash hunt for the crashes nothing can name.** After a crash with no mod to blame, the report window's *Find crashing mod* button starts a
   hunt: each game runs with half of the suspects switched off in the mod list (packs without code included). Do what crashed the game; if it
   crashes, start again, if not, exit from the main menu and start again. About 7 restarts for 100 mods, then the mod is named and stays off and

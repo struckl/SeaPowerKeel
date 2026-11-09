@@ -57,6 +57,8 @@ internal static class Program
                 {
                     if (r.ClassLoad.Count > 0)
                         p.Stop(PluginState.NotStarted, $"Made for another game version: this build has no {Report.Short(r.ClassLoad)}.");
+                    else if (r.Fatal.Count > 0)
+                        p.Stop(PluginState.NotStarted, $"A patch does not fit the game: {Report.Short(r.Fatal, 10)}.");
                     else
                     {
                         p.MissingUses.AddRange(r.Uses);
