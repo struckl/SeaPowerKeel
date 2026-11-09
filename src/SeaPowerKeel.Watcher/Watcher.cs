@@ -23,6 +23,13 @@ internal static class Watcher
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length >= 2 && args[0] == "--logs")      // the report window's Save logs; a third argument saves there and shows nothing
+        {
+            string zip = LogBundle.Save(args[1], args.Length > 2 ? args[2] : null);
+            if (args.Length == 2)
+                LogBundle.Reveal(zip);
+            return 0;
+        }
         if (args.Length < 3 || !int.TryParse(args[0], out int pid))
             return 2;
         try
@@ -42,7 +49,7 @@ internal static class Watcher
         string text = Explain(journal, dir, out string guid, out string name, out string detail);
         SetProcessDPIAware();     // sharp text on a 4K screen
         Application.EnableVisualStyles();
-        bool restart = Ask(text, name, detail, out bool keepOff);
+        bool restart = Ask(text, name, detail, dir, out bool keepOff);
         if (guid != null && !keepOff)
         {
             try
@@ -59,7 +66,7 @@ internal static class Watcher
         return 0;
     }
 
-    private static bool Ask(string text, string name, string detail, out bool keepOff)
+    private static bool Ask(string text, string name, string detail, string dir, out bool keepOff)
     {
         float dpi;
         using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
@@ -94,6 +101,21 @@ internal static class Watcher
         var row = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right, Margin = new Padding(0) };
         row.Controls.Add(close);
         row.Controls.Add(start);
+        var logs = new Button { Text = "Save logs", AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(0, 0, P(8), 0) };
+        logs.Click += (s, e) =>
+        {
+            logs.Enabled = false;
+            try
+            {
+                LogBundle.Reveal(LogBundle.Save(dir));
+                logs.Text = "Saved to your Desktop";
+            }
+            catch (Exception)
+            {
+                logs.Text = "Could not save";
+            }
+        };
+        row.Controls.Add(logs);
         column.Controls.Add(row);
         form.Controls.Add(column);
         form.AcceptButton = start;

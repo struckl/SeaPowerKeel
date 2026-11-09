@@ -622,6 +622,7 @@ internal sealed class KeelHost : MonoBehaviour
             if (!click) return;
             var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom
             if (closeRect.Contains(gui)) showWindow = false;
+            else if (logsRect.Contains(gui)) SaveLogs();
             else if (HuntOffered && huntRect.Contains(gui)) HuntButton();
             else if (HeldOffered && heldRect.Contains(gui)) HeldButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
@@ -771,6 +772,29 @@ internal sealed class KeelHost : MonoBehaviour
         notes.Add("The held mods run again from the next start: exit and start the game.");
     }
 
+    private Rect logsRect;
+    private float logsAt = -10f;
+
+    // The zip is made outside the game, by the same program as the crash window.
+    private void SaveLogs()
+    {
+        if (Time.realtimeSinceStartup - logsAt < 3f)
+            return;     // the game may deliver the click through IMGUI and through the device check alike
+        logsAt = Time.realtimeSinceStartup;
+        WriteReport();
+        keelLog?.Flush();
+        try
+        {
+            string exe = Path.Combine(Path.GetDirectoryName(OwnPath) ?? "", "KeelWatcher.exe");
+            Process.Start(new ProcessStartInfo(exe, $"--logs \"{Paths.BepInExRootPath}\"") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
+            notes.Add("Your logs are being saved as a zip on your Desktop: attach that file to your bug report.");
+        }
+        catch (Exception ex)
+        {
+            notes.Add($"Could not save the logs: {ex.Message}");
+        }
+    }
+
     private bool HuntOffered => hunt != null && (hunt.Running || crash is { Unnamed: true });
 
     private void HuntButton()
@@ -851,6 +875,13 @@ internal sealed class KeelHost : MonoBehaviour
             copyRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
         }
         // A fixed width: a wrapping label in a row takes all the width a long path wants and pushed Close out of the window.
+        if (GUILayout.Button("Save logs", GUILayout.Width(110)))
+            SaveLogs();
+        if (Event.current.type == EventType.Repaint)
+        {
+            Rect r = GUILayoutUtility.GetLastRect();
+            logsRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
+        }
         bool offerHunt = HuntOffered;
         if (offerHunt)
         {
@@ -873,7 +904,7 @@ internal sealed class KeelHost : MonoBehaviour
                 heldRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
             }
         }
-        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f - (offerHunt ? 180f : 0f) - (offerHeld ? 180f : 0f))));
+        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 120f - 100f - 40f - (offerHunt ? 180f : 0f) - (offerHeld ? 180f : 0f))));
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("Close", GUILayout.Width(100)))
             showWindow = false;
