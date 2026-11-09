@@ -733,33 +733,26 @@ internal sealed class KeelHost : MonoBehaviour
                       (crashNotice != null ? $"<b>{crashNotice}</b>\n" : "") +
                       $"<b>{Keel.Name}</b>: {bad} mod(s) did not start or threw errors.\n{Report.Summary(Keel.Plugins)}.\n<b>{hotkey.Value}</b> shows why.", wrap);
         }
-        if (showWindow)
+        if (!showWindow)
         {
-            window.width = Mathf.Min(960, screenW - 40);
-            window.height = Mathf.Min(600, screenH - 40);
-            window.x = Mathf.Clamp(window.x, 0, screenW - window.width);
-            window.y = Mathf.Clamp(window.y, 0, screenH - window.height);
+            windowCentered = false;
+            return;
         }
-        if (showWindow)
+        window.width = Mathf.Min(900, screenW - 40);
+        window.height = Mathf.Min(660, screenH - 40);
+        if (!windowCentered)
         {
-            // IMGUI's window is see-through; the game's menu text behind it made the report hard to read.
-            Color before = GUI.color;
-            GUI.color = new Color(0.07f, 0.09f, 0.12f, 0.97f);
-            GUI.DrawTexture(window, Texture2D.whiteTexture);
-            GUI.color = before;
+            windowCentered = true;
+            window.x = (screenW - window.width) / 2f;
+            window.y = (screenH - window.height) / 2f;
         }
-        if (showWindow)
-            window = GUI.Window(0x4B45454C, window, DrawWindow, $"{Keel.Name} {Keel.Version} – {GameState.BuildName}");
+        window.x = Mathf.Clamp(window.x, 0, screenW - window.width);
+        window.y = Mathf.Clamp(window.y, 0, screenH - window.height);
+        EnsureStyles();
+        GUI.DrawTexture(new Rect(0, 0, screenW, screenH), shade);
+        GUI.DrawTexture(new Rect(window.x - 1, window.y - 1, window.width + 2, window.height + 2), edge);
+        window = GUI.Window(0x4B45454C, window, DrawWindow, GUIContent.none, windowStyle);
     }
-
-    private static string Color(PluginState s) => s switch
-    {
-        PluginState.Running => "#7fd67f",
-        PluginState.RunningWithErrors => "#f0c050",
-        PluginState.Failed or PluginState.NotStarted => "#ff6b6b",
-        PluginState.LeftToAnchorChain => "#7fb8f0",
-        _ => "#a0a0a0",
-    };
 
     private bool HeldOffered => crash is { HeldActive: true };
 
@@ -834,86 +827,194 @@ internal sealed class KeelHost : MonoBehaviour
         return folder;
     }
 
+    // ---- the look of the report ----
+
+    private bool windowCentered;
+    private GUIStyle windowStyle, headStyle, metaStyle, statsStyle, lineStyle, alertStyle, noteStyle, groupStyle, rowStyle, nameStyle, sourceStyle, bodyStyle, warnStyle, buttonStyle;
+    private readonly Dictionary<PluginState, GUIStyle> pills = new();
+    private Texture2D shade, edge, track, thumb;
+
+    private static UnityEngine.Color Hex(string html) => ColorUtility.TryParseHtmlString(html, out UnityEngine.Color c) ? c : UnityEngine.Color.magenta;
+
+    private static Texture2D Solid(string html, float alpha = 1f)
+    {
+        var t = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
+        UnityEngine.Color c = Hex(html);
+        c.a = alpha;
+        t.SetPixel(0, 0, c);
+        t.Apply();
+        return t;
+    }
+
+    private static void Paint(GUIStyle style, Texture2D background, UnityEngine.Color text)
+    {
+        foreach (GUIStyleState state in new[] { style.normal, style.hover, style.active, style.focused, style.onNormal, style.onHover, style.onActive, style.onFocused })
+        {
+            state.background = background;
+            state.textColor = text;
+        }
+    }
+
+    private static GUIStyle Text(int size, string color, FontStyle font = FontStyle.Normal, int below = 0)
+    {
+        var style = new GUIStyle(GUI.skin.label) { fontSize = size, fontStyle = font, wordWrap = true, richText = true, margin = new RectOffset(0, 0, 0, below), padding = new RectOffset(0, 0, 0, 0) };
+        Paint(style, null, Hex(color));
+        return style;
+    }
+
+    private void EnsureStyles()
+    {
+        if (windowStyle != null && edge != null)
+            return;
+        shade = Solid("#000000", 0.5f);
+        edge = Solid("#39424f");
+        track = Solid("#1b2028");
+        thumb = Solid("#465160");
+        windowStyle = new GUIStyle(GUI.skin.window) { padding = new RectOffset(22, 22, 18, 18), border = new RectOffset(0, 0, 0, 0), contentOffset = Vector2.zero };
+        Paint(windowStyle, Solid("#14181f"), UnityEngine.Color.white);
+        headStyle = Text(20, "#f2f5f8", FontStyle.Bold);
+        metaStyle = Text(12, "#8b95a3");
+        metaStyle.alignment = TextAnchor.MiddleRight;
+        metaStyle.wordWrap = false;
+        statsStyle = Text(14, "#d7dde5", FontStyle.Normal, 10);
+        lineStyle = new GUIStyle { margin = new RectOffset(0, 0, 0, 12) };
+        lineStyle.normal.background = edge;
+        alertStyle = Text(13, "#ffd98a", FontStyle.Normal, 8);
+        alertStyle.padding = new RectOffset(12, 12, 9, 9);
+        alertStyle.normal.background = Solid("#3a2f17");
+        noteStyle = Text(12, "#8b95a3", FontStyle.Normal, 6);
+        groupStyle = Text(12, "#8b95a3", FontStyle.Bold, 6);
+        rowStyle = new GUIStyle { padding = new RectOffset(12, 12, 9, 9), margin = new RectOffset(0, 8, 0, 6) };
+        rowStyle.normal.background = Solid("#1d232c");
+        nameStyle = Text(14, "#f2f5f8", FontStyle.Normal, 1);
+        sourceStyle = Text(11, "#7f8a98");
+        bodyStyle = Text(12, "#ffb4ae");
+        bodyStyle.margin = new RectOffset(0, 0, 5, 0);
+        warnStyle = Text(12, "#e8c56f");
+        warnStyle.margin = new RectOffset(0, 0, 5, 0);
+        buttonStyle = new GUIStyle(GUI.skin.button) { fontSize = 13, alignment = TextAnchor.MiddleCenter, border = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 8, 0, 0), padding = new RectOffset(8, 8, 0, 0) };
+        Paint(buttonStyle, Solid("#2a323d"), Hex("#e8ecf1"));
+        buttonStyle.hover.background = buttonStyle.onHover.background = Solid("#3a4552");
+        buttonStyle.active.background = buttonStyle.onActive.background = Solid("#4a5766");
+        pills.Clear();
+        foreach ((PluginState state, string color) in new[]
+        {
+            (PluginState.Running, "#2c7a4d"), (PluginState.RunningWithErrors, "#a87a12"), (PluginState.Failed, "#b83c36"), (PluginState.NotStarted, "#b83c36"),
+            (PluginState.Skipped, "#4a5361"), (PluginState.LeftToAnchorChain, "#2f6aa8"), (PluginState.Pending, "#4a5361"),
+        })
+        {
+            var pill = new GUIStyle { fontSize = 11, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, margin = new RectOffset(0, 12, 1, 0) };
+            pill.normal.background = Solid(color);
+            pill.normal.textColor = UnityEngine.Color.white;
+            pills[state] = pill;
+        }
+    }
+
+    private static string Coloured(string summary) => string.Join("   ·   ", summary.Split(new[] { ", " }, StringSplitOptions.None).Select(part =>
+    {
+        string color = part.Contains("failed") || part.Contains("not started") ? "#ff8f88"
+                     : part.Contains("errors") ? "#e8c56f"
+                     : part.Contains("Anchor") ? "#8cc0f2"
+                     : "#86d99b";
+        return $"<color={color}>{part}</color>";
+    }));
+
+    private static int GroupOf(PluginEntry p) => Report.IsProblem(p) ? 0 : p.State == PluginState.Running ? 1 : 2;
+
+    private void Row(PluginEntry p)
+    {
+        GUILayout.BeginHorizontal(rowStyle);
+        GUILayout.Label(Report.Tag(p.State), pills.TryGetValue(p.State, out GUIStyle pill) ? pill : pills[PluginState.Pending], GUILayout.Width(100), GUILayout.Height(22));
+        GUILayout.BeginVertical();
+        GUILayout.Label($"<b>{p.Display}</b>  <color=#8b95a3>{p.Version}</color>", nameStyle);
+        GUILayout.Label($"{p.Folder?.Label}  ·  {Path.GetFileName(p.Dll)}", sourceStyle);
+        if (!string.IsNullOrEmpty(p.Reason))
+            GUILayout.Label(p.Reason, bodyStyle);
+        foreach (string w in p.Warnings)
+            GUILayout.Label(w, warnStyle);
+        if (p.LaterErrors > 0)
+            GUILayout.Label($"{p.LaterErrors} error(s) since it started; first: {p.FirstLaterError}", warnStyle);
+        GUILayout.EndVertical();
+        GUILayout.EndHorizontal();
+    }
+
+    private bool Button(string text, float width, ref Rect rect)
+    {
+        bool clicked = GUILayout.Button(text, buttonStyle, GUILayout.Width(width), GUILayout.Height(32));
+        if (Event.current.type == EventType.Repaint)
+        {
+            Rect r = GUILayoutUtility.GetLastRect();
+            rect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
+        }
+        return clicked;
+    }
+
     private void DrawWindow(int id)
     {
-        GUILayout.Label(done ? $"<b>{Report.Summary(Keel.Plugins)}</b>" : "Still starting mods …", title);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("R.A.T.S. Keel", headStyle);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label($"{Keel.Version}  ·  {GameState.BuildName}", metaStyle, GUILayout.Height(26));
+        GUILayout.EndHorizontal();
+        GUILayout.Space(4);
+        GUILayout.Label(done ? Coloured(Report.Summary(Keel.Plugins)) : "Still starting mods …", statsStyle);
+        GUILayout.Box(GUIContent.none, lineStyle, GUILayout.Height(1), GUILayout.ExpandWidth(true));
+
         foreach (string n in notes)
-            GUILayout.Label(n, small);
-        scroll = GUILayout.BeginScrollView(scroll);
+            GUILayout.Label(n, crashNotice != null && crashNotice.Contains(n) ? alertStyle : noteStyle);
+
+        // The skin is shared with other mods: its scroll bar is restyled only while this window draws.
+        GUIStyle bar = GUI.skin.verticalScrollbar, knob = GUI.skin.verticalScrollbarThumb;
+        Texture2D barWas = bar.normal.background, knobWas = knob.normal.background;
+        float barWidth = bar.fixedWidth, knobWidth = knob.fixedWidth;
+        bar.normal.background = track;
+        knob.normal.background = thumb;
+        bar.fixedWidth = knob.fixedWidth = 8;
+        scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, bar, GUIStyle.none);
+        int group = -1;
         foreach (PluginEntry p in Report.Sorted(Keel.Plugins))
         {
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"<color={Color(p.State)}><b>{Report.Tag(p.State)}</b></color>", wrap, GUILayout.Width(110));
-            GUILayout.BeginVertical();
-            GUILayout.Label($"<b>{p.Display}</b> {p.Version}   <size=11><color=#a0a0a0>{p.Folder?.Label} · {Path.GetFileName(p.Dll)} · {p.Guid}</color></size>", wrap);
-            if (!string.IsNullOrEmpty(p.Reason))
-                GUILayout.Label(p.Reason, small);
-            foreach (string w in p.Warnings)
-                GUILayout.Label($"<color=#f0c050>{w}</color>", small);
-            if (p.LaterErrors > 0)
-                GUILayout.Label($"<color=#f0c050>{p.LaterErrors} error(s) since it started; first: {p.FirstLaterError}</color>", small);
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            GUILayout.Space(4);
+            if (GroupOf(p) != group)
+            {
+                group = GroupOf(p);
+                if (group != 0)
+                    GUILayout.Space(8);
+                int count = Keel.Plugins.Count(x => GroupOf(x) == group);
+                GUILayout.Label($"{(group == 0 ? "NEEDS ATTENTION" : group == 1 ? "RUNNING" : "OTHER")}  ({count})", groupStyle);
+            }
+            Row(p);
         }
         if (Keel.Plugins.Count == 0)
-            GUILayout.Label(done ? "No mod with a plugin is switched on." : "", wrap);
+            GUILayout.Label(done ? "No mod with a plugin is switched on." : "", noteStyle);
         if (skippedDlls.Count > 0)
         {
-            GUILayout.Space(6);
-            GUILayout.Label($"<b>DLLs left out on purpose ({skippedDlls.Count})</b>", wrap);
+            GUILayout.Space(8);
+            GUILayout.Label($"DLLS LEFT OUT ON PURPOSE  ({skippedDlls.Count})", groupStyle);
             foreach (SkippedDll d in skippedDlls)
-                GUILayout.Label($"{Path.GetFileName(d.Path)} <color=#a0a0a0>({d.Folder?.Label})</color>: {d.Reason}", small);
+                GUILayout.Label($"<color=#d7dde5>{Path.GetFileName(d.Path)}</color>  ({d.Folder?.Label}): {d.Reason}", noteStyle);
         }
+        GUILayout.Space(8);
+        GUILayout.Label($"The same report is in {reportPath}", sourceStyle);
         GUILayout.EndScrollView();
+        bar.normal.background = barWas;
+        knob.normal.background = knobWas;
+        bar.fixedWidth = barWidth;
+        knob.fixedWidth = knobWidth;
+
+        GUILayout.Space(12);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Copy report", GUILayout.Width(140)))
+        if (Button("Copy report", 120, ref copyRect))
             GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
-        if (Event.current.type == EventType.Repaint)
-        {
-            Rect r = GUILayoutUtility.GetLastRect();
-            copyRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
-        }
-        // A fixed width: a wrapping label in a row takes all the width a long path wants and pushed Close out of the window.
-        if (GUILayout.Button("Save logs", GUILayout.Width(110)))
+        if (Button("Save logs", 110, ref logsRect))
             SaveLogs();
-        if (Event.current.type == EventType.Repaint)
-        {
-            Rect r = GUILayoutUtility.GetLastRect();
-            logsRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
-        }
-        bool offerHunt = HuntOffered;
-        if (offerHunt)
-        {
-            if (GUILayout.Button(huntClicked ? "Restart the game" : hunt.Running ? "Stop crash hunt" : "Find crashing mod", GUILayout.Width(170)))
-                HuntButton();
-            if (Event.current.type == EventType.Repaint)
-            {
-                Rect r = GUILayoutUtility.GetLastRect();
-                huntRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
-            }
-        }
-        bool offerHeld = HeldOffered;
-        if (offerHeld)
-        {
-            if (GUILayout.Button(heldClicked ? "Restart the game" : "Let held mods run", GUILayout.Width(170)))
-                HeldButton();
-            if (Event.current.type == EventType.Repaint)
-            {
-                Rect r = GUILayoutUtility.GetLastRect();
-                heldRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
-            }
-        }
-        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 120f - 100f - 40f - (offerHunt ? 180f : 0f) - (offerHeld ? 180f : 0f))));
+        if (HuntOffered && Button(huntClicked ? "Restart the game" : hunt.Running ? "Stop crash hunt" : "Find crashing mod", 160, ref huntRect))
+            HuntButton();
+        if (HeldOffered && Button(heldClicked ? "Restart the game" : "Let held mods run", 160, ref heldRect))
+            HeldButton();
         GUILayout.FlexibleSpace();
-        if (GUILayout.Button("Close", GUILayout.Width(100)))
+        if (Button("Close", 100, ref closeRect))
             showWindow = false;
-        if (Event.current.type == EventType.Repaint)
-        {
-            Rect r = GUILayoutUtility.GetLastRect();
-            closeRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
-        }
         GUILayout.EndHorizontal();
-        GUI.DragWindow(new Rect(0, 0, 10000, 22));
+        GUI.DragWindow(new Rect(0, 0, 10000, 56));
     }
 }
