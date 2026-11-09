@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 - not released
+## 0.2.0 - 2026-11-09
 
 Run in the game on the globe beta (build 261107) on 2026-11-09: named crashes from a mod's code, from a mod starting and from a pack file; the crash window with its tick box and restart; a crash with no mod to name; the patch check; the broken-file list; Save logs; Let held mods run and Restart the game. All with test mods that crash on purpose on 18 mods. Not run: a real crash in Unity or a driver, a large mod list, 0.8.7.
 
