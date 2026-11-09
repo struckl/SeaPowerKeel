@@ -14,7 +14,7 @@ internal static class Report
         PluginState.Failed => "FAILED",
         PluginState.NotStarted => "NOT STARTED",
         PluginState.Skipped => "SKIPPED",
-        PluginState.LeftToAnchorChain => "ANCHOR CHAIN",
+        PluginState.LeftToAnchorChain => "OTHER LOADER",
         _ => "WAITING",
     };
 
@@ -32,7 +32,7 @@ internal static class Report
         if (errors > 0) parts.Add($"{errors} with errors");
         if (failed > 0) parts.Add($"{failed} failed");
         if (notStarted > 0) parts.Add($"{notStarted} not started");
-        if (ac > 0) parts.Add($"{ac} left to Anchor Chain");
+        if (ac > 0) parts.Add($"{ac} left to another loader");
         return string.Join(", ", parts);
     }
 

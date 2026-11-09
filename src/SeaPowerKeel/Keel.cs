@@ -967,7 +967,7 @@ internal sealed class KeelHost : MonoBehaviour
     {
         string color = part.Contains("failed") || part.Contains("not started") ? "#ff8f88"
                      : part.Contains("errors") ? "#e8c56f"
-                     : part.Contains("Anchor") ? "#8cc0f2"
+                     : part.Contains("loader") ? "#8cc0f2"
                      : "#86d99b";
         return $"<color={color}>{part}</color>";
     }));

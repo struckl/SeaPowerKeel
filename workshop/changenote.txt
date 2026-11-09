@@ -1,5 +1,4 @@
-0.3.0: one-click install.
-KeelSetup.exe in Keel's Workshop folder finds Sea Power, adds BepInEx if the game has none, installs the starter file and sets another loader's preloader aside, so only one loader is active. Restore, in the same window, undoes exactly what it changed.
-Nothing changes for players who already have Keel set up; the mod loader itself is the same as 0.2.0.
-Windows may say "unknown publisher" because the file is not signed yet.
-Run on a clean copy of the game on the 3D globe public beta (build 261107); 0.8.7 not run.
+0.3.1: switching from Alpine's Mod Loader is one click.
+KeelSetup.exe sees Alpine's Mod Loader, switches it off without deleting it, and Keel runs your mods. Restore switches back.
+If you keep Alpine's loader active, Keel now notices it and steps aside, so no mod starts twice. The report says "left to another loader".
+Run in the game on the 3D globe public beta (build 261107) with Alpine's Mod Loader 0.2.1: both ways worked with 17 mods; 0.8.7 not run.

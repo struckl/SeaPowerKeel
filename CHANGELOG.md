@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 - 2026-11-09
 
-- **Alpine's Mod Loader is recognized.** When it is active, Keel leaves its mods to it and says so, so nothing starts twice. KeelSetup.exe sets Alpine's preloader aside, so Keel runs the mods, and Restore switches back.
+Run in the game on the globe beta (build 261107) on 2026-11-09 with Alpine's Mod Loader 0.2.1 installed: with Alpine active, Keel started none of the 17 mods and left them to it; after KeelSetup.exe switched over, Keel ran all 17. 0.8.7 not run.
+
+- **Alpine's Mod Loader is recognized.** When it is active, Keel leaves its mods to it and says so, so nothing starts twice. The report calls such mods "left to another loader". KeelSetup.exe sets Alpine's preloader aside, so Keel runs the mods, and Restore switches back.
 
 ## 0.3.0 - 2026-11-09
 
