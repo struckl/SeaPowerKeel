@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- KeelSetup.exe: one file with the starter DLL and BepInEx inside. tools/package.ps1 passes PayloadDir. .NET Framework 4.8 is on every Windows 10 and 11. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>KeelSetup</AssemblyName>
+    <RootNamespace>SeaPowerKeel</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Product>R.A.T.S. Keel Setup</Product>
+    <Company>R.A.T.S.</Company>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <EmbeddedResource Include="$(PayloadDir)\stub.bin" LogicalName="stub" Condition="'$(PayloadDir)' != ''" />
+    <EmbeddedResource Include="$(PayloadDir)\bepinex.bin" LogicalName="bepinex" Condition="'$(PayloadDir)' != ''" />
+  </ItemGroup>
+
+</Project>

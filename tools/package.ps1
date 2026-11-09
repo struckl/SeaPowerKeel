@@ -30,6 +30,20 @@ New-Item -ItemType Directory -Force (Join-Path $dist 'copy-to-BepInEx-plugins') 
 Copy-Item (Join-Path $root 'src\SeaPowerKeel\bin\Release\netstandard2.1\SeaPowerKeel.dll') $dist
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $dist 'copy-to-BepInEx-plugins')
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Watcher\bin\Release\net48\KeelWatcher.exe') $dist
+
+# KeelSetup.exe: one file holding the starter DLL and BepInEx (from this game folder; players may have none).
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$payload = Join-Path $root 'obj\setup-payload'
+if (Test-Path $payload) { Remove-Item -Recurse -Force $payload }
+$tree = Join-Path $payload 'tree'
+New-Item -ItemType Directory -Force (Join-Path $tree 'BepInEx\core') | Out-Null
+foreach ($f in 'winhttp.dll', 'doorstop_config.ini', '.doorstop_version') { Copy-Item -LiteralPath (Join-Path $GameDir $f) $tree }
+Copy-Item (Join-Path $GameDir 'BepInEx\core\*') (Join-Path $tree 'BepInEx\core')
+[System.IO.Compression.ZipFile]::CreateFromDirectory($tree, (Join-Path $payload 'bepinex.bin'))
+Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $payload 'stub.bin')
+dotnet build (Join-Path $root 'src\SeaPowerKeel.Setup\SeaPowerKeel.Setup.csproj') -c Release -p:PayloadDir="$payload"
+if ($LASTEXITCODE -ne 0) { throw 'Build failed: KeelSetup' }
+Copy-Item (Join-Path $root 'src\SeaPowerKeel.Setup\bin\Release\net48\KeelSetup.exe') $dist
 Copy-Item (Join-Path $root 'src\SeaPowerKeel\mod\_info.ini') $dist
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $dist 'LICENSE.txt')
 New-Item -ItemType Directory -Force (Join-Path $dist 'lib') | Out-Null

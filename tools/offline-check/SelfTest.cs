@@ -61,6 +61,7 @@ internal static class SelfTest
             PatchGuard();
             CrashGuardChecks(tmp);
             PreventionChecks(tmp, managed, core);
+            SetupChecks(tmp);
         }
         finally
         {
@@ -185,6 +186,46 @@ internal static class SelfTest
         run3.Apply(new[] { third }, true, notes.Add);
         run3.Mark("quit", "");
         Check(third.State == PluginState.Pending && !File.Exists(Path.Combine(dir, "Keel-held.txt")), "an updated mod gets another chance");
+    }
+
+    private static void SetupChecks(string tmp)
+    {
+        string game = Path.Combine(tmp, "steamapps", "common", "Sea Power");
+        Directory.CreateDirectory(game);
+        File.WriteAllText(Path.Combine(game, SetupCore.ExeName), "x");
+        byte[] stub = { 1, 2, 3 };
+        byte[] zip;
+        using (var ms = new MemoryStream())
+        {
+            using (var a = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
+                foreach (string n in new[] { "winhttp.dll", "BepInEx/core/BepInEx.dll", "../escape.txt" })
+                    using (var w = new StreamWriter(a.CreateEntry(n).Open()))
+                        w.Write("x");
+            zip = ms.ToArray();
+        }
+        var s = new SetupCore(game);
+        Check(s.IsGameFolder && !s.HasBepInEx && !s.CanRestore, "a bare game: no BepInEx, nothing to restore");
+        s.Install(stub, zip);
+        Check(s.HasBepInEx && s.HasStub && s.CanRestore, "install on a bare game adds BepInEx and the starter file");
+        Check(!File.Exists(Path.Combine(game, "..", "escape.txt")), "a zip entry cannot write outside the game folder");
+        Directory.CreateDirectory(Path.Combine(game, "BepInEx", "cache"));
+        File.WriteAllText(Path.Combine(game, "BepInEx", "cache", "made-by-the-game.txt"), "keep");
+        s.Install(stub, zip);
+        Check(File.ReadAllLines(Path.Combine(game, "keel-setup.txt")).Distinct().Count() == File.ReadAllLines(Path.Combine(game, "keel-setup.txt")).Length, "installing twice records nothing twice");
+        s.Restore();
+        Check(!s.HasBepInEx && !s.HasStub && !s.CanRestore, "restore removes what setup added");
+        Check(File.Exists(Path.Combine(game, "BepInEx", "cache", "made-by-the-game.txt")) && File.Exists(Path.Combine(game, SetupCore.ExeName)), "restore leaves files setup did not create");
+
+        string plugins = Path.Combine(game, "BepInEx", "plugins");
+        Directory.CreateDirectory(plugins);
+        Directory.CreateDirectory(Path.Combine(game, "BepInEx", "core"));
+        File.WriteAllText(Path.Combine(game, "winhttp.dll"), "theirs");
+        File.WriteAllText(Path.Combine(game, "BepInEx", "core", "BepInEx.dll"), "theirs");
+        File.WriteAllText(Path.Combine(plugins, "AnchorChain.Preloader.dll"), "other");
+        s.Install(stub, zip);
+        Check(!s.HasOtherPreloader && File.Exists(Path.Combine(plugins, "AnchorChain.Preloader.dll.keel-off")), "another loader's preloader is set aside, not deleted");
+        s.Restore();
+        Check(s.HasOtherPreloader && s.HasBepInEx && File.ReadAllText(Path.Combine(game, "winhttp.dll")) == "theirs", "restore brings it back and leaves a BepInEx setup did not install");
     }
 
     private static void PreventionChecks(string tmp, string managed, string core)

@@ -46,6 +46,8 @@ a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-n
 
 ## Install
 
+**The easy way:** run `KeelSetup.exe` from Keel's Workshop folder (Steam: right-click Sea Power, Manage, Browse local files, then `..\..\workshop\content\1286220\3835527459`), or download it from the GitHub release. It finds the game, adds BepInEx if needed, installs the starter file and sets another loader's preloader aside; **Restore** undoes it. Windows may say "unknown publisher" because the file is not signed yet: *More info*, *Run anyway*. The manual steps:
+
 1. Subscribe to R.A.T.S. Keel on the Workshop and switch it on in the game's Mods menu.
 2. Once: copy `SeaPowerKeel.Stub.dll` from `copy-to-BepInEx-plugins` in Keel's Workshop folder (or from the GitHub release)
    into `Sea Power\BepInEx\plugins`.
