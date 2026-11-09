@@ -132,3 +132,11 @@ internal static class Program
         Native.ReleaseDC(IntPtr.Zero, screen);
     }
 }
+
+// The game-side switches the overlay reads; the preview has no game.
+internal static class LoadingWindow
+{
+    public static bool MissionRunning, OnMenuSubPage;
+    public static long SceneLoadedTicks;
+    public static string Alert;
+}
