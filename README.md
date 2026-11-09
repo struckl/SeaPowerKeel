@@ -62,6 +62,10 @@ log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on 
 mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
 is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). Keel now handles ACConfig files itself (checked offline; no mod in the game test used it). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
 
+## Code signing policy
+
+See [docs/code-signing-policy.md](docs/code-signing-policy.md): who may approve a signed release, what the programs change on your PC, and the privacy statement.
+
 ## Settings
 
 `BepInEx\config\dev.sewerlabs.seapowerkeel.cfg` (made on the first start):

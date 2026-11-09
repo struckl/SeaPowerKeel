@@ -8,7 +8,8 @@
     <RootNamespace>SeaPowerKeel</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <Product>R.A.T.S. Keel Setup</Product>
+    <Product>R.A.T.S. Keel</Product>
+    <Version>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\SeaPowerKeel\SeaPowerKeel.csproj')), '&lt;Version&gt;(.+?)&lt;/Version&gt;').Groups[1].Value)</Version>
     <Company>R.A.T.S.</Company>
     <DebugType>embedded</DebugType>
   </PropertyGroup>

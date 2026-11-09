@@ -6,6 +6,7 @@ obj/
 
 # Release staging
 dist/
+dist-ci/
 
 # Local
 .env
