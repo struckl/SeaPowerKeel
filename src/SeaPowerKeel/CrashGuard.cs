@@ -46,6 +46,9 @@ internal sealed class CrashGuard
 
     public Verdict Previous { get; }
 
+    /// <summary>The last game crashed and no mod could be named: the crash hunt can be offered.</summary>
+    public bool Unnamed { get; private set; }
+
     public CrashGuard(string dir, string playerPrevLog)
     {
         this.dir = dir;
@@ -182,7 +185,7 @@ internal sealed class CrashGuard
     /// Reads what the last session left and acts on it: says what happened, and holds out the mod it can name (when <paramref name="hold"/>).
     /// A held mod stays out until its DLL changes (an update of the mod) or its line is removed from Keel-held.txt.
     /// </summary>
-    public void Apply(IReadOnlyCollection<PluginEntry> plugins, bool hold, Action<string> note)
+    public void Apply(IReadOnlyCollection<PluginEntry> plugins, bool hold, Action<string> note, bool huntRunning = false)
     {
         var held = new Dictionary<string, (string stamp, string reason)>();
         foreach (string line in ReadLines(heldPath))
@@ -205,7 +208,7 @@ internal sealed class CrashGuard
                 if (culprit != null)
                     how = Previous.Step == "load" ? "while Keel was loading it" : "while Keel was starting it";
             }
-            if (culprit == null)
+            if (culprit == null && !huntRunning)   // during a crash hunt a crash is a result of the round, the hunt judges it
             {
                 culprit = Blame(block, plugins);
                 how = "with its code on the crash's stack";
@@ -217,11 +220,10 @@ internal sealed class CrashGuard
                 if (hold)
                     held[culprit.Guid] = (Stamp(culprit.Dll), why);
             }
-            else
+            else if (!huntRunning)
             {
-                note($"The last game did not end normally{where}, and Keel cannot name a mod: no mod was being loaded or started and no mod's code is on the crash's stack" +
-                     (block == null ? " (the game's log holds no stack for it: the game's own crash handler keeps none, or the game was closed from outside)" : "") +
-                     ". A pack without code (units, models, textures) cannot be named this way. Details: Keel-crash.txt.");
+                Unnamed = true;
+                note($"The last game did not end normally{where}, and Keel cannot tell which mod did it. The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
             }
         }
 

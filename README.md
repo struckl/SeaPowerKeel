@@ -17,6 +17,10 @@ folders, sort out dependencies and start order, start them), and on top of that:
   a mod's code on its stack, the next start names that mod in a notice and in the report and keeps it out until the mod is
   updated (`BepInEx\Keel-held.txt`; details in `BepInEx\Keel-crash.txt`). A crash later on with no mod code on its stack,
   or from a pack without code, is reported but cannot be pinned on a mod.
+- **Crash hunt for the crashes nothing can name.** After a crash with no mod to blame, the report window's *Find crashing mod* button starts a
+  hunt: each game runs with half of the suspects switched off in the mod list (packs without code included). Do what crashed the game; if it
+  crashes, start again, if not, exit from the main menu and start again. About 7 restarts for 100 mods, then the mod is named and stays off and
+  your list is back. *Stop crash hunt* puts the list back at the next start. It finds a crash you can repeat, and saves may miss the switched-off mods during the hunt.
 - **Says what happened.** Ctrl+Shift+K in the game shows every mod: running, running with errors, not started and why
   (missing dependency and the version it needs, a conflict, the wrong game build …). Errors a mod throws later are counted
   against it. The same report is in `BepInEx\Keel-report.txt`, and a short notice appears after start-up when something

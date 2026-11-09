@@ -67,6 +67,9 @@ internal sealed class KeelHost : MonoBehaviour
     private CrashGuard crash;
     private ConfigEntry<bool> holdCrashers;
     private string crashNotice;
+    private CrashHunt hunt;
+    private bool huntClicked;
+    private Rect huntRect;
     private float nextFlush;
     private readonly List<string> notes = new();
     private bool done;
@@ -103,6 +106,22 @@ internal sealed class KeelHost : MonoBehaviour
         catch (Exception ex)
         {
             log.LogWarning($"No crash journal this session: {ex.Message}");
+        }
+        // Here, in Awake: the game has not read its mod list yet.
+        try
+        {
+            hunt = new CrashHunt(Paths.BepInExRootPath, ModFolders.UserSettings, FolderLabel);
+            hunt.Advance(crash?.Previous ?? new CrashGuard.Verdict());
+            if (hunt.Message != null)
+            {
+                crashNotice = hunt.Message;
+                notes.Add(hunt.Message);
+                log.LogWarning(hunt.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning($"Crash hunt not available: {ex.Message}");
         }
         disabled = config.Bind("Loading", "DisabledPlugins", "",
             "Plugin ids (comma separated) Keel does not start, even though their mod folder is on.");
@@ -180,10 +199,10 @@ internal sealed class KeelHost : MonoBehaviour
         // Before any mod is touched: what the last session left, so a mod that took the game down cannot do it again.
         crash?.Apply(Keel.Plugins, holdCrashers.Value, n =>
         {
-            crashNotice = n;
+            crashNotice = crashNotice == null ? n : crashNotice + "\n" + n;
             notes.Add(n);
             log.LogError(n);
-        });
+        }, hunt != null && hunt.Running);
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
@@ -569,6 +588,7 @@ internal sealed class KeelHost : MonoBehaviour
             if (!click) return;
             var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom
             if (closeRect.Contains(gui)) showWindow = false;
+            else if (HuntOffered && huntRect.Contains(gui)) HuntButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         }
         catch (Exception) { pointer = null; }
@@ -704,6 +724,45 @@ internal sealed class KeelHost : MonoBehaviour
         _ => "#a0a0a0",
     };
 
+    private bool HuntOffered => hunt != null && (hunt.Running || crash is { Unnamed: true });
+
+    private void HuntButton()
+    {
+        if (huntClicked || !HuntOffered)
+            return;
+        huntClicked = true;     // once: the game may deliver the click through IMGUI and through the device check alike
+        if (hunt.Running)
+        {
+            hunt.Stop();
+            notes.Add("The crash hunt stops at the next start: exit and start the game, and your mod list is back.");
+        }
+        else
+        {
+            hunt.Arm();
+            notes.Add("The crash hunt starts at the next start: exit and start the game.");
+        }
+    }
+
+    // The name a mod folder shows in the game's mod list.
+    private static string FolderLabel(string folder)
+    {
+        foreach (string root in new[] { ModFolders.WorkshopRoot, Application.streamingAssetsPath })
+        {
+            try
+            {
+                string ini = Path.Combine(root, folder, "_info.ini");
+                string name = File.Exists(ini) ? File.ReadLines(ini).FirstOrDefault(l => l.StartsWith("Name=", StringComparison.OrdinalIgnoreCase))?.Substring(5).Trim() : null;
+                if (!string.IsNullOrEmpty(name))
+                    return $"{name} ({folder})";
+            }
+            catch (Exception)
+            {
+                // the folder name will do
+            }
+        }
+        return folder;
+    }
+
     private void DrawWindow(int id)
     {
         GUILayout.Label(done ? $"<b>{Report.Summary(Keel.Plugins)}</b>" : "Still starting mods …", title);
@@ -745,7 +804,18 @@ internal sealed class KeelHost : MonoBehaviour
             copyRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
         }
         // A fixed width: a wrapping label in a row takes all the width a long path wants and pushed Close out of the window.
-        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f)));
+        bool offerHunt = HuntOffered;
+        if (offerHunt)
+        {
+            if (GUILayout.Button(huntClicked ? "Restart the game" : hunt.Running ? "Stop crash hunt" : "Find crashing mod", GUILayout.Width(170)))
+                HuntButton();
+            if (Event.current.type == EventType.Repaint)
+            {
+                Rect r = GUILayoutUtility.GetLastRect();
+                huntRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
+            }
+        }
+        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f - (offerHunt ? 180f : 0f))));
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("Close", GUILayout.Width(100)))
             showWindow = false;
