@@ -70,6 +70,8 @@ internal sealed class KeelHost : MonoBehaviour
     private CrashHunt hunt;
     private bool huntClicked;
     private Rect huntRect;
+    private bool heldClicked;
+    private Rect heldRect;
     private float nextFlush;
     private readonly List<string> notes = new();
     private bool done;
@@ -617,6 +619,7 @@ internal sealed class KeelHost : MonoBehaviour
             var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom
             if (closeRect.Contains(gui)) showWindow = false;
             else if (HuntOffered && huntRect.Contains(gui)) HuntButton();
+            else if (HeldOffered && heldRect.Contains(gui)) HeldButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         }
         catch (Exception) { pointer = null; }
@@ -753,6 +756,17 @@ internal sealed class KeelHost : MonoBehaviour
         _ => "#a0a0a0",
     };
 
+    private bool HeldOffered => crash is { HeldActive: true };
+
+    private void HeldButton()
+    {
+        if (heldClicked || !HeldOffered)
+            return;
+        heldClicked = true;
+        crash.ClearHeld();
+        notes.Add("The held mods run again from the next start: exit and start the game.");
+    }
+
     private bool HuntOffered => hunt != null && (hunt.Running || crash is { Unnamed: true });
 
     private void HuntButton()
@@ -844,7 +858,18 @@ internal sealed class KeelHost : MonoBehaviour
                 huntRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
             }
         }
-        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f - (offerHunt ? 180f : 0f))));
+        bool offerHeld = HeldOffered;
+        if (offerHeld)
+        {
+            if (GUILayout.Button(heldClicked ? "Restart the game" : "Let held mods run", GUILayout.Width(170)))
+                HeldButton();
+            if (Event.current.type == EventType.Repaint)
+            {
+                Rect r = GUILayoutUtility.GetLastRect();
+                heldRect = new Rect(window.x + r.x, window.y + r.y, r.width, r.height);
+            }
+        }
+        GUILayout.Label($"<size=11>Also in {reportPath}</size>", small, GUILayout.Width(Mathf.Max(60f, window.width - 140f - 100f - 40f - (offerHunt ? 180f : 0f) - (offerHeld ? 180f : 0f))));
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("Close", GUILayout.Width(100)))
             showWindow = false;

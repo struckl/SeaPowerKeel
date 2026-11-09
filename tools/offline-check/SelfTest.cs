@@ -149,6 +149,17 @@ internal static class SelfTest
         caughtRun.WriteModsFile(new[] { caught });
         Check(File.ReadAllText(Path.Combine(caughtDir, CrashText.ModsFile)).Contains("b\tBeta\tBetaMod"), "the watcher's list has id, name and code root");
 
+        string keptDir = Path.Combine(tmp, "crashkept");
+        Directory.CreateDirectory(keptDir);
+        File.WriteAllLines(Path.Combine(keptDir, "Keel-session.txt"), new[] { "session\tx", "start\tb", "done\t" });
+        File.WriteAllText(Path.Combine(keptDir, CrashText.StackFile), stack);
+        File.WriteAllText(Path.Combine(keptDir, CrashText.KeepFile), "b");
+        var kept = new PluginEntry { Guid = "b", Name = "Beta", TypeName = "BetaMod.Plugin", Dll = betaDll };
+        var keptRun = new CrashGuard(keptDir, null);
+        keptRun.Apply(new[] { kept }, true, _ => { });
+        keptRun.Mark("quit", "");
+        Check(kept.State == PluginState.Pending && !File.Exists(Path.Combine(keptDir, CrashText.KeepFile)), "the player unticked 'keep it off': the mod runs, and the answer counts once");
+
         string dir = Path.Combine(tmp, "crashguard");
         Directory.CreateDirectory(dir);
         string dll = Path.Combine(dir, "beta.dll");
@@ -168,6 +179,7 @@ internal static class SelfTest
         run2.Mark("quit", "");
         Check(second.State == PluginState.NotStarted && notes.Count == 1, "after a normal quit it stays out, without a new crash note");
         File.WriteAllText(dll, "updated");
+        Check(run2.HeldActive, "a held mod is known to the report, for its button");
         PluginEntry third = Mod();
         var run3 = new CrashGuard(dir, null);
         run3.Apply(new[] { third }, true, notes.Add);

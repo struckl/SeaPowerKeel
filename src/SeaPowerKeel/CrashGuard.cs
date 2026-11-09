@@ -49,6 +49,22 @@ internal sealed class CrashGuard
     /// <summary>The last game crashed and no mod could be named: the crash hunt can be offered.</summary>
     public bool Unnamed { get; private set; }
 
+    /// <summary>A mod is being kept out in this game because of an earlier crash.</summary>
+    public bool HeldActive { get; private set; }
+
+    /// <summary>The report's button: every held mod runs again from the next start.</summary>
+    public void ClearHeld()
+    {
+        try
+        {
+            File.Delete(heldPath);
+        }
+        catch (Exception)
+        {
+            // the list stays as it is
+        }
+    }
+
     public CrashGuard(string dir, string playerPrevLog)
     {
         this.dir = dir;
@@ -191,6 +207,7 @@ internal sealed class CrashGuard
                 held[parts[0]] = (parts[1], parts[2]);
         }
 
+        var keptOn = new HashSet<string>(ReadLines(Path.Combine(dir, CrashText.KeepFile)).Select(l => l.Trim()));
         if (Previous.Unclean)
         {
             string caught = ReadAll(Path.Combine(dir, CrashText.StackFile));
@@ -215,7 +232,7 @@ internal sealed class CrashGuard
             {
                 string why = $"The last game ended unexpectedly {how}.";
                 note($"The last game did not end normally{where}: {culprit.Display} {culprit.Version} ({how}). Details: Keel-crash.txt.");
-                if (hold)
+                if (hold && !keptOn.Contains(culprit.Guid))
                     held[culprit.Guid] = (Stamp(culprit.Dll), why);
             }
             else if (!huntRunning)
@@ -223,6 +240,15 @@ internal sealed class CrashGuard
                 Unnamed = true;
                 note($"The last game did not end normally{where}, and Keel cannot tell which mod did it{(detail != null ? $" ({detail})" : "")}. The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
             }
+        }
+
+        try
+        {
+            File.Delete(Path.Combine(dir, CrashText.KeepFile));
+        }
+        catch (Exception)
+        {
+            // only an answer to the last crash
         }
 
         var keep = new List<string>();
@@ -238,7 +264,10 @@ internal sealed class CrashGuard
                 continue;   // the mod was updated: it gets another chance
             keep.Add($"{h.Key}\t{h.Value.stamp}\t{h.Value.reason}");
             if (hold && p.State == PluginState.Pending)
-                p.Stop(PluginState.NotStarted, h.Value.reason + " Keel keeps it out so the game starts, until the mod is updated. To try it anyway, remove its line from BepInEx\\Keel-held.txt.");
+            {
+                p.Stop(PluginState.NotStarted, h.Value.reason + " Keel keeps it out so the game starts, until the mod is updated. To try it anyway, use 'Let held mods run' in this window.");
+                HeldActive = true;
+            }
         }
         try
         {

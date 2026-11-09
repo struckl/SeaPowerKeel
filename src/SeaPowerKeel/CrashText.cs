@@ -13,6 +13,8 @@ internal static class CrashText
     public const string ModsFile = "Keel-mods.txt";
     public const string JournalFile = "Keel-session.txt";
     public const string HuntFile = "Keel-hunt.txt";
+    /// <summary>Written by the crash window: the player chose to keep this mod on.</summary>
+    public const string KeepFile = "Keel-keep.txt";
 
     public static bool IsManagedFrame(string line)
     {
