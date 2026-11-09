@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.5 - 2026-11-08 (built, not released: not run in the game yet)
+## 0.1.5 - 2026-11-09
+
+Run in the game on the globe beta (build 261107) on 2026-11-09: the loading summary card on the main menu and the 18 mods starting one by one under Keel, then a mission. Not run: the report window's Close button and Esc, the 'Method not found' naming, 0.8.7.
 
 - **Loading window.** While the game starts, a small window of its own (Windows, own thread, so it keeps going while a mod blocks the game's main thread) shows the start-up step, the mods as Keel starts them with the time each took, a bar, and the name of the mod being started and for how long. It opens when Keel does, before Anchor Chain's preloader and the mods, on the main menu's blank band (setting `Spot`), only reads log lines and never takes the keyboard focus. It belongs to the game's window, so it stays above the game but not above other programs. When every mod has started it shrinks and glides to the bottom left above the game's version text as a summary card (mods started and how long Keel took, time until the game was ready, skipped mods, problems or the slowest mod); a click on the card opens Keel's report, a right click hides it, it fades after `SummarySeconds` (60). Settings under `Loading window` (show, spot, scale, opacity, seconds after the last mod, summary seconds, longest time, click hides). Drawn offline from a real log and its thread smoke-tested; not yet run in the game. [docs/loading-window.md](docs/loading-window.md) has the timeline that led to it: a 12.7 s disk scan in Anchor Chain's preloader, the game's own load screen, and two mods that block the main thread for 15 s and 23 s.
 - **The summary card is for the main menu only:** it fades out as soon as a mission starts or the game loads a scene of its own (a mission, the editor, a campaign), instead of staying on the map for up to a minute.

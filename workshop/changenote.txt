@@ -1,1 +1,3 @@
-0.1.4: Euromod and other big Anchor Chain mods work under Keel (run on globe beta 261107: 25 mods started, a mission ran); the Sonar Audio Loader can search other mods' folders again. [ACConfig] files are handled by Keel now. New: Keel also reads a mod's _info.ini version statement and warns when it does not fit your game, by the game's own rules.
+0.1.5: a loading window while the game starts, and clearer errors.
+A small window of its own shows each mod as Keel starts it, with the seconds it takes, so a slow start no longer looks like a frozen game; a summary card on the main menu fades out when a mission starts. The report window's Close button works again on the globe build (it read no clicks). When the game fails with 'Method not found' after another mod rewrote one of its methods, Keel names the mod behind it.
+Run in the game on the 3D globe public beta (build 261107): the loading window and summary card, 18 mods starting. 0.8.7 not re-run.
