@@ -6,6 +6,7 @@ Keel is the mod loader that looks before it loads. It runs Sea Power's code mods
 
 [h2]The highlights[/h2]
 [list]
+[*][b]One-click install.[/b] KeelSetup.exe sets everything up, and Restore puts it all back
 [*][b]When the game crashes, you find out why.[/b] A window appears the moment it happens and names the mod when Keel can tell: the one that was starting, the one whose code was running, or the pack whose file was loading. Tick a box to keep it off for now and start again
 [*][b]Bad patches are stopped before they start.[/b] A mod whose patch does not fit the game would corrupt its memory, so Keel leaves it out and says why
 [*][b]Bug reports in one click.[/b] Save logs puts every log into one zip on your Desktop
@@ -30,6 +31,9 @@ Keel is the mod loader that looks before it loads. It runs Sea Power's code mods
 [/list]
 
 [h2]Install – and switching from Anchor Chain[/h2]
+[b]The easy way:[/b] subscribe, then run [b]KeelSetup.exe[/b] from Keel's Workshop folder (in Steam: right-click Sea Power, Manage, Browse local files, then go up to steamapps\workshop\content\1286220\3835527459). It finds the game, adds BepInEx if needed, installs the starter file and sets another loader's preloader aside. [b]Restore[/b] undoes all of it. Then switch R.A.T.S. Keel on in Mods and restart. Windows may say "unknown publisher" because the file is not signed yet: More info, Run anyway.
+
+[b]Or by hand:[/b]
 [olist]
 [*]Subscribe and switch R.A.T.S. Keel on in the game's Mods menu
 [*]Once: copy [b]SeaPowerKeel.Stub.dll[/b] from the folder [i]copy-to-BepInEx-plugins[/i] in Keel's Workshop folder (or from the GitHub release) into [i]Sea Power\BepInEx\plugins[/i]

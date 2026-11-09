@@ -1,7 +1,5 @@
-0.2.0: when the game crashes, Keel tells you why.
-A window appears the moment the game crashes and names the mod when Keel can tell: the one that was starting, the one whose code was running, or the pack whose file was loading. Tick the box to keep it off for now, and start the game again from the same window.
-The status card on the main menu turns yellow after a crash; click it for the report. The report window is redone.
-Patches that would corrupt the game's memory are stopped before they start. Broken pictures and sounds are listed in the report.
-Save logs puts every log into one zip on your Desktop.
-Keel cannot stop a crash inside the game's engine or a graphics driver; if it cannot tell which mod did it, it says so.
-Run in the game on the 3D globe public beta (build 261107) with test mods that crash on purpose; 0.8.7 not run.
+0.3.0: one-click install.
+KeelSetup.exe in Keel's Workshop folder finds Sea Power, adds BepInEx if the game has none, installs the starter file and sets another loader's preloader aside, so only one loader is active. Restore, in the same window, undoes exactly what it changed.
+Nothing changes for players who already have Keel set up; the mod loader itself is the same as 0.2.0.
+Windows may say "unknown publisher" because the file is not signed yet.
+Run on a clean copy of the game on the 3D globe public beta (build 261107); 0.8.7 not run.
