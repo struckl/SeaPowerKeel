@@ -1,43 +1,48 @@
 [h1]R.A.T.S. Keel[/h1]
 [i]R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals[/i]
-[b]Faster, safer modding on every game version.[/b]
-Anchor Chain got Sea Power's code mods started, and I built Keel to take that further. Keel loads Sea Power's code mods, your Anchor Chain mods included, and it looks before it loads: every mod is checked against your game version first, started on its own, and you can see what happened and why.
 
-[h2]Why it is better[/h2]
+[b]One bad mod can't ruin your game anymore.[/b]
+Keel is the mod loader that looks before it loads. It runs Sea Power's code mods, your Anchor Chain mods included, checks every mod against your game version first, starts each one on its own, and shows you what happened and why.
+
+[h2]The highlights[/h2]
 [list]
-[*][b]A mod made for the other game version is caught, not left to break your game.[/b] Before a mod is loaded, Keel checks everything it uses from the game against the version you are running. A DLL that would stop missions from loading is left out, and the report tells you why. Smaller mismatches show up as a warning. If such a mod later breaks a game method with a 'Method not found' or 'Field not found' error (an error popup on every frame), Keel names the mod and takes its patch off that method again, so the game goes on; the rest of the mod keeps running.
-[*][b]The right build for your game version.[/b] Mods that ship one DLL for the flat map (0.8.7) and one for the 3D globe say which is which in a small keel.ini, and Keel starts only the one that fits your game. No more two copies fighting it out.
-[*][b]Only the mods you switched on.[/b] Keel follows the game's Mods menu. Mods you switched off stay off; their files are not even opened.
-[*][b]One broken mod cannot take the others down.[/b] Every mod starts on its own. One that fails is marked and the next one starts. No endless loading loop, no frozen game.
-[*][b]Faster start.[/b] Keel reads the mods without loading them and starts them in a few seconds. In our test the eight switched-on mods were running 37 s after the game started; with the loader I used before (which also loaded the switched-off ones) it took until 116 s.
-[*][b]Your mods on the 3D globe beta, today.[/b] Anchor Chain's current release does not start on the globe build yet (a fix is waiting on its GitHub, I sent one too). Until then, Keel starts those mods: run in the game on the public beta (build 261107) with eight Anchor Chain mods and a mission.
-[*][b]Always works on the beta branch.[/b] Keel uses nothing of the game that changes between builds, and it is run on new beta builds as they come out. When a beta breaks a mod, Keel's report and log say which one and what is missing.
-[*][b]Your Anchor Chain mods keep working.[/b] Keel starts them itself, with all the checks above. Nothing to change in the mods.
-[*][b]Maintained and quick to update.[/b] Keel is looked after together with the R.A.T.S. mods, which follow every game update. Fixes reach you through the Workshop by themselves; the one file you copy by hand never changes.
-[*][b]See what happened.[/b] Ctrl+Shift+K shows every mod: running, running with errors, not started, and why (a missing mod and the version it needs, a conflict, the wrong game version). After start-up a short notice tells you if something went wrong. The same report is in BepInEx\Keel-report.txt.
-[*][b]Logs with times.[/b] BepInEx\Keel-log.txt has every log line of the game and all mods with the time of day and the seconds since the game started. Each error says which mod it came from, with the details mod makers need. The last sessions are kept, so the log of the game that crashed is still there after a restart. On the globe build BepInEx's own log misses the game's lines; Keel's has them. A mod that repeats the same line every frame no longer fills your disk: repeats are counted.
-[*][b]Install once.[/b] The one file you copy by hand never needs replacing; every update comes through the Workshop.
+[*][b]A broken mod gets switched off, not your game.[/b] After a game update, an outdated mod can bury your screen in error popups, every frame. Keel names the mod and takes its broken patch off, so you keep playing
+[*][b]Wrong-version mods are caught.[/b] Before a mod loads, Keel checks everything it uses from the game against the version you run. A DLL that would stop missions from loading is left out, and the report says why
+[*][b]One failure doesn't take the others down.[/b] Every mod starts on its own; one that fails is marked and the next one starts. No endless loading loop, no frozen game
+[*][b]Your mods on the 3D globe beta, today.[/b] Run in the game on the public beta (build 261107) with a full mod list and a mission
+[*][b]A faster start.[/b] In our test the eight switched-on mods were running 37 s after the game started; the loader I used before, which also loaded the switched-off ones, needed 116 s
+[*][b]A loading window.[/b] While the game starts, a small window shows each mod as it starts and how long it takes
+[/list]
+
+[h2]More[/h2]
+[list]
+[*]Right build for your game: mods that ship one DLL for the flat map (0.8.7) and one for the 3D globe say which is which in a small keel.ini, and Keel starts only the one that fits
+[*]Only the mods you switched on: Keel follows the game's Mods menu, switched-off mods are not even opened
+[*]Your Anchor Chain mods keep working, nothing to change in them
+[*]See what happened: Ctrl+Shift+K shows every mod (running, running with errors, not started, and why). The same report is in BepInEx\Keel-report.txt
+[*]Logs with times: BepInEx\Keel-log.txt has every log line of the game and all mods with the time of day and the seconds since the game started, each error with the mod it came from. The last sessions are kept, and on the globe build it has the game's lines that BepInEx's own log misses. A mod that repeats a line every frame is counted, not written a million times
+[*]Install once: the one file you copy by hand never needs replacing; every update comes through the Workshop
 [/list]
 
 [h2]Install – and switching from Anchor Chain[/h2]
 [olist]
-[*]Subscribe and switch R.A.T.S. Keel on in the game's Mods menu.
-[*]Once: copy [b]SeaPowerKeel.Stub.dll[/b] from the folder [i]copy-to-BepInEx-plugins[/i] in Keel's Workshop folder (or from the GitHub release) into [i]Sea Power\BepInEx\plugins[/i].
-[*]Delete [b]AnchorChain.Preloader.dll[/b] from [i]Sea Power\BepInEx\plugins[/i]. From now on Keel does the loading.
-[*]You no longer need the Anchor Chain item: Keel brings its own copy of Anchor Chain's library (MIT) for the mods built against it. Run in the game on the 3D globe public beta (build 261107) with no Anchor Chain on the PC. On 0.8.7 keep Anchor Chain subscribed, that is the tested way there. Keel now handles ACConfig files itself (checked offline; no mod in the game test used it).
-[*]Start the game. Ctrl+Shift+K shows the report.
+[*]Subscribe and switch R.A.T.S. Keel on in the game's Mods menu
+[*]Once: copy [b]SeaPowerKeel.Stub.dll[/b] from the folder [i]copy-to-BepInEx-plugins[/i] in Keel's Workshop folder (or from the GitHub release) into [i]Sea Power\BepInEx\plugins[/i]
+[*]Delete [b]AnchorChain.Preloader.dll[/b] from [i]Sea Power\BepInEx\plugins[/i]. From now on Keel does the loading
+[*]You no longer need the Anchor Chain item: Keel brings its own copy of Anchor Chain's library (MIT) for the mods built against it. Run in the game on the 3D globe public beta (build 261107) with no Anchor Chain on the PC. On 0.8.7 keep Anchor Chain subscribed, that is the tested way there. Keel handles ACConfig files itself (checked offline; no mod in the game test used it)
+[*]Start the game. Ctrl+Shift+K shows the report
 [/olist]
-[b]Restart after every change to the mod list.[/b] Keel starts while the game starts and reads the mod list then. Switching Keel or any mod on or off in the running game has no effect until you restart. If BepInEx\LogOutput.log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on in Mods and restart.
+[b]Restart after every change to the mod list.[/b] Keel starts while the game starts and reads the mod list then. If BepInEx\LogOutput.log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on in Mods and restart.
 If you keep Anchor Chain's preloader, Anchor Chain loads its mods as before and Keel steps aside for them, so nothing starts twice.
 
 [h2]What it changes[/h2]
 Keel itself changes nothing in the game, in missions or in saves: it only decides which code mods start, in which order, and tells you about it. What a mod does is up to that mod.
 
 [h2]Game versions[/h2]
-One Keel for both game versions; it uses nothing that differs between them. Run in the game on 0.8.7 (flat map, with Anchor Chain and on its own) and on the 3D globe public beta (build 261107), a mission on each.
+One Keel for both game versions; it uses nothing that differs between them. Run in the game on 0.8.7 (flat map, with Anchor Chain and on its own) and on the 3D globe public beta (build 261107), a mission on each. The broken-patch removal was run with a test mod that breaks the way a player's mod did, not with that mod itself.
 
 [h2]Settings[/h2]
-BepInEx\config\dev.sewerlabs.seapowerkeel.cfg: how strict the version check is, plugins to leave off, Anchor Chain mods on or off, the report key and size, the log, the loading window (corner, opacity, time on screen, off).
+BepInEx\config\dev.sewerlabs.seapowerkeel.cfg: how strict the version check is, plugins to leave off, Anchor Chain mods on or off, whether broken patches are taken off, the report key and size, the log, the loading window (corner, opacity, time on screen, off).
 
 [h2]For mod makers[/h2]
 Keel runs plain BepInEx plugins ([BepInPlugin] on a BaseUnityPlugin, with BepInDependency and BepInIncompatibility) and Anchor Chain mods. You do not need to reference Keel. keel.ini, the version check and what Keel expects: docs/for-mod-authors.md in the source.
