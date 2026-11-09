@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace SeaPowerKeel;
@@ -16,6 +17,8 @@ namespace SeaPowerKeel;
 internal static class Watcher
 {
     private const string Title = "R.A.T.S. Keel";
+
+    [DllImport("user32.dll")] private static extern bool SetProcessDPIAware();
 
     [STAThread]
     private static int Main(string[] args)
@@ -36,9 +39,10 @@ internal static class Watcher
         if (journal.Length == 0 || journal.Any(l => l.StartsWith("quit\t", StringComparison.Ordinal)))
             return 0;
 
-        string text = Explain(journal, dir, out string guid, out string name);
+        string text = Explain(journal, dir, out string guid, out string name, out string detail);
+        SetProcessDPIAware();     // sharp text on a 4K screen
         Application.EnableVisualStyles();
-        bool restart = Ask(text, name, out bool keepOff);
+        bool restart = Ask(text, name, detail, out bool keepOff);
         if (guid != null && !keepOff)
         {
             try
@@ -55,27 +59,41 @@ internal static class Watcher
         return 0;
     }
 
-    private static bool Ask(string text, string name, out bool keepOff)
+    private static bool Ask(string text, string name, string detail, out bool keepOff)
     {
+        float dpi;
+        using (Graphics g = Graphics.FromHwnd(IntPtr.Zero))
+            dpi = g.DpiX;
+        int P(int v) => (int)Math.Round(v * dpi / 96f);
+        int wide = P(460);
+
         using var form = new Form
         {
             Text = Title, FormBorderStyle = FormBorderStyle.FixedDialog, MinimizeBox = false, MaximizeBox = false, TopMost = true,
-            StartPosition = FormStartPosition.CenterScreen, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(14),
-            Font = new Font("Segoe UI", 10f),
+            StartPosition = FormStartPosition.CenterScreen, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = Color.White,
+            Padding = new Padding(0, 0, P(26), P(20)), Font = new Font("Segoe UI", 10f),
         };
-        var column = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        column.Controls.Add(new Label { Text = text, AutoSize = true, MaximumSize = new Size(520, 0), Margin = new Padding(0, 0, 0, 12) });
+        // Placed by hand: an auto-sized form ignores its left and top padding for a control that is not docked.
+        var column = new FlowLayoutPanel { Location = new Point(P(26), P(22)), FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        Label Text2(string s, Font f, Color c, int below) => new Label { Text = s, Font = f, ForeColor = c, AutoSize = true, MinimumSize = new Size(wide, 0), MaximumSize = new Size(wide, 0), Margin = new Padding(0, 0, 0, P(below)) };
+
+        column.Controls.Add(Text2("Sea Power crashed", new Font("Segoe UI Semibold", 15f), Color.FromArgb(32, 32, 32), 8));
+        column.Controls.Add(Text2(text, form.Font, Color.FromArgb(48, 48, 48), 16));
         CheckBox off = null;
         if (name != null)
         {
-            off = new CheckBox { Text = $"Keep {name} switched off for now", Checked = true, AutoSize = true, MaximumSize = new Size(520, 0), Margin = new Padding(0, 0, 0, 12) };
+            off = new CheckBox { Text = $"Keep {name} switched off for now", Checked = true, AutoSize = true, MaximumSize = new Size(wide, 0), Margin = new Padding(0, 0, 0, P(16)) };
             column.Controls.Add(off);
         }
-        var start = new Button { Text = "Start the game", DialogResult = DialogResult.Yes, AutoSize = true };
-        var close = new Button { Text = "Close", DialogResult = DialogResult.No, AutoSize = true };
-        var row = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        row.Controls.Add(start);
+        if (detail != null)
+            column.Controls.Add(Text2("Technical detail: " + detail, new Font("Segoe UI", 8.5f), Color.FromArgb(120, 120, 120), 16));
+
+        var start = new Button { Text = "Start the game", DialogResult = DialogResult.Yes, AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(0) };
+        var close = new Button { Text = "Close", DialogResult = DialogResult.No, AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(P(8), 0, 0, 0) };
+        // Right to left: the first one added sits at the right edge.
+        var row = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Anchor = AnchorStyles.Right, Margin = new Padding(0) };
         row.Controls.Add(close);
+        row.Controls.Add(start);
         column.Controls.Add(row);
         form.Controls.Add(column);
         form.AcceptButton = start;
@@ -83,25 +101,24 @@ internal static class Watcher
         form.Shown += (s, e) =>
         {
             form.Activate();
-            form.ActiveControl = (Control)off ?? start;
+            form.ActiveControl = start;
         };
         DialogResult result = form.ShowDialog();
         keepOff = off == null || off.Checked;
         return result == DialogResult.Yes;
     }
 
-    internal static string Explain(string[] journal, string dir, out string guid, out string name)
+    internal static string Explain(string[] journal, string dir, out string guid, out string name, out string detail)
     {
         guid = name = null;
         string block = CrashText.ReadAll(Path.Combine(dir, CrashText.StackFile));
         if (string.IsNullOrWhiteSpace(block))
             block = null;
-        string detail = CrashText.CrashLine(block);
-        string first = "Sea Power crashed" + (detail != null ? $" ({detail})." : ".");
+        detail = CrashText.CrashLine(block);
 
         bool hunting = Lines(Path.Combine(dir, CrashText.HuntFile)).Contains("phase=Round");
         if (hunting)
-            return first + "\n\nThis was a round of the crash hunt: Keel has noted it and goes on at the next start.";
+            return "That counts as a result for your crash hunt. Start the game again to carry on.";
 
         // Id, display name and code root of each mod, in the order Keel uses for blame.
         List<string[]> mods = Lines(Path.Combine(dir, CrashText.ModsFile)).Select(l => l.Split('\t')).Where(p => p.Length == 3).ToList();
@@ -112,18 +129,18 @@ internal static class Watcher
             string id = step[1];
             guid = id;
             name = mods.FirstOrDefault(m => m[0] == id)?[1] ?? id;
-            return first + $"\n\nCause: {name}. The game died while Keel was {(step[0] == "load" ? "loading" : "starting")} it.";
+            return $"The game stopped while {name} was {(step[0] == "load" ? "loading" : "starting")}, so this mod is the cause.";
         }
         int hit = CrashText.FirstHit(block, mods.Select(m => m[2]).ToList());
         if (hit >= 0)
         {
             guid = mods[hit][0];
             name = mods[hit][1];
-            return first + $"\n\nCause: {name}. Its code was running when the game crashed.";
+            return $"{name} was running when the game crashed, so it is the most likely cause.";
         }
 
-        return first + "\n\nKeel could not tell which mod did it: no mod's code was running at that moment. The cause can be the game itself or a pack's models or files." +
-               "\n\nAfter the restart, Ctrl+Shift+K has a 'Find crashing mod' button that narrows it down over a few restarts.";
+        return "Keel couldn't tell which mod caused this. It may be the game itself, or a mod's models or files.\n\n" +
+               "If it keeps happening, press Ctrl+Shift+K in the game and choose Find crashing mod.";
     }
 
     private static void Restart(string exe)
