@@ -1,4 +1,7 @@
-0.1.6: a mod whose patch breaks the game is named and its patch taken off.
-When the game throws 'Method not found' or 'Field not found' because a mod's patch uses something the new game build no longer has (an error popup on every frame), Keel finds the mod whose patch sits on the failing game method, takes that patch off again, and names the mod in the report and the log. The rest of the mod keeps running. The setting Loading / RemoveBrokenPatches (on by default) switches the removal off; Keel then only names the mod.
-Also fixed: the mod's name was not found for these errors at all in 0.1.5 (Unity logs the error on one line and Keel read the wrong word).
-Run in the game on the 3D globe public beta (build 261107) with a test mod that breaks the same way; 0.8.7 not run.
+0.2.0: when the game crashes, Keel tells you why.
+A window appears the moment the game crashes and names the mod when Keel can tell: the one that was starting, the one whose code was running, or the pack whose file was loading. Tick the box to keep it off for now, and start the game again from the same window.
+The status card on the main menu turns yellow after a crash; click it for the report. The report window is redone.
+Patches that would corrupt the game's memory are stopped before they start. Broken pictures and sounds are listed in the report.
+Save logs puts every log into one zip on your Desktop.
+Keel cannot stop a crash inside the game's engine or a graphics driver; if it cannot tell which mod did it, it says so.
+Run in the game on the 3D globe public beta (build 261107) with test mods that crash on purpose; 0.8.7 not run.
