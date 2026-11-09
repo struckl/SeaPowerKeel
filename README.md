@@ -58,6 +58,7 @@ is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor C
 |---|---|---|
 | `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods when Anchor Chain is not running |
 | `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part (also a missing Harmony patch target or by-name lookup); `Off` |
+| `Loading.RemoveBrokenPatches` | `true` | When the game throws 'Method not found' / 'Field not found' because a mod's Harmony patch uses something this build lacks, Keel takes that mod's patch off the failing game method again and names the mod (0.1.6); `false`: Keel only names the mod |
 | `Loading.DisabledPlugins` | empty | Plugin ids Keel does not start although their folder is on |
 | `Logging.TimestampedLog` | `true` | Write `BepInEx\Keel-log.txt` with times and the mod each exception came from |
 | `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |
