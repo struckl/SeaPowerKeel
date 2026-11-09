@@ -12,6 +12,11 @@ folders, sort out dependencies and start order, start them), and on top of that:
   its target's code is not detected).
 - **One broken mod cannot stop the others.** Each mod starts on its own; one that throws is marked and the next one starts.
   No endless load loop, no frozen game.
+- **A mod that takes the game down is named and kept out.** A crash in native code ends the game and nothing inside the process
+  can catch it, so Keel journals every step to disk. If the game dies while Keel loads or starts a mod, or a crash report shows
+  a mod's code on its stack, the next start names that mod in a notice and in the report and keeps it out until the mod is
+  updated (`BepInEx\Keel-held.txt`; details in `BepInEx\Keel-crash.txt`). A crash later on with no mod code on its stack,
+  or from a pack without code, is reported but cannot be pinned on a mod.
 - **Says what happened.** Ctrl+Shift+K in the game shows every mod: running, running with errors, not started and why
   (missing dependency and the version it needs, a conflict, the wrong game build …). Errors a mod throws later are counted
   against it. The same report is in `BepInEx\Keel-report.txt`, and a short notice appears after start-up when something
@@ -59,6 +64,7 @@ is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor C
 | `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods when Anchor Chain is not running |
 | `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part (also a missing Harmony patch target or by-name lookup); `Off` |
 | `Loading.RemoveBrokenPatches` | `true` | When the game throws 'Method not found' / 'Field not found' because a mod's Harmony patch uses something this build lacks, Keel takes that mod's patch off the failing game method again and names the mod (0.1.6); `false`: Keel only names the mod |
+| `Loading.HoldOutCrashers` | `true` | Keep out a mod that took the game down, until it is updated (0.1.7); `false`: Keel only names it |
 | `Loading.DisabledPlugins` | empty | Plugin ids Keel does not start although their folder is on |
 | `Logging.TimestampedLog` | `true` | Write `BepInEx\Keel-log.txt` with times and the mod each exception came from |
 | `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |

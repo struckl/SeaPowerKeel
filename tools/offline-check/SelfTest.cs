@@ -59,6 +59,7 @@ internal static class SelfTest
             Incompatibility();
             Console.WriteLine("9. Patch guard: the member and the patched method come out of the error and its stack, (taking a patch off is run in the game: Harmony does not start outside it)");
             PatchGuard();
+            CrashGuardChecks(tmp);
         }
         finally
         {
@@ -106,6 +107,53 @@ internal static class SelfTest
 
     // ---- helpers ----
 
+
+    private static void CrashGuardChecks(string tmp)
+    {
+        CrashGuard.Verdict V(params string[] lines) => CrashGuard.Read(lines);
+        Check(!V().Unclean, "no journal: nothing to say");
+        Check(!V("session\tx", "start\ta", "done\t", "quit\t").Unclean, "a normal quit is clean");
+        CrashGuard.Verdict during = V("session\tx", "load\ta", "start\tb");
+        Check(during.Unclean && during.Step == "start" && during.Guid == "b", "ended while starting b: names b");
+        CrashGuard.Verdict after = V("session\tx", "start\tb", "done\t", "scene\tmission");
+        Check(after.Unclean && after.Guid == null && after.Scene == "mission", "ended after start-up: no mod from the journal, the scene is known");
+
+        Check(CrashGuard.CrashBlock("all fine\nno problem") == null, "a log without a crash gives no crash block");
+        var a = new PluginEntry { Guid = "a", TypeName = "AlphaMod.Plugin", Order = 0 };
+        var b = new PluginEntry { Guid = "b", TypeName = "BetaMod.Plugin", Order = 1 };
+        var c = new PluginEntry { Guid = "c", TypeName = "SeaPower.Plugin", Order = 2 };
+        var mods = new[] { a, b, c };
+        string block = CrashGuard.CrashBlock("before\r\nCrash!!!\r\n0x00 (Mono JIT code) BetaMod.Hooks:Prefix ()\r\n0x01 (Mono JIT code) AlphaMod.Other:Run ()");
+        Check(block != null && block.StartsWith("Crash!!!"), "the crash block starts at the crash");
+        Check(CrashGuard.Blame(block, mods) == b, "the mod highest on the crash's stack is blamed");
+        Check(CrashGuard.Blame("Crash!!!\n0x00 (Mono JIT code) SeaPower.GameMain:Update ()\nBetaMod.Hooks is mentioned but not a frame", mods) == null, "the game's frames and non-frame lines blame nobody");
+        Check(CrashGuard.Blame("Crash!!!\n0x00 (Mono JIT code) NotBetaMod.Hooks:Run ()", mods) == null, "a longer name that ends the same is another mod");
+
+        string dir = Path.Combine(tmp, "crashguard");
+        Directory.CreateDirectory(dir);
+        string dll = Path.Combine(dir, "beta.dll");
+        File.WriteAllText(dll, "x");
+        PluginEntry Mod() => new() { Guid = "b", Name = "Beta", TypeName = "BetaMod.Plugin", Dll = dll };
+        File.WriteAllLines(Path.Combine(dir, "Keel-session.txt"), new[] { "session\tx", "start\tb" });
+        var notes = new List<string>();
+        PluginEntry first = Mod();
+        var run1 = new CrashGuard(dir, null);
+        run1.Apply(new[] { first }, true, notes.Add);
+        run1.Mark("quit", "");
+        Check(first.State == PluginState.NotStarted && notes.Count == 1 && notes[0].Contains("Beta"), "the mod that took the game down is named and kept out at the next start");
+        Check(File.Exists(Path.Combine(dir, "Keel-crash.txt")), "Keel-crash.txt is written");
+        PluginEntry second = Mod();
+        var run2 = new CrashGuard(dir, null);
+        run2.Apply(new[] { second }, true, notes.Add);
+        run2.Mark("quit", "");
+        Check(second.State == PluginState.NotStarted && notes.Count == 1, "after a normal quit it stays out, without a new crash note");
+        File.WriteAllText(dll, "updated");
+        PluginEntry third = Mod();
+        var run3 = new CrashGuard(dir, null);
+        run3.Apply(new[] { third }, true, notes.Add);
+        run3.Mark("quit", "");
+        Check(third.State == PluginState.Pending && !File.Exists(Path.Combine(dir, "Keel-held.txt")), "an updated mod gets another chance");
+    }
 
     private static void PatchGuard()
     {

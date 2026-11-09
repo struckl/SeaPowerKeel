@@ -64,6 +64,9 @@ internal sealed class KeelHost : MonoBehaviour
     private ConfigEntry<bool> notice;
     private ConfigEntry<float> uiScale;
     private KeelLog keelLog;
+    private CrashGuard crash;
+    private ConfigEntry<bool> holdCrashers;
+    private string crashNotice;
     private float nextFlush;
     private readonly List<string> notes = new();
     private bool done;
@@ -90,6 +93,17 @@ internal sealed class KeelHost : MonoBehaviour
         Runner.GuardPatches = config.Bind("Loading", "RemoveBrokenPatches", true,
             "When the game throws 'Method not found' / 'Field not found' because a mod's Harmony patch uses something this game build lacks, Keel takes that mod's patch off the failing " +
             "game method again, names the mod in the report and keeps the game going (instead of the same error popup on every frame). Off: Keel only names the mod.").Value;
+        holdCrashers = config.Bind("Loading", "HoldOutCrashers", true,
+            "When the game dies while Keel is loading or starting a mod, or a crash report shows a mod's code on its stack, Keel names that mod at the next start and keeps it out until the mod " +
+            @"is updated (the list is BepInEx\Keel-held.txt). Off: Keel only names the mod.");
+        try
+        {
+            crash = new CrashGuard(Paths.BepInExRootPath, Path.Combine(Path.GetDirectoryName(Application.consoleLogPath) ?? "", "Player-prev.log"));
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning($"No crash journal this session: {ex.Message}");
+        }
         disabled = config.Bind("Loading", "DisabledPlugins", "",
             "Plugin ids (comma separated) Keel does not start, even though their mod folder is on.");
         hotkey = config.Bind("Report", "Hotkey", "Ctrl+Shift+K", "Shows and hides the report window.");
@@ -117,6 +131,7 @@ internal sealed class KeelHost : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += (scene, mode) =>
         {
             if (mode == UnityEngine.SceneManagement.LoadSceneMode.Single) Loading.LoadingWindow.SceneLoadedTicks = DateTime.UtcNow.Ticks;
+            crash?.Mark("scene", scene.name);
         };
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
@@ -162,6 +177,13 @@ internal sealed class KeelHost : MonoBehaviour
         log.LogInfo($"Found {Keel.Plugins.Count} plugin(s) in {Keel.Plugins.Select(p => p.Dll).Distinct().Count()} DLL(s) ({watch.ElapsedMilliseconds} ms).");
         foreach (SkippedDll d in skippedDlls)
             log.LogInfo($"DLL left out: {d.Path} - {d.Reason}");
+        // Before any mod is touched: what the last session left, so a mod that took the game down cannot do it again.
+        crash?.Apply(Keel.Plugins, holdCrashers.Value, n =>
+        {
+            crashNotice = n;
+            notes.Add(n);
+            log.LogError(n);
+        });
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
@@ -201,8 +223,16 @@ internal sealed class KeelHost : MonoBehaviour
         // nothing about the order (see Sequencer). Anchor Chain is looked for again right before the first start.
         var sequence = new Sequencer
         {
-            Prepare = runner.Prepare,
-            Start = runner.Start,
+            Prepare = p =>
+            {
+                crash?.Mark("load", p.Guid);
+                runner.Prepare(p);
+            },
+            Start = p =>
+            {
+                crash?.Mark("start", p.Guid);
+                runner.Start(p);
+            },
             // Logged before the start: a mod that holds the game up for seconds is named while it does (the loading window shows it).
             Starting = (p, index, total) => log.LogInfo($"STARTING {index}/{total}: {p.Display} {p.Version} ({p.Folder.Label})"),
             Replan = () => Planner.Replan(Keel.Plugins, elsewhere),
@@ -221,12 +251,13 @@ internal sealed class KeelHost : MonoBehaviour
         foreach (PluginEntry p in Keel.Plugins.Where(p => p.State is PluginState.NotStarted))
             log.LogWarning($"NOT STARTED: {p.Display} {p.Version} ({p.Folder.Label}) – {p.Reason}");
 
+        crash?.Mark("done", "");
         done = true;
         log.LogInfo($"Started {started} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();
         // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
-        wantNotice = notice.Value && Keel.Plugins.Any(Report.IsProblem);
+        wantNotice = notice.Value && (crashNotice != null || Keel.Plugins.Any(Report.IsProblem));
         // Errors that come later show up in the window; the file is rewritten when the window opens and at quit.
     }
 
@@ -594,6 +625,7 @@ internal sealed class KeelHost : MonoBehaviour
 
     private void OnApplicationQuit()
     {
+        crash?.Mark("quit", "");
         if (done)
             WriteReport();
         keelLog?.Flush();
@@ -636,9 +668,11 @@ internal sealed class KeelHost : MonoBehaviour
         if (!showWindow && Time.realtimeSinceStartup < noticeUntil)
         {
             int bad = Keel.Plugins.Count(Report.IsProblem);
-            var r = new Rect(20, screenH - 90, 470, 70);
+            float height = crashNotice != null ? 150 : 70;
+            var r = new Rect(20, screenH - 20 - height, 470, height);
             GUI.Box(r, GUIContent.none);
             GUI.Label(new Rect(r.x + 10, r.y + 6, r.width - 20, r.height - 12),
+                      (crashNotice != null ? $"<b>{crashNotice}</b>\n" : "") +
                       $"<b>{Keel.Name}</b>: {bad} mod(s) did not start or threw errors.\n{Report.Summary(Keel.Plugins)}.\n<b>{hotkey.Value}</b> shows why.", wrap);
         }
         if (showWindow)

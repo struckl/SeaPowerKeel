@@ -491,7 +491,7 @@ internal sealed class Runner
     }
 
     // Namespaces a mod may put types into that are not its own: matching them would blame it for the game's errors.
-    private static readonly HashSet<string> SharedNamespaces = new()
+    internal static readonly HashSet<string> SharedNamespaces = new()
     {
         "SeaPower", "SeapowerUI", "Seapower", "UnityEngine", "Unity", "System", "BepInEx", "HarmonyLib", "MonoMod", "Microsoft", "AnchorChain",
     };

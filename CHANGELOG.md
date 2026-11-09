@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7 - not released
+
+Checked offline only (`--selftest`, 108 checks); not run in the game yet.
+
+- **A mod that takes the game down is named and kept out.** Keel journals each step to `BepInEx\Keel-session.txt`. When the last game did not quit normally, the next start says so in a notice and in the report and writes `BepInEx\Keel-crash.txt` with the crash part of Unity's `Player-prev.log`. If the game died while Keel was loading or starting a mod (the frame after the start included), or a mod's code is on the crash's stack, that mod is named and held out until its DLL changes (`BepInEx\Keel-held.txt`, setting `HoldOutCrashers`). A later crash with no mod code on its stack, or from a pack without code, is reported without a name.
+
 ## 0.1.6 - 2026-11-09
 
 Run in the game on the globe beta (build 261107) on 2026-11-09 with a test mod that patches `GameMain.FixedUpdate` with code reading a field the game no longer has (the error a player reported from Dynamic Campaign / Real Air Combat Tactics): Keel named the test mod and took its patch off (the mod's patch count on that method went from 1 to 0). Not run with those two mods themselves; 0.8.7 not run.
