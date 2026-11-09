@@ -67,9 +67,6 @@ internal sealed class KeelHost : MonoBehaviour
     private CrashGuard crash;
     private ConfigEntry<bool> holdCrashers;
     private string crashNotice;
-    private CrashHunt hunt;
-    private bool huntClicked;
-    private Rect huntRect;
     private bool heldClicked;
     private Rect heldRect;
     private float nextFlush;
@@ -123,16 +120,7 @@ internal sealed class KeelHost : MonoBehaviour
         // Here, in Awake: the game has not read its mod list yet.
         try
         {
-            hunt = new CrashHunt(Paths.BepInExRootPath, ModFolders.UserSettings, FolderLabel);
-            hunt.Advance(crash?.Previous ?? new CrashGuard.Verdict());
-            if (hunt.Message != null)
-            {
-                crashNotice = hunt.Message;
-                Loading.LoadingWindow.Alert = hunt.Short;
-                notes.Add(hunt.Message);
-                log.LogWarning(hunt.Message);
-            }
-            string packOff = CrashHunt.ApplyPackOff(Paths.BepInExRootPath, ModFolders.UserSettings);
+            string packOff = ModList.ApplyPackOff(Paths.BepInExRootPath, ModFolders.UserSettings);
             if (packOff != null)
             {
                 string off = $"{FolderLabel(packOff)} was switched off after the last crash. Switch it on again in the Mod Manager to try it after an update.";
@@ -143,7 +131,7 @@ internal sealed class KeelHost : MonoBehaviour
         }
         catch (Exception ex)
         {
-            log.LogWarning($"Crash hunt not available: {ex.Message}");
+            log.LogWarning($"Could not switch the pack off: {ex.Message}");
         }
         disabled = config.Bind("Loading", "DisabledPlugins", "",
             "Plugin ids (comma separated) Keel does not start, even though their mod folder is on.");
@@ -224,7 +212,7 @@ internal sealed class KeelHost : MonoBehaviour
             crashNotice = crashNotice == null ? n : crashNotice + "\n" + n;
             notes.Add(n);
             log.LogError(n);
-        }, hunt != null && hunt.Running);
+        });
         if (crash != null)
         {
             if (crash.Short != null)
@@ -654,7 +642,6 @@ internal sealed class KeelHost : MonoBehaviour
             var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom
             if (closeRect.Contains(gui)) showWindow = false;
             else if (logsRect.Contains(gui)) SaveLogs();
-            else if (HuntOffered && huntRect.Contains(gui)) HuntButton();
             else if (HeldOffered && heldRect.Contains(gui)) HeldButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         }
@@ -873,30 +860,6 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
-    private bool HuntOffered => hunt != null && (hunt.Running || crash is { Unnamed: true });
-
-    private void HuntButton()
-    {
-        if (!HuntOffered || !FreshClick())
-            return;
-        if (huntClicked)
-        {
-            RestartGame();
-            return;
-        }
-        huntClicked = true;
-        if (hunt.Running)
-        {
-            hunt.Stop();
-            notes.Add("The crash hunt stops at the next start: exit and start the game, and your mod list is back.");
-        }
-        else
-        {
-            hunt.Arm();
-            notes.Add("The crash hunt starts at the next start: exit and start the game.");
-        }
-    }
-
     // The name a mod folder shows in the game's mod list.
     private static string FolderLabel(string folder)
     {
@@ -1097,8 +1060,6 @@ internal sealed class KeelHost : MonoBehaviour
             GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         if (Button("Save logs", 110, ref logsRect))
             SaveLogs();
-        if (HuntOffered && Button(huntClicked ? "Restart the game" : hunt.Running ? "Stop crash hunt" : "Find crashing mod", 160, ref huntRect))
-            HuntButton();
         if (HeldOffered && Button(heldClicked ? "Restart the game" : "Let held mods run", 160, ref heldRect))
             HeldButton();
         GUILayout.FlexibleSpace();

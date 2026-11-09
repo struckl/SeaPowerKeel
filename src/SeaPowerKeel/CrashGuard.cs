@@ -46,9 +46,6 @@ internal sealed class CrashGuard
 
     public Verdict Previous { get; }
 
-    /// <summary>The last game crashed and no mod could be named: the crash hunt can be offered.</summary>
-    public bool Unnamed { get; private set; }
-
     /// <summary>One short line for the summary card, when the last game crashed.</summary>
     public string Short { get; private set; }
 
@@ -218,7 +215,7 @@ internal sealed class CrashGuard
     /// Reads what the last session left and acts on it: says what happened, and holds out the mod it can name (when <paramref name="hold"/>).
     /// A held mod stays out until its DLL changes (an update of the mod) or its line is removed from Keel-held.txt.
     /// </summary>
-    public void Apply(IReadOnlyCollection<PluginEntry> plugins, bool hold, Action<string> note, bool huntRunning = false)
+    public void Apply(IReadOnlyCollection<PluginEntry> plugins, bool hold, Action<string> note)
     {
         var held = new Dictionary<string, (string stamp, string reason)>();
         foreach (string line in ReadLines(heldPath))
@@ -244,7 +241,7 @@ internal sealed class CrashGuard
                 if (culprit != null)
                     how = Previous.Step == "load" ? "while Keel was loading it" : "while Keel was starting it";
             }
-            if (culprit == null && !huntRunning)   // during a crash hunt a crash is a result of the round, the hunt judges it
+            if (culprit == null)
             {
                 culprit = Blame(block, plugins);
                 how = "with its code on the crash's stack";
@@ -257,9 +254,8 @@ internal sealed class CrashGuard
                 if (hold && !keptOn.Contains(culprit.Guid))
                     held[culprit.Guid] = (Stamp(culprit.Dll), why);
             }
-            else if (!huntRunning)
+            else
             {
-                Unnamed = true;
                 Short = "Last game crashed: cause unknown";
                 string loading = "";
                 if (CrashText.LastPack(block, out string packFolder, out string packFile))
@@ -267,7 +263,7 @@ internal sealed class CrashGuard
                     Short = $"Last game crashed loading {Path.GetFileName(packFile)}";
                     loading = $" It was loading {Path.GetFileName(packFile)} from mod folder {packFolder} just before.";
                 }
-                note($"The last game did not end normally{where}, and Keel cannot tell for certain which mod did it{(detail != null ? $" ({detail})" : "")}.{loading} The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
+                note($"The last game did not end normally{where}, and Keel cannot tell for certain which mod did it{(detail != null ? $" ({detail})" : "")}.{loading} Details: Keel-crash.txt.");
             }
         }
 

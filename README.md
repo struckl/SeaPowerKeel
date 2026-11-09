@@ -15,18 +15,13 @@ folders, sort out dependencies and start order, start them), and on top of that:
 - **A mod that takes the game down is named and kept out.** A crash in native code ends the game and nothing inside the process
   can catch it, so Keel journals every step to disk. If the game dies while Keel loads or starts a mod, or a crash report shows
   a mod's code on its stack, the next start names that mod in a notice and in the report and keeps it out until the mod is
-  updated (`BepInEx\Keel-held.txt`; details in `BepInEx\Keel-crash.txt`). A crash later on with no mod code on its stack,
-  or from a pack without code, is reported but cannot be pinned on a mod.
+  updated (`BepInEx\Keel-held.txt`; details in `BepInEx\Keel-crash.txt`). A crash with no mod code on its stack and no mod file loading just before it is reported, but cannot be pinned on a mod.
 - **A window that says what crashed.** Keel catches a native crash as it happens and records the code that was running; a small program of
   Keel's (`KeelWatcher.exe`, in Keel's folder, nothing to install) shows a window the moment the game dies, naming the mod when its code was running,
   with a tick box to keep it switched off for now, and offers a restart. The report window's *Let held mods run* releases it again. The game itself cannot be kept alive: a crash in native code ends the process.
 - **Logs in one click.** *Save logs*, in the crash window and the report window, makes one zip of all logs on your Desktop, ready to attach to a bug report. The logs contain file paths, so also your Windows user name.
 - **Stops what it can see coming.** A patch whose parameters do not fit the game method is kept out, because it would corrupt memory. Empty or broken pictures and sounds in mods are listed in the report.
 - **Crashes from packs get a name too:** if the game was loading a mod's file just before it crashed, the window says which one and can switch that mod off.
-- **Crash hunt for the crashes nothing can name.** After a crash with no mod to blame, the report window's *Find crashing mod* button starts a
-  hunt: each game runs with half of the suspects switched off in the mod list (packs without code included). Do what crashed the game; if it
-  crashes, start again, if not, exit from the main menu and start again. About 7 restarts for 100 mods, then the mod is named and stays off and
-  your list is back. *Stop crash hunt* puts the list back at the next start. It finds a crash you can repeat, and saves may miss the switched-off mods during the hunt.
 - **Says what happened.** Ctrl+Shift+K in the game shows every mod: running, running with errors, not started and why
   (missing dependency and the version it needs, a conflict, the wrong game build …). Errors a mod throws later are counted
   against it. The same report is in `BepInEx\Keel-report.txt`, and a short notice appears after start-up when something
@@ -74,7 +69,7 @@ is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor C
 | `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods when Anchor Chain is not running |
 | `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part (also a missing Harmony patch target or by-name lookup); `Off` |
 | `Loading.RemoveBrokenPatches` | `true` | When the game throws 'Method not found' / 'Field not found' because a mod's Harmony patch uses something this build lacks, Keel takes that mod's patch off the failing game method again and names the mod (0.1.6); `false`: Keel only names the mod |
-| `Loading.HoldOutCrashers` | `true` | Keep out a mod that took the game down, until it is updated (0.1.7); `false`: Keel only names it |
+| `Loading.HoldOutCrashers` | `true` | Keep out a mod that took the game down, until it is updated (0.2.0); `false`: Keel only names it |
 | `Loading.DisabledPlugins` | empty | Plugin ids Keel does not start although their folder is on |
 | `Logging.TimestampedLog` | `true` | Write `BepInEx\Keel-log.txt` with times and the mod each exception came from |
 | `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |

@@ -60,7 +60,6 @@ internal static class SelfTest
             Console.WriteLine("9. Patch guard: the member and the patched method come out of the error and its stack, (taking a patch off is run in the game: Harmony does not start outside it)");
             PatchGuard();
             CrashGuardChecks(tmp);
-            CrashHuntChecks(tmp);
             PreventionChecks(tmp, managed, core);
         }
         finally
@@ -146,7 +145,7 @@ internal static class SelfTest
         var caughtRun = new CrashGuard(caughtDir, null);
         caughtRun.Apply(new[] { caught }, true, caughtNotes.Add);
         caughtRun.Mark("quit", "");
-        Check(caught.State == PluginState.NotStarted && caughtNotes.Count == 1 && caughtNotes[0].Contains("Beta") && !caughtRun.Unnamed, "a crash after start-up with the mod on the catcher's stack: named and held out, no hunt needed");
+        Check(caught.State == PluginState.NotStarted && caughtNotes.Count == 1 && caughtNotes[0].Contains("Beta"), "a crash after start-up with the mod on the catcher's stack: named and held out, no hunt needed");
         caughtRun.WriteModsFile(new[] { caught });
         Check(File.ReadAllText(Path.Combine(caughtDir, CrashText.ModsFile)).Contains("b\tBeta\tBetaMod"), "the watcher's list has id, name and code root");
 
@@ -226,55 +225,9 @@ internal static class SelfTest
         string ini = Path.Combine(tmp, "packoff.ini");
         File.WriteAllText(ini, "Mod1Directory=77,True,77\r\nMod2Directory=88,True,88\r\n");
         File.WriteAllText(Path.Combine(tmp, CrashText.PackOffFile), "77");
-        Check(CrashHunt.ApplyPackOff(tmp, ini) == "77" && CrashHunt.ListOn(File.ReadAllText(ini)).SequenceEqual(new[] { "88" }) && !File.Exists(Path.Combine(tmp, CrashText.PackOffFile)), "the crash window's choice switches the pack off in the game's list, once");
-    }
-
-    private static void CrashHuntChecks(string tmp)
-    {
-        string dir = Path.Combine(tmp, "crashhunt");
-        Directory.CreateDirectory(dir);
-        string ini = Path.Combine(dir, "usersettings.ini");
-        string Start() => "[LoadOrder]\r\nMod1Directory=SeaPowerKeel,True,0\r\nMod2Directory=A,True,0\r\nMod3Directory=B,True,11\r\nMod4Directory=C,True,0\r\nMod5Directory=D,True,0\r\nMod6Directory=Off,False,0\r\nNumberOfModFiles=6\r\nOther=1\r\n";
-        File.WriteAllText(ini, Start());
-        Check(CrashHunt.ListOn(Start()).SequenceEqual(new[] { "SeaPowerKeel", "A", "B", "C", "D" }), "the folders that are on, in order");
-        string edited = CrashHunt.SetFolders(Start(), new[] { "B", "C" }, new[] { "B" });
-        Check(edited.Contains("Mod3Directory=B,False,11") && edited.Contains("Mod4Directory=C,True,0") && edited.Contains("Other=1") && edited.Contains("\r\n"), "one folder off, its id and every other line kept");
-
-        var crashed = new CrashGuard.Verdict { Unclean = true };
-        var clean = new CrashGuard.Verdict();
-        CrashHunt Next(CrashGuard.Verdict v) { var h = new CrashHunt(dir, ini); h.Advance(v); return h; }
-        List<string> On() => CrashHunt.ListOn(File.ReadAllText(ini));
-
-        new CrashHunt(dir, ini).Advance(clean);
-        Check(On().Count == 5, "no hunt: the mod list is not touched");
-        new CrashHunt(dir, ini).Arm();
-        Check(On().Count == 5, "arming changes nothing until the next start");
-        CrashHunt h1 = Next(clean);
-        Check(h1.Running && On().SequenceEqual(new[] { "SeaPowerKeel", "A", "B" }), "round 1: half of the suspects off, Keel never");
-        CrashHunt h2 = Next(crashed);
-        Check(h2.Running && On().SequenceEqual(new[] { "SeaPowerKeel", "A", "C", "D" }), "a crash: the culprit is in the half that was on; the cleared mods are back on");
-        CrashHunt h3 = Next(clean);
-        Check(!h3.Running && h3.Message.Contains("B") && On().SequenceEqual(new[] { "SeaPowerKeel", "A", "C", "D" }), "no crash: the half that was off; one left: named, it stays off, the rest is back");
-        Check(File.ReadAllText(ini).Contains("Mod6Directory=Off,False,0"), "a folder that was off before stays off");
-        Check(!File.Exists(Path.Combine(dir, "Keel-hunt.txt")), "the hunt is over");
-
-        File.WriteAllText(ini, Start());
-        new CrashHunt(dir, ini).Arm();
-        Next(clean);
-        new CrashHunt(dir, ini).Stop();
-        CrashHunt stopped = Next(clean);
-        Check(!stopped.Running && On().Count == 5, "stopped: the whole list is back at the next start");
-
-        File.WriteAllText(ini, Start());
-        new CrashHunt(dir, ini).Arm();
-        Next(clean);
-        CrashHunt named = Next(new CrashGuard.Verdict { Unclean = true, Step = "start", Guid = "x" });
-        Check(!named.Running && On().Count == 5, "a crash while a mod starts ends the hunt: Keel can name that mod itself");
-
-        File.WriteAllText(ini, "[LoadOrder]\r\nMod1Directory=SeaPowerKeel,True,0\r\nMod2Directory=A,True,0\r\n");
-        new CrashHunt(dir, ini).Arm();
-        CrashHunt tooFew = Next(clean);
-        Check(!tooFew.Running && tooFew.Message != null, "fewer than two suspects: no hunt, and it says so");
+        Check(ModList.ApplyPackOff(tmp, ini) == "77" && ModList.ListOn(File.ReadAllText(ini)).SequenceEqual(new[] { "88" }) && !File.Exists(Path.Combine(tmp, CrashText.PackOffFile)), "the crash window's choice switches the pack off in the game's list, once");
+        string edited = ModList.SetFolders("Mod1Directory=A,True,0\r\nMod2Directory=B,True,11\r\nOther=1\r\n", new[] { "B" }, new[] { "B" });
+        Check(edited.Contains("Mod2Directory=B,False,11") && edited.Contains("Mod1Directory=A,True,0") && edited.Contains("Other=1\r\n"), "one folder off, its id and every other line kept");
     }
 
     private static void PatchGuard()

@@ -179,10 +179,6 @@ internal static class Watcher
             block = null;
         detail = CrashText.CrashLine(block);
 
-        bool hunting = Lines(Path.Combine(dir, CrashText.HuntFile)).Contains("phase=Round");
-        if (hunting)
-            return "That counts as a result for your crash hunt. Start the game again to carry on.";
-
         // Id, display name and code root of each mod, in the order Keel uses for blame.
         List<string[]> mods = Lines(Path.Combine(dir, CrashText.ModsFile)).Select(l => l.Split('\t')).Where(p => p.Length == 3).ToList();
 
@@ -210,7 +206,7 @@ internal static class Watcher
         }
 
         return "Keel couldn't tell which mod caused this. It may be the game itself, or a mod's models or files.\n\n" +
-               "If it keeps happening, press Ctrl+Shift+K in the game and choose Find crashing mod.";
+               "If it keeps happening, click Save logs and attach the file to a bug report.";
     }
 
     private static void Restart(string exe)
