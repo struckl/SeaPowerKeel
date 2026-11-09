@@ -113,6 +113,8 @@ internal static class SelfTest
               "'Field not found: ObjectBase SeaPower.AI._objectToDestroy' -> SeaPower.AI::_objectToDestroy");
         Check(Runner.MissingKey("MissingMethodException: Method not found: SeaPower.IniHandler SeaPower.Utils.openIniFile(string,bool,bool)") == "SeaPower.Utils::openIniFile",
               "'Method not found: IniHandler SeaPower.Utils.openIniFile(string,bool,bool)' -> SeaPower.Utils::openIniFile");
+        Check(Runner.MissingKey("MissingFieldException: Field not found: SeaPower.ObjectBase SeaPower.AI._objectToDestroy Due to: Could not find field in class") == "SeaPower.AI::_objectToDestroy",
+              "the same message on ONE line (as Unity logs it, with 'Due to: ...' after it) -> SeaPower.AI::_objectToDestroy");
         Check(Runner.MissingKey("NullReferenceException: Object reference not set") == null, "another exception gives no member");
         var patched = Runner.PatchedMethodsIn("(wrapper dynamic-method) SeaPower.GameMain.DMD<SeaPower.GameMain::FixedUpdate>(SeaPower.GameMain)\nUnityEngine.DebugLogHandler:LogException(Exception, Object)");
         Check(patched.Count == 1 && patched[0].type == "SeaPower.GameMain" && patched[0].method == "FixedUpdate", "the stack's DMD<SeaPower.GameMain::FixedUpdate> gives the patched game method");

@@ -1,3 +1,4 @@
-0.1.5: a loading window while the game starts, and clearer errors.
-A small window of its own shows each mod as Keel starts it, with the seconds it takes, so a slow start no longer looks like a frozen game; a summary card on the main menu fades out when a mission starts. The report window's Close button works again on the globe build (it read no clicks). When the game fails with 'Method not found' after another mod rewrote one of its methods, Keel names the mod behind it.
-Run in the game on the 3D globe public beta (build 261107): the loading window and summary card, 18 mods starting. 0.8.7 not re-run.
+0.1.6: a mod whose patch breaks the game is named and its patch taken off.
+When the game throws 'Method not found' or 'Field not found' because a mod's patch uses something the new game build no longer has (an error popup on every frame), Keel finds the mod whose patch sits on the failing game method, takes that patch off again, and names the mod in the report and the log. The rest of the mod keeps running. The setting Loading / RemoveBrokenPatches (on by default) switches the removal off; Keel then only names the mod.
+Also fixed: the mod's name was not found for these errors at all in 0.1.5 (Unity logs the error on one line and Keel read the wrong word).
+Run in the game on the 3D globe public beta (build 261107) with a test mod that breaks the same way; 0.8.7 not run.

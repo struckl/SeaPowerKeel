@@ -365,6 +365,9 @@ internal sealed class Runner
         if (at < 0)
             return null;
         string sig = FirstLine(message.Substring(at + 12));          // e.g. List`1<string> SeaPower.FileManager.GetDirectories(string)
+        int due = sig.IndexOf(" Due to:", StringComparison.Ordinal);   // Mono adds " Due to: Could not find field in class" (on the same line in the Unity log)
+        if (due > 0)
+            sig = sig.Substring(0, due);
         int paren = sig.IndexOf('(');
         string head = paren < 0 ? sig : sig.Substring(0, paren);
         int space = head.LastIndexOf(' ');
@@ -405,6 +408,9 @@ internal sealed class Runner
         if (candidates.Count == 0)
             return null;
         string what = FirstLine(message.Substring(message.IndexOf(" not found: ", StringComparison.Ordinal) + 12));
+        int dueAt = what.IndexOf(" Due to:", StringComparison.Ordinal);
+        if (dueAt > 0)
+            what = what.Substring(0, dueAt);
         var culprits = new List<PluginEntry>();
         var where = new Dictionary<PluginEntry, (string method, int removed)>();
         if (GuardPatches)
