@@ -105,7 +105,7 @@ internal sealed class CrashHunt
         phase = Phase.Round;
         Save();
         int left = (int)Math.Ceiling(Math.Log(suspects.Count, 2));
-        Message = $"Crash hunt, about {left} more restart(s): {suspects.Count} mods are suspects and {off.Count} are switched off for this game. Do what crashed the game. " +
+        Message = $"Crash hunt, about {left} more restart(s): {suspects.Count} mods are suspects, {off.Count} of them switched off for this game. Do what crashed the game. " +
                   "If it crashes, start the game again. If it does not, exit from the main menu and start again. Your saves may miss those mods until the hunt ends.";
     }
 
