@@ -10,7 +10,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $bepInExVersion = '5.4.23.2'
-$unityVersion = '6000.0.58'
+$unityVersion = '6000.0.84'
 
 $work = Join-Path $root 'obj\ci'
 if (Test-Path $work) { Remove-Item -Recurse -Force $work }
@@ -23,7 +23,7 @@ $bepInEx = Join-Path $work 'bepinex'
 Expand-Archive $zip $bepInEx
 
 $nupkg = Join-Path $work 'unity.zip'
-Invoke-WebRequest "https://nuget.bepinex.dev/v3/flatcontainer/unityengine.modules/$unityVersion/unityengine.modules.$unityVersion.nupkg" -OutFile $nupkg
+Invoke-WebRequest "https://nuget.bepinex.dev/v3/package/unityengine.modules/$unityVersion/unityengine.modules.$unityVersion.nupkg" -OutFile $nupkg
 $unity = Join-Path $work 'unity'
 Expand-Archive $nupkg $unity
 $managed = Join-Path $work 'managed'
