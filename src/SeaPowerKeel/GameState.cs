@@ -165,13 +165,25 @@ internal static class GameState
 
     private const string AlpineGuid = "alpine.seapower.modloader";
 
+    private static bool AlpineActive()
+    {
+        try
+        {
+            return BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(AlpineGuid);
+        }
+        catch (TypeInitializationException)
+        {
+            return false;   // outside the game (the offline checks): BepInEx has not started
+        }
+    }
+
     /// <summary>
     /// The loader other than Keel that is starting mods in this game, or null. Alpine's Mod Loader sits where Anchor Chain's preloader
     /// does (BepInEx\plugins\AnchorChain.Preloader.dll) and registers as a BepInEx plugin with its own id, so it is asked for first.
     /// </summary>
     public static string OtherLoader(Func<Assembly, bool> ours)
     {
-        if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey(AlpineGuid))
+        if (AlpineActive())
             return "Alpine's Mod Loader";
         return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "AnchorChain" && (ours == null || !ours(a))) ? "Anchor Chain" : null;
     }
