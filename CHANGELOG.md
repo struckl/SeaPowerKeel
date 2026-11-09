@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **KeelSetup.exe.** One window and one file: finds Sea Power, adds BepInEx if the game has none, installs the starter file and sets another loader's preloader aside. Restore undoes exactly what it changed. Checked offline on made-up game folders; not run on a real install yet.
+- **KeelSetup.exe.** One window and one file: finds Sea Power, adds BepInEx if the game has none, installs the starter file and sets another loader's preloader aside. Restore undoes exactly what it changed. Run on a clean copy of the game (globe beta 261107) with no BepInEx: Install added it, Keel 0.2.0 started 8 mods, and Restore removed what setup had added.
 
 ## 0.2.0 - 2026-11-09
 
