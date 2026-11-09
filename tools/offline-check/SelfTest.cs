@@ -130,6 +130,25 @@ internal static class SelfTest
         Check(CrashGuard.Blame("Crash!!!\n0x00 (Mono JIT code) SeaPower.GameMain:Update ()\nBetaMod.Hooks is mentioned but not a frame", mods) == null, "the game's frames and non-frame lines blame nobody");
         Check(CrashGuard.Blame("Crash!!!\n0x00 (Mono JIT code) NotBetaMod.Hooks:Run ()", mods) == null, "a longer name that ends the same is another mod");
 
+        string stack = "Crash: access violation (0xC0000005) in UnityPlayer.dll\n  at SeaPowerKeel.CrashCatcher.Compose (IntPtr p)\n  at UnityEngine.Diagnostics.Utils.ForceCrash (Int32 c)\n  at BetaMod.Hooks.Boom ()\n  at AlphaMod.Other.Run ()";
+        Check(CrashText.CrashLine(stack) == "access violation (0xC0000005) in UnityPlayer.dll", "the catcher's first line says what crashed and where");
+        Check(CrashGuard.Blame(stack, mods) == b, "the catcher's stack names the mod highest on it, not Keel's own frames");
+        Check(CrashText.CrashLine("Crash!!!") == null, "a block that is not the catcher's has no such line");
+        string caughtDir = Path.Combine(tmp, "crashcaught");
+        Directory.CreateDirectory(caughtDir);
+        string betaDll = Path.Combine(caughtDir, "beta.dll");
+        File.WriteAllText(betaDll, "x");
+        File.WriteAllLines(Path.Combine(caughtDir, "Keel-session.txt"), new[] { "session\tx", "start\tb", "done\t" });
+        File.WriteAllText(Path.Combine(caughtDir, CrashText.StackFile), stack);
+        var caughtNotes = new List<string>();
+        var caught = new PluginEntry { Guid = "b", Name = "Beta", TypeName = "BetaMod.Plugin", Dll = betaDll };
+        var caughtRun = new CrashGuard(caughtDir, null);
+        caughtRun.Apply(new[] { caught }, true, caughtNotes.Add);
+        caughtRun.Mark("quit", "");
+        Check(caught.State == PluginState.NotStarted && caughtNotes.Count == 1 && caughtNotes[0].Contains("Beta") && !caughtRun.Unnamed, "a crash after start-up with the mod on the catcher's stack: named and held out, no hunt needed");
+        caughtRun.WriteModsFile(new[] { caught });
+        Check(File.ReadAllText(Path.Combine(caughtDir, CrashText.ModsFile)).Contains("b\tBeta\tBetaMod"), "the watcher's list has id, name and code root");
+
         string dir = Path.Combine(tmp, "crashguard");
         Directory.CreateDirectory(dir);
         string dll = Path.Combine(dir, "beta.dll");

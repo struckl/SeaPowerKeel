@@ -17,6 +17,9 @@ folders, sort out dependencies and start order, start them), and on top of that:
   a mod's code on its stack, the next start names that mod in a notice and in the report and keeps it out until the mod is
   updated (`BepInEx\Keel-held.txt`; details in `BepInEx\Keel-crash.txt`). A crash later on with no mod code on its stack,
   or from a pack without code, is reported but cannot be pinned on a mod.
+- **A window that says what crashed.** Keel catches a native crash as it happens and records the code that was running; a small program of
+  Keel's (`KeelWatcher.exe`, in Keel's folder, nothing to install) shows a window the moment the game dies, naming the mod when its code was running,
+  and offers a restart. The game itself cannot be kept alive: a crash in native code ends the process.
 - **Crash hunt for the crashes nothing can name.** After a crash with no mod to blame, the report window's *Find crashing mod* button starts a
   hunt: each game runs with half of the suspects switched off in the mod list (packs without code included). Do what crashed the game; if it
   crashes, start again, if not, exit from the main menu and start again. About 7 restarts for 100 mods, then the mod is named and stays off and

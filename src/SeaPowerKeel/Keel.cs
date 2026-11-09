@@ -203,6 +203,14 @@ internal sealed class KeelHost : MonoBehaviour
             notes.Add(n);
             log.LogError(n);
         }, hunt != null && hunt.Running);
+        if (crash != null)
+        {
+            crash.WriteModsFile(Keel.Plugins);
+            string catcher = CrashCatcher.Install(Path.Combine(Paths.BepInExRootPath, CrashText.StackFile));
+            if (catcher != null)
+                log.LogWarning($"Crashes will not be caught this session: {catcher}");
+            StartWatcher();
+        }
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
@@ -278,6 +286,26 @@ internal sealed class KeelHost : MonoBehaviour
         // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
         wantNotice = notice.Value && (crashNotice != null || Keel.Plugins.Any(Report.IsProblem));
         // Errors that come later show up in the window; the file is rewritten when the window opens and at quit.
+    }
+
+    // The window a player sees when the game dies has to come from outside the game.
+    private void StartWatcher()
+    {
+        try
+        {
+            string exe = Path.Combine(Path.GetDirectoryName(OwnPath) ?? "", "KeelWatcher.exe");
+            if (!File.Exists(exe))
+            {
+                log.LogWarning($"No crash window this session: {exe} is missing.");
+                return;
+            }
+            string game = Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            Process.Start(new ProcessStartInfo(exe, $"{Process.GetCurrentProcess().Id} \"{Paths.BepInExRootPath}\" \"{game}\"") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning($"No crash window this session: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     private void RuleAnchorChain(List<ModFolder> enabled, Runner runner)
@@ -634,6 +662,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (Time.unscaledTime > nextFlush)
         {
             nextFlush = Time.unscaledTime + 1f;
+            CrashCatcher.KeepInstalled();
             keelLog?.Flush();
             if (wantNotice && !noticeArmed && GameState.StartupDone())
             {

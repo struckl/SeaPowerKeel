@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- KeelWatcher.exe: shows the crash window from outside the game. .NET Framework 4.8: on every Windows 10 and 11. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>KeelWatcher</AssemblyName>
+    <RootNamespace>SeaPowerKeel</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SeaPowerKeel\CrashText.cs" Link="CrashText.cs" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>

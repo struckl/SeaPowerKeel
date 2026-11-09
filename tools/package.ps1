@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $dist = Join-Path $root 'dist\SeaPowerKeel'
 
-foreach ($p in 'src\SeaPowerKeel\SeaPowerKeel.csproj', 'src\SeaPowerKeel.Stub\SeaPowerKeel.Stub.csproj') {
+foreach ($p in 'src\SeaPowerKeel\SeaPowerKeel.csproj', 'src\SeaPowerKeel.Stub\SeaPowerKeel.Stub.csproj', 'src\SeaPowerKeel.Watcher\SeaPowerKeel.Watcher.csproj') {
     dotnet build (Join-Path $root $p) -c Release -p:Deploy=false -p:GameDir="$GameDir"
     if ($LASTEXITCODE -ne 0) { throw "Build failed: $p" }
 }
@@ -29,6 +29,7 @@ if (Test-Path $dist) { Remove-Item -Recurse -Force $dist }
 New-Item -ItemType Directory -Force (Join-Path $dist 'copy-to-BepInEx-plugins') | Out-Null
 Copy-Item (Join-Path $root 'src\SeaPowerKeel\bin\Release\netstandard2.1\SeaPowerKeel.dll') $dist
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $dist 'copy-to-BepInEx-plugins')
+Copy-Item (Join-Path $root 'src\SeaPowerKeel.Watcher\bin\Release\net48\KeelWatcher.exe') $dist
 Copy-Item (Join-Path $root 'src\SeaPowerKeel\mod\_info.ini') $dist
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $dist 'LICENSE.txt')
 New-Item -ItemType Directory -Force (Join-Path $dist 'lib') | Out-Null

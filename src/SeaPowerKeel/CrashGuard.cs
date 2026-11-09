@@ -130,14 +130,8 @@ internal sealed class CrashGuard
         return string.Join("\n", log.Substring(lineStart).Replace("\r\n", "\n").Split('\n').Take(MaxCrashLines));
     }
 
-    private static bool IsManagedFrame(string line)
-    {
-        string t = line.TrimStart();
-        return t.StartsWith("at ", StringComparison.Ordinal) || t.StartsWith("(wrapper", StringComparison.Ordinal) || line.Contains("(Mono JIT code)");
-    }
-
     /// <summary>The first part of a mod's main class name, or null when that says nothing about whose code it is.</summary>
-    private static string RootOf(PluginEntry p)
+    internal static string RootOf(PluginEntry p)
     {
         if (string.IsNullOrEmpty(p.TypeName))
             return null;
@@ -146,26 +140,28 @@ internal sealed class CrashGuard
         return root.Length > 2 && !Runner.SharedNamespaces.Contains(root) ? root : null;
     }
 
-    private static bool HasRoot(string line, string root)
-    {
-        string probe = root + ".";
-        for (int at = line.IndexOf(probe, StringComparison.Ordinal); at >= 0; at = line.IndexOf(probe, at + 1, StringComparison.Ordinal))
-            if (at == 0 || !(char.IsLetterOrDigit(line[at - 1]) || line[at - 1] is '.' or '_'))
-                return true;
-        return false;
-    }
-
     /// <summary>The mod whose code is highest on the crash's stack, or null when only the game's and Unity's frames are there.</summary>
     internal static PluginEntry Blame(string crashBlock, IReadOnlyCollection<PluginEntry> plugins)
     {
-        if (crashBlock == null)
-            return null;
-        List<(string root, PluginEntry plugin)> roots = plugins.OrderBy(p => p.Order).Select(p => (RootOf(p), p)).Where(x => x.Item1 != null).ToList();
-        foreach (string line in crashBlock.Split('\n').Where(IsManagedFrame))
-            foreach ((string root, PluginEntry plugin) in roots)
-                if (HasRoot(line, root))
-                    return plugin;
-        return null;
+        List<PluginEntry> named = Blamable(plugins);
+        int hit = CrashText.FirstHit(crashBlock, named.Select(RootOf).ToList());
+        return hit >= 0 ? named[hit] : null;
+    }
+
+    /// <summary>The mods a stack can be pinned on, in the order blame goes by.</summary>
+    internal static List<PluginEntry> Blamable(IEnumerable<PluginEntry> plugins) => plugins.OrderBy(p => p.Order).Where(p => RootOf(p) != null).ToList();
+
+    /// <summary>For the watcher, which runs outside the game: id, name and code root of every mod.</summary>
+    public void WriteModsFile(IEnumerable<PluginEntry> plugins)
+    {
+        try
+        {
+            File.WriteAllLines(Path.Combine(dir, CrashText.ModsFile), Blamable(plugins).Select(p => $"{p.Guid}\t{p.Display}\t{RootOf(p)}"));
+        }
+        catch (Exception)
+        {
+            // the watcher then names mods by their id, or not at all
+        }
     }
 
     private static string Stamp(string dll)
@@ -197,7 +193,9 @@ internal sealed class CrashGuard
 
         if (Previous.Unclean)
         {
-            string block = CrashBlock(ReadAll(playerPrev));
+            string caught = ReadAll(Path.Combine(dir, CrashText.StackFile));
+            string block = !string.IsNullOrWhiteSpace(caught) ? caught : CrashBlock(ReadAll(playerPrev));
+            string detail = CrashText.CrashLine(block);
             WriteCrashFile(block);
             string where = Previous.Scene != null ? $" (last scene: {Previous.Scene})" : "";
             PluginEntry culprit = null;
@@ -223,7 +221,7 @@ internal sealed class CrashGuard
             else if (!huntRunning)
             {
                 Unnamed = true;
-                note($"The last game did not end normally{where}, and Keel cannot tell which mod did it. The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
+                note($"The last game did not end normally{where}, and Keel cannot tell which mod did it{(detail != null ? $" ({detail})" : "")}. The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
             }
         }
 
