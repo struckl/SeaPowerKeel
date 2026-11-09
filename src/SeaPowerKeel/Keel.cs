@@ -117,6 +117,7 @@ internal sealed class KeelHost : MonoBehaviour
             if (hunt.Message != null)
             {
                 crashNotice = hunt.Message;
+                Loading.LoadingWindow.Alert = hunt.Short;
                 notes.Add(hunt.Message);
                 log.LogWarning(hunt.Message);
             }
@@ -207,6 +208,8 @@ internal sealed class KeelHost : MonoBehaviour
         }, hunt != null && hunt.Running);
         if (crash != null)
         {
+            if (crash.Short != null)
+                Loading.LoadingWindow.Alert = crash.Short;
             crash.WriteModsFile(Keel.Plugins);
             string catcher = CrashCatcher.Install(Path.Combine(Paths.BepInExRootPath, CrashText.StackFile));
             if (catcher != null)
@@ -286,7 +289,8 @@ internal sealed class KeelHost : MonoBehaviour
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();
         // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
-        wantNotice = notice.Value && (crashNotice != null || Keel.Plugins.Any(Report.IsProblem));
+        // The summary card says it, and a click on it opens the report; the notice is for players who switched that window off.
+        wantNotice = notice.Value && !Loading.LoadingWindow.Shown && (crashNotice != null || Keel.Plugins.Any(Report.IsProblem));
         // Errors that come later show up in the window; the file is rewritten when the window opens and at quit.
     }
 

@@ -23,6 +23,11 @@ internal static class LoadingWindow
     /// <summary>When (UTC ticks) the game last loaded a scene on its own (a mission, the editor, a campaign), not added to the menu.</summary>
     public static long SceneLoadedTicks;
 
+    /// <summary>One short line about a crash or a crash hunt: the summary card turns amber and shows it. Set before the card appears.</summary>
+    internal static volatile string Alert;
+    /// <summary>The window and its summary card are up, so nothing else has to announce problems.</summary>
+    internal static volatile bool Shown;
+
     public static void Start(ConfigFile config, ManualLogSource log)
     {
         try
@@ -60,6 +65,7 @@ internal static class LoadingWindow
                 Spot = s, Scale = scale.Value, Opacity = opacity.Value, LingerSeconds = linger.Value, SummarySeconds = summary.Value,
                 MaxSeconds = max.Value, ClickToHide = click.Value, OnSummaryClick = () => ReportRequested = true,
             }).Start(m => log.LogWarning(m));
+            Shown = true;
         }
         catch (Exception ex)
         {

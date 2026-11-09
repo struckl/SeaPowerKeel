@@ -467,7 +467,8 @@ internal sealed class Overlay
         int S(int v) => (int)Math.Round(v * scale);
         Fill(dc, 0, 0, w, h, Edge);
         Fill(dc, 1, 1, w - 2, h - 2, Back);
-        Fill(dc, 1, 1, S(4), h - 2, s.WithErrors + s.NotStarted > 0 ? Amber : Green);      // a colour bar down the left edge: green = clean start
+        string alert = LoadingWindow.Alert;
+        Fill(dc, 1, 1, S(4), h - 2, alert != null || s.WithErrors + s.NotStarted > 0 ? Amber : Green);      // a colour bar down the left edge: green = clean start
         Native.SetBkMode(dc, Native.TRANSPARENT);
         int pad = S(14), y = S(8), lineH = S(20);
 
@@ -484,7 +485,12 @@ internal sealed class Overlay
 
         string line3;
         uint c3;
-        if (s.WithErrors + s.NotStarted > 0)
+        if (alert != null)
+        {
+            line3 = alert + " - click for details";
+            c3 = Amber;
+        }
+        else if (s.WithErrors + s.NotStarted > 0)
         {
             line3 = (s.WithErrors + s.NotStarted) + (s.WithErrors + s.NotStarted == 1 ? " mod has" : " mods have") + " problems - click for the report";
             c3 = Amber;

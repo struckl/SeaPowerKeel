@@ -37,6 +37,9 @@ internal sealed class CrashHunt
     /// <summary>What the player should be told at this start, or null.</summary>
     public string Message { get; private set; }
 
+    /// <summary>One short line for the summary card.</summary>
+    public string Short { get; private set; }
+
     /// <summary>A round is running in this game.</summary>
     public bool Running => phase == Phase.Round;
 
@@ -105,6 +108,7 @@ internal sealed class CrashHunt
         phase = Phase.Round;
         Save();
         int left = (int)Math.Ceiling(Math.Log(suspects.Count, 2));
+        Short = $"Crash hunt: {suspects.Count} mods still suspect";
         Message = $"Crash hunt, about {left} more restart(s): {suspects.Count} mods are suspects, {off.Count} of them switched off for this game. Do what crashed the game. " +
                   "If it crashes, start the game again. If it does not, exit from the main menu and start again. Your saves may miss those mods until the hunt ends.";
     }
@@ -115,6 +119,7 @@ internal sealed class CrashHunt
             WriteList(culprit != null ? new List<string> { culprit } : new List<string>());
         phase = Phase.None;
         Message = message;
+        Short = culprit != null ? $"Crash hunt found: {labelOf(culprit)}" : "Crash hunt ended";
         try
         {
             File.Delete(statePath);

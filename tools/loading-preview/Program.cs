@@ -21,6 +21,7 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        LoadingWindow.Alert = Environment.GetEnvironmentVariable("KEEL_ALERT");   // to see the card as it looks after a crash
         if (args.Length == 1 && args[0] == "live") return Live();
         if (args.Length < 2) { Console.WriteLine("usage: preview <Keel-log.txt> <out folder> [scale]  |  preview live"); return 1; }
         float scale = args.Length > 2 ? float.Parse(args[2], CultureInfo.InvariantCulture) : 1f;

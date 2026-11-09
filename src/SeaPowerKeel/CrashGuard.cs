@@ -49,6 +49,9 @@ internal sealed class CrashGuard
     /// <summary>The last game crashed and no mod could be named: the crash hunt can be offered.</summary>
     public bool Unnamed { get; private set; }
 
+    /// <summary>One short line for the summary card, when the last game crashed.</summary>
+    public string Short { get; private set; }
+
     /// <summary>A mod is being kept out in this game because of an earlier crash.</summary>
     public bool HeldActive { get; private set; }
 
@@ -231,6 +234,7 @@ internal sealed class CrashGuard
             if (culprit != null)
             {
                 string why = $"The last game ended unexpectedly {how}.";
+                Short = $"Last game crashed: {culprit.Display}";
                 note($"The last game did not end normally{where}: {culprit.Display} {culprit.Version} ({how}). Details: Keel-crash.txt.");
                 if (hold && !keptOn.Contains(culprit.Guid))
                     held[culprit.Guid] = (Stamp(culprit.Dll), why);
@@ -238,6 +242,7 @@ internal sealed class CrashGuard
             else if (!huntRunning)
             {
                 Unnamed = true;
+                Short = "Last game crashed: cause unknown";
                 note($"The last game did not end normally{where}, and Keel cannot tell which mod did it{(detail != null ? $" ({detail})" : "")}. The report window's 'Find crashing mod' button narrows it down over a few restarts. Details: Keel-crash.txt.");
             }
         }
