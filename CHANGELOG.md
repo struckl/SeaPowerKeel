@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **README: Linux (Steam Proton).** Switch Anchor Chain off in the game's Mods menu *and* unsubscribe from it on Steam, as a player reported; switched off in the Mods menu alone, Anchor Chain still loads its mods and Keel steps aside. Not run on Linux by us.
+
 ## 0.3.1 - 2026-11-09
 
 Run in the game on the globe beta (build 261107) on 2026-11-09 with Alpine's Mod Loader 0.2.1 installed: with Alpine active, Keel started none of the 17 mods and left them to it; after KeelSetup.exe switched over, Keel ran all 17. 0.8.7 not run.

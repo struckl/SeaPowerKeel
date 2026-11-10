@@ -62,6 +62,11 @@ log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on 
 mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
 is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). Keel now handles ACConfig files itself (checked offline; no mod in the game test used it). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
 
+**Linux (Steam Proton):** follow the manual steps above, and switch Anchor Chain off in **both** places: in the game's Mods menu
+*and* by unsubscribing from it on the Steam Workshop. Anchor Chain loads the DLLs of every folder the game lists, switched on
+or not, so turning it off in the Mods menu alone leaves it running; Keel then steps aside for its mods. A player got Keel
+working on Linux this way (reported 2026-11-10); we have not run it on Linux ourselves.
+
 ## Code signing policy
 
 See [docs/code-signing-policy.md](docs/code-signing-policy.md): who may approve a signed release, what the programs change on your PC, and the privacy statement.
