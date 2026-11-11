@@ -146,7 +146,7 @@ internal sealed class KeelHost : MonoBehaviour
         whatsNewOn = config.Bind("WhatsNew", "Show", true,
             "After a start where mods changed since the last one (new, updated, gone, or newly in trouble), show a What's new card at the " +
             @"top right of the main menu with what each author wrote about the update. Keel remembers the mods in BepInEx\Keel-seen.txt.");
-        workshopNotes = config.Bind("WhatsNew", "WorkshopNotes", false,
+        workshopNotes = config.Bind("WhatsNew", "WorkshopNotes", true,
             "For updated Workshop mods, read the author's change notes from the item's Steam Workshop changelog page " +
             "(steamcommunity.com, only for mods that changed; Keel sends nothing else). Off: the mod's CHANGELOG.md or just the version.");
         whatsNewSeconds = config.Bind("WhatsNew", "Seconds", 0f,
