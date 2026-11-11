@@ -175,6 +175,13 @@ internal sealed class Runner
 
     private Assembly preloaderStub;
 
+    /// <summary>Loads Keel's stand-in for Anchor Chain's preloader now, before anything asks for it (see the takeover).</summary>
+    public void UsePreloaderStandIn()
+    {
+        if (!AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == AcLoaderShim.PreloaderAssembly))
+            PreloaderStub();
+    }
+
     private Assembly PreloaderStub()
     {
         if (preloaderStub == null)

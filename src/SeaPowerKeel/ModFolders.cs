@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BepInEx;
+#if !KEEL_NO_UNITY
 using UnityEngine;
+#endif
 
 namespace SeaPowerKeel;
 
@@ -35,14 +37,34 @@ internal static class ModFolders
     public static string WorkshopRoot =>
         System.IO.Path.GetFullPath(System.IO.Path.Combine(Paths.GameRootPath, "..", "..", "workshop", "content", SteamAppId.ToString()));
 
-    public static string UserSettings => System.IO.Path.Combine(Application.persistentDataPath, "usersettings.ini");
+#if KEEL_NO_UNITY
+    // The takeover patcher may not touch UnityEngine (see its project file): the same two folders from BepInEx's paths and the
+    // company and product names Unity reads from <Data>\app.info (persistentDataPath = LocalLow\<company>\<product>).
+    private static string DataFolder => System.IO.Path.Combine(Paths.GameRootPath, Paths.ProcessName + "_Data");
+    private static string StreamingAssetsPath => System.IO.Path.Combine(DataFolder, "StreamingAssets");
+
+    private static string PersistentDataPath
+    {
+        get
+        {
+            string[] info = File.ReadAllLines(System.IO.Path.Combine(DataFolder, "app.info"));
+            string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return System.IO.Path.Combine(profile, "AppData", "LocalLow", info[0].Trim(), info[1].Trim());
+        }
+    }
+#else
+    private static string StreamingAssetsPath => Application.streamingAssetsPath;
+    private static string PersistentDataPath => Application.persistentDataPath;
+#endif
+
+    public static string UserSettings => System.IO.Path.Combine(PersistentDataPath, "usersettings.ini");
 
     public static List<ModFolder> FromDisk()
     {
         var found = new List<ModFolder>();
         try
         {
-            foreach (string dir in Directory.GetDirectories(Application.streamingAssetsPath))
+            foreach (string dir in Directory.GetDirectories(StreamingAssetsPath))
             {
                 string name = System.IO.Path.GetFileName(dir);
                 if (!GameFolders.Any(g => name.EndsWith(g, StringComparison.Ordinal)))

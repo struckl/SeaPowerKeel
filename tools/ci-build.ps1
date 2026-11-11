@@ -37,6 +37,8 @@ foreach ($name in 'UnityEngine.dll', 'UnityEngine.CoreModule.dll') {
 $refs = "-p:ManagedDir=$managed", "-p:BepInExCore=$bepInEx\BepInEx\core"
 dotnet build (Join-Path $root 'src\SeaPowerKeel.Stub\SeaPowerKeel.Stub.csproj') -c Release -p:Deploy=false @refs
 if ($LASTEXITCODE -ne 0) { throw 'Build failed: stub' }
+dotnet build (Join-Path $root 'src\SeaPowerKeel.Patcher\SeaPowerKeel.Patcher.csproj') -c Release @refs
+if ($LASTEXITCODE -ne 0) { throw 'Build failed: patcher' }
 dotnet build (Join-Path $root 'src\SeaPowerKeel.Watcher\SeaPowerKeel.Watcher.csproj') -c Release @refs
 if ($LASTEXITCODE -ne 0) { throw 'Build failed: KeelWatcher' }
 
@@ -48,6 +50,7 @@ foreach ($f in 'winhttp.dll', 'doorstop_config.ini', '.doorstop_version') { Copy
 Copy-Item (Join-Path $bepInEx 'BepInEx\core\*') (Join-Path $tree 'BepInEx\core')
 [System.IO.Compression.ZipFile]::CreateFromDirectory($tree, (Join-Path $payload 'bepinex.bin'))
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $payload 'stub.bin')
+Copy-Item (Join-Path $root 'src\SeaPowerKeel.Patcher\bin\Release\netstandard2.1\SeaPowerKeel.Patcher.dll') (Join-Path $payload 'patcher.bin')
 dotnet build (Join-Path $root 'src\SeaPowerKeel.Setup\SeaPowerKeel.Setup.csproj') -c Release "-p:PayloadDir=$payload" @refs
 if ($LASTEXITCODE -ne 0) { throw 'Build failed: KeelSetup' }
 

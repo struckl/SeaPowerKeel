@@ -20,11 +20,9 @@ Windows may say "unknown publisher" because the file is not signed yet: More inf
 [olist]
 [*]Subscribe and switch R.A.T.S. Keel on in the game's Mods menu
 [*]Copy [b]SeaPowerKeel.Stub.dll[/b] from [i]copy-to-BepInEx-plugins[/i] in Keel's Workshop folder into [i]Sea Power\BepInEx\plugins[/i] (once; it never needs replacing, updates come through the Workshop)
-[*]Delete [b]AnchorChain.Preloader.dll[/b] from [i]Sea Power\BepInEx\plugins[/i]
-[*]Unsubscribe from Anchor Chain if you like (on Linux/Proton: you must, switching it off in Mods is not enough)
-[*]Start the game. Ctrl+Shift+K shows Keel's report
+[*]Start the game, then restart it once. Ctrl+Shift+K shows Keel's report
 [/olist]
-If Anchor Chain's preloader stays in place, Anchor Chain loads its mods as before and Keel steps aside for them, so nothing starts twice. The same goes for Alpine's Mod Loader.
+[b]Keel is the loader while it is on.[/b] Anchor Chain's or Alpine's preloader can stay where it is: Keel keeps it from starting, so every mod starts once, by Keel. Their files are not touched; switch Keel off in the Mods menu and they start again. On the very first start Keel sets this up and leaves their mods to them once; restart and Keel runs everything.
 
 [h2]Keeps your game running[/h2]
 [list]
@@ -65,11 +63,20 @@ One Keel for both game versions; it uses nothing that differs between them. Run 
 BepInEx\config\dev.sewerlabs.seapowerkeel.cfg: how strict the version check is, plugins to leave off, Anchor Chain mods on or off, broken-patch removal, holding out crashed mods, the report key, the log, the loading window.
 
 [h2]For mod makers[/h2]
-Keel runs plain BepInEx plugins ([BepInPlugin], BepInDependency, BepInIncompatibility) and Anchor Chain mods ([ACPlugin], IAnchorChainMod, ACConfig). You do not need to reference Keel. keel.ini and the version check: docs/for-mod-authors.md in the source.
+[b]Your mod loads as built.[/b] Nothing to recompile, nothing to add, no need to reference Keel.
+[list]
+[*][b]List R.A.T.S. Keel as your required item.[/b] Keel brings Anchor Chain's library, so your players need no Anchor Chain item and none of its manual install steps: subscribe, run KeelSetup once, play
+[*][b]Anchor Chain mods run as they are:[/b] [ACPlugin], IAnchorChainMod, ACDependency, ACIncompatibility, ACConfig, AnchorChainLoader.FindFile
+[*][b]Plain BepInEx plugins run too:[/b] [BepInPlugin], BepInDependency, BepInIncompatibility
+[*][b]Bug reports that say what broke.[/b] When a game update breaks your mod, Keel's report names the missing method, field or type and the Harmony patch whose target is gone. Save logs gives players one zip with every log to attach to their report
+[*][b]One mod, both game builds.[/b] Ship a flat-map and a 3D-globe DLL and a small keel.ini, and Keel starts the one that fits
+[/list]
+Details: docs/for-mod-authors.md in the source.
 
 [h2]Credits[/h2]
 Written from scratch. Anchor Chain by the SeaPower-Modders is the loader Sea Power code mods grew up on; Keel reads Anchor Chain mods through their public attributes and ships its library unchanged.
 
 Source (MIT): https://github.com/struckl/SeaPowerKeel
+The name, logo, pictures and texts are not part of the MIT license: please do not re-upload Keel or a copy of it.
 
 [i]R.A.T.S. – Ratte's Assorted Tactical Systems[/i]

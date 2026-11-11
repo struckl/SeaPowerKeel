@@ -16,6 +16,7 @@ internal sealed class SetupCore
     public const string ExeName = "Sea Power.exe";
     private const string StubName = "SeaPowerKeel.Stub.dll";
     private const string PreloaderName = "AnchorChain.Preloader.dll";
+    private const string PatcherName = "SeaPowerKeel.Patcher.dll";
     private const string SetAside = ".keel-off";
     private const string ManifestName = "keel-setup.txt";
 
@@ -41,7 +42,10 @@ internal sealed class SetupCore
     private List<string> ReadManifest() => File.Exists(Manifest) ? File.ReadAllLines(Manifest).Where(l => l.Length > 0).ToList() : new List<string>();
 
     /// <summary>Installs the stub, adds BepInEx if the game has none, and sets another loader's preloader aside. Returns what it did, for the window.</summary>
-    public List<string> Install(byte[] stub, byte[] bepInExZip)
+    public List<string> Install(byte[] stub, byte[] bepInExZip) => Install(stub, bepInExZip, null);
+
+    /// <param name="patcher">Keel's takeover patcher for BepInEx\patchers (null: none; Keel installs it itself at its first start).</param>
+    public List<string> Install(byte[] stub, byte[] bepInExZip, byte[] patcher)
     {
         var did = new List<string>();
         List<string> manifest = ReadManifest();
@@ -76,6 +80,17 @@ internal sealed class SetupCore
             Note(@"created\tBepInEx\plugins\".Replace(@"\t", "\t") + StubName);
         File.WriteAllBytes(stubPath, stub);
         did.Add("Installed Keel's starter file.");
+
+        if (patcher != null)
+        {
+            string patchers = At(@"BepInEx\patchers");
+            Directory.CreateDirectory(patchers);
+            string patcherPath = Path.Combine(patchers, PatcherName);
+            if (!File.Exists(patcherPath))
+                Note("created\t" + @"BepInEx\patchers\" + PatcherName);
+            File.WriteAllBytes(patcherPath, patcher);
+            did.Add("Installed Keel's takeover, so no other loader starts while Keel is on.");
+        }
 
         string preloader = Path.Combine(Plugins, PreloaderName);
         if (File.Exists(preloader))

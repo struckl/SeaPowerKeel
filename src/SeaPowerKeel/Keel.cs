@@ -58,6 +58,10 @@ internal sealed class KeelHost : MonoBehaviour
 
     private ManualLogSource log;
     private ConfigEntry<bool> loadAcMods;
+    private ConfigEntry<bool> takeOver;
+    private Takeover.Record takeoverRecord;     // what the patcher did this start (null: it did not run)
+    private string takeoverInstall;            // "installed", "updated", "current" or why not
+    private bool restartForTakeover;            // the patcher arrived this start while another loader runs: one restart finishes it
     private ConfigEntry<string> versionCheck;
     private ConfigEntry<string> disabled;
     private ConfigEntry<string> hotkey;
@@ -88,8 +92,12 @@ internal sealed class KeelHost : MonoBehaviour
         log = BepInEx.Logging.Logger.CreateLogSource(Keel.Name);
         var config = new ConfigFile(Path.Combine(Paths.ConfigPath, Keel.Guid + ".cfg"), true);
         loadAcMods = config.Bind("Loading", "AnchorChainMods", true,
-            "Start Anchor Chain mods when Anchor Chain itself is not running (for example when its preloader cannot start on this game " +
-            "build). While Anchor Chain runs, Keel always leaves its mods to it, so nothing starts twice.");
+            "Start Anchor Chain mods. Keel runs them itself; Anchor Chain is not needed.");
+        takeOver = config.Bind("Loading", Takeover.ConfigKey, true,
+            @"While Keel is switched on, other mod loaders (Anchor Chain's preloader, Alpine's Mod Loader) do not start, so Keel runs every mod and " +
+            @"nothing starts twice. Keel keeps its patcher in BepInEx\patchers for this; the other loaders' files are not changed. Off: another " +
+            "loader that is installed starts its mods, and Keel leaves those mods to it.");
+        InstallTakeover();
         versionCheck = config.Bind("Loading", "GameVersionCheck", "Standard", new ConfigDescription(
             "Standard: a DLL that would stop missions from loading on this game build (a type of it is built on something this build " +
             "lacks) is not loaded; other missing parts are a warning. Strict: any missing part keeps the DLL from loading. Off: no check.",
@@ -329,7 +337,9 @@ internal sealed class KeelHost : MonoBehaviour
         WriteReport();
         // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
         // The summary card says it, and a click on it opens the report; the notice is for players who switched that window off.
-        wantNotice = notice.Value && !Loading.LoadingWindow.Shown && (crashNotice != null || Keel.Plugins.Any(Report.IsProblem));
+        if (restartForTakeover)
+            Loading.LoadingWindow.Alert ??= "Keel set up its takeover: restart once, then Keel runs every mod";
+        wantNotice = notice.Value && !Loading.LoadingWindow.Shown && (crashNotice != null || restartForTakeover || Keel.Plugins.Any(Report.IsProblem));
         // Errors that come later show up in the window; the file is rewritten when the window opens and at quit.
     }
 
@@ -471,16 +481,75 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
+    // The takeover patcher comes with Keel and is kept current by Keel: players never copy it by hand. What it did this start is
+    // in BepInEx\Keel-takeover.txt (only a record written by this game process counts).
+    private void InstallTakeover()
+    {
+        try
+        {
+            takeoverInstall = Takeover.Install(Path.Combine(Path.GetDirectoryName(OwnPath) ?? "", Takeover.PatcherFile), Paths.PatcherPluginPath, out _);
+            if (takeoverInstall is "installed" or "updated")
+                log.LogInfo($"Takeover patcher {takeoverInstall} in {Paths.PatcherPluginPath}: it works from the next start.");
+            else if (takeoverInstall != "current")
+                log.LogWarning($"Takeover patcher not installed: {takeoverInstall}.");
+        }
+        catch (Exception ex)
+        {
+            takeoverInstall = ex.Message;
+            log.LogWarning($"Takeover patcher not installed: {ex.Message}");
+        }
+        Takeover.Record r = Takeover.Record.Read(Path.Combine(Paths.BepInExRootPath, Takeover.RecordFile));
+        DateTime started = DateTime.UtcNow;
+        try
+        {
+            started = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        }
+        catch (Exception)
+        {
+            // keep now: an older record then never counts
+        }
+        takeoverRecord = r != null && r.WrittenUtc >= started.AddSeconds(-5) ? r : null;
+        if (takeoverRecord != null)
+        {
+            foreach (Takeover.Blocked b in takeoverRecord.Kept)
+                log.LogInfo($"Takeover: {b.Name} ({b.File}) was kept from starting; Keel runs its mods.");
+            if (takeoverRecord.Error != null)
+                log.LogWarning($"Takeover did not work this start: {takeoverRecord.Error}");
+        }
+    }
+
+    // Another loader is running although Keel is on: say why and what happens next.
+    private string OtherLoaderNote(string other)
+    {
+        if (!takeOver.Value)
+            return $"{other} is running: its mods are left to it, because TakeOver is off in Keel's settings.";
+        if (takeoverRecord?.Error != null)
+            return $"{other} is running: its mods are left to it. Keel's takeover did not work this start ({takeoverRecord.Error}); please send a report.";
+        if (takeoverRecord == null && takeoverInstall is "installed" or "updated")
+        {
+            restartForTakeover = true;
+            return $"{other} is running: this time its mods are left to it, so nothing starts twice. Keel has now set up its takeover: " +
+                   "restart the game once, and from then on Keel runs every mod.";
+        }
+        if (takeoverRecord == null)
+            return $"{other} is running: its mods are left to it. Keel could not set up its takeover ({takeoverInstall}). " +
+                   "Close the game and run KeelSetup.exe from Keel's Workshop folder.";
+        return $"{other} is running: its mods are left to it ({takeoverRecord.Off ?? "the takeover did not catch it"}).";
+    }
+
     private void RuleAnchorChain(List<ModFolder> enabled, Runner runner)
     {
         List<PluginEntry> acMods = Keel.Plugins.Where(p => p.Kind == PluginKind.AnchorChain && p.State == PluginState.Pending).ToList();
+        if (takeoverRecord?.Kept.Count > 0 && !notes.Any(n => n.StartsWith("Takeover:")))
+            notes.Add("Takeover: " + string.Join(", ", takeoverRecord.Kept.Select(b => b.Name).Distinct()) +
+                      " is installed but was kept from starting, so Keel runs every mod. Its files are untouched: switch Keel off in the Mods menu to use it again.");
         if (acMods.Count == 0)
             return;
         if (runner.AnchorChainRunning())
         {
             foreach (PluginEntry p in acMods)
                 p.Stop(PluginState.LeftToAnchorChain, $"{runner.OtherLoader()} is running and starts this mod.");
-            notes.Add($"{runner.OtherLoader()} is running: its mods are left to it. Use one loader at a time.");
+            notes.Add(OtherLoaderNote(runner.OtherLoader()));
             return;
         }
         if (!loadAcMods.Value)
@@ -498,7 +567,11 @@ internal sealed class KeelHost : MonoBehaviour
             return;
         }
         runner.AnchorChainDll = acDll;
-        notes.Add($"Anchor Chain is not running: Keel starts its mods (types from {acDll}).");
+        // A preloader the takeover kept from starting is still a file in BepInEx\plugins, where BepInEx's own resolver would find
+        // it for Anchor Chain's library (Alpine's is named the same and is not Anchor Chain's): Keel's stand-in is loaded first.
+        if (takeoverRecord?.Kept.Any(b => Path.GetFileName(b.File).Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase)) == true)
+            runner.UsePreloaderStandIn();
+        notes.Add($"Keel starts the Anchor Chain mods itself (types from {acDll}).");
     }
 
     // Anchor Chain started after Keel's first look: its mods are its own from then on (never started twice).
@@ -922,11 +995,12 @@ internal sealed class KeelHost : MonoBehaviour
         {
             int bad = Keel.Plugins.Count(Report.IsProblem);
             // Above the loading summary card, which sits at the bottom left of the main menu for the same half minute.
-            float height = crashNotice != null ? 170 : 70;
+            float height = crashNotice != null ? 170 : restartForTakeover ? 120 : 70;
             var r = new Rect(20, screenH - 135 - height, 470, height);
             GUI.Box(r, GUIContent.none);
             GUI.Label(new Rect(r.x + 10, r.y + 6, r.width - 20, r.height - 12),
                       (crashNotice != null ? $"<b>{crashNotice}</b>\n" : "") +
+                      (restartForTakeover ? "<b>Keel set up its takeover: restart the game once, then Keel runs every mod.</b>\n" : "") +
                       $"<b>{Keel.Name}</b>: {bad} mod(s) did not start or threw errors.\n{Report.Summary(Keel.Plugins)}.\n<b>{hotkey.Value}</b> shows why.", wrap);
         }
         if (!showWindow)

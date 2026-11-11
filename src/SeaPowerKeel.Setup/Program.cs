@@ -105,7 +105,7 @@ internal sealed class SetupForm : Form
         var close = new Button { Text = "Close", AutoSize = true, DialogResult = DialogResult.Cancel, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(P(8), 0, 0, 0) };
         install = new Button { Text = "Install", AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(0) };
         restore = new Button { Text = "Restore", AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(0, 0, P(8), 0) };
-        install.Click += (s, e) => Do(c => "Done. " + string.Join(" ", c.Install(Program.Resource("stub"), Program.Resource("bepinex"))) + "\n\nStart Sea Power, switch R.A.T.S. Keel on in Mods, and restart the game.");
+        install.Click += (s, e) => Do(c => "Done. " + string.Join(" ", c.Install(Program.Resource("stub"), Program.Resource("bepinex"), Program.Resource("patcher"))) + "\n\nStart Sea Power, switch R.A.T.S. Keel on in Mods, and restart the game.");
         restore.Click += (s, e) => Do(c => { c.Restore(); return "Everything Keel's setup changed is back as it was."; });
         close.Click += (s, e) => Close();
         row.Controls.Add(close);

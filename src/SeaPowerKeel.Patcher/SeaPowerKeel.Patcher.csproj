@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--The takeover patcher: BepInEx\patchers\SeaPowerKeel.Patcher.dll. BepInEx runs patchers before any plugin, so this is the
+      one place where Keel can keep another mod loader (Anchor Chain's preloader, Alpine's Mod Loader) from starting, without
+      touching that loader's files. Keel copies it there itself from its Workshop folder and keeps it current.
+      It must not use UnityEngine: patchers load before BepInEx has prepared the game's assemblies (KEEL_NO_UNITY).-->
+  <PropertyGroup>
+    <AssemblyName>SeaPowerKeel.Patcher</AssemblyName>
+    <RootNamespace>SeaPowerKeel.Patcher</RootNamespace>
+    <Product>R.A.T.S. Keel takeover: keeps other mod loaders from starting while Keel is switched on.</Product>
+    <Version>1.0.0</Version>
+    <DefineConstants>$(DefineConstants);KEEL_NO_UNITY</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony"><HintPath>$(BepInExCore)\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(BepInExCore)\Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
+    <Compile Include="..\SeaPowerKeel\ModFolders.cs" Link="ModFolders.cs" />
+    <Compile Include="..\SeaPowerKeel\Takeover.cs" Link="Takeover.cs" />
+  </ItemGroup>
+
+</Project>

@@ -41,9 +41,10 @@ folders, sort out dependencies and start order, start them), and on top of that:
 - **One DLL for both game builds** (the flat map of 0.8.7 and the 3D globe build): Keel references no game assembly.
 - **The hand-installed part never changes.** The stub in `BepInEx\plugins` only finds and starts Keel; every update comes
   through the Workshop.
-- **Runs plain BepInEx plugins and Anchor Chain mods.** While Anchor Chain runs, Keel leaves its mods to it, so nothing
-  starts twice (checked again right before Keel starts them). When Anchor Chain is not running (its preloader cannot start
-  on the 3D globe build yet), Keel starts those mods itself, the way Anchor Chain does: every DLL is loaded and every mod
+- **Keel is the loader while it is switched on.** Other mod loaders (Anchor Chain's preloader, Alpine's Mod Loader) do not
+  start, so Keel runs every mod and nothing starts twice. Their files are not touched: switch Keel off in the Mods menu and
+  they start again. See [Takeover](#takeover).
+- **Runs plain BepInEx plugins and Anchor Chain mods.** Keel starts Anchor Chain mods itself, the way Anchor Chain does: every DLL is loaded and every mod
   created before the first one starts, `TriggerEntryPoint` is called through the `IAnchorChainMod` interface (explicit
   implementations work), `[ACConfig]` config files are prepared, and `AnchorChainLoader.FindFile` works for mods that call it.
 
@@ -52,7 +53,7 @@ a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-n
 
 ## Install
 
-**The easy way:** run `KeelSetup.exe` from Keel's Workshop folder (Steam: right-click Sea Power, Manage, Browse local files, then `..\..\workshop\content\1286220\3835527459`), or download it from the GitHub release. It finds the game, adds BepInEx if needed, installs the starter file and sets another loader's preloader aside; **Restore** undoes it. Windows may say "unknown publisher" because the file is not signed yet: *More info*, *Run anyway*. The manual steps:
+**The easy way:** run `KeelSetup.exe` from Keel's Workshop folder (Steam: right-click Sea Power, Manage, Browse local files, then `..\..\workshop\content\1286220\3835527459`), or download it from the GitHub release. It finds the game, adds BepInEx if needed, installs the starter file and the takeover patcher, and sets another loader's preloader aside; **Restore** undoes it. Windows may say "unknown publisher" because the file is not signed yet: *More info*, *Run anyway*. The manual steps:
 
 1. Subscribe to R.A.T.S. Keel on the Workshop and switch it on in the game's Mods menu.
 2. Once: copy `SeaPowerKeel.Stub.dll` from `copy-to-BepInEx-plugins` in Keel's Workshop folder (or from the GitHub release)
@@ -64,14 +65,15 @@ a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-n
 game. The same goes for subscribing to, removing or reinstalling a mod, and for Steam re-downloading Keel's folder. If the game
 log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on in Mods and restart.
 
-**Switching from Anchor Chain:** delete `AnchorChain.Preloader.dll` from `BepInEx\plugins`; Keel then loads the Anchor Chain
-mods. You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
-is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). Keel now handles ACConfig files itself (checked offline; no mod in the game test used it). With the preloader left in place, Anchor Chain loads its mods as before and Keel steps aside for them.
+**Switching from Anchor Chain or Alpine:** nothing to delete. While Keel is on, its takeover keeps the other loader from
+starting (from the second start after installing Keel; see [Takeover](#takeover)). You no longer need the Anchor Chain item: Keel ships Anchor Chain's library (MIT) and uses it when no Anchor Chain folder
+is switched on (run in the game on the globe beta 261107; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there). Keel now handles ACConfig files itself (checked offline; no mod in the game test used it).
 
 **Linux (Steam Proton):** follow the manual steps above, and switch Anchor Chain off in **both** places: in the game's Mods menu
 *and* by unsubscribing from it on the Steam Workshop. Anchor Chain loads the DLLs of every folder the game lists, switched on
-or not, so turning it off in the Mods menu alone leaves it running; Keel then steps aside for its mods. A player got Keel
-working on Linux this way (reported 2026-11-10); we have not run it on Linux ourselves.
+or not, so turning it off in the Mods menu alone left it running. A player got Keel working on Linux this way (reported
+2026-11-10). With the takeover, Anchor Chain's preloader does not start at all while Keel is on, so this should no longer be
+needed; we have not run either on Linux ourselves.
 
 ## Code signing policy
 
@@ -83,7 +85,8 @@ See [docs/code-signing-policy.md](docs/code-signing-policy.md): who may approve 
 
 | Setting | Default | What |
 |---|---|---|
-| `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods when Anchor Chain is not running |
+| `Loading.AnchorChainMods` | `true` | Start Anchor Chain mods (Keel runs them itself) |
+| `Loading.TakeOver` | `true` | While Keel is on, other mod loaders do not start ([Takeover](#takeover)); `false`: an installed other loader starts its mods and Keel leaves those to it |
 | `Loading.GameVersionCheck` | `Standard` | `Standard`: leave out DLLs that would stop missions from loading, warn about the rest; `Strict`: leave out any DLL with a missing part (also a missing Harmony patch target or by-name lookup); `Off` |
 | `Loading.RemoveBrokenPatches` | `true` | When the game throws 'Method not found' / 'Field not found' because a mod's Harmony patch uses something this build lacks, Keel takes that mod's patch off the failing game method again and names the mod (0.1.6); `false`: Keel only names the mod |
 | `Loading.HoldOutCrashers` | `true` | Keep out a mod that took the game down, until it is updated (0.2.0); `false`: Keel only names it |
@@ -131,8 +134,31 @@ offline from a real log and its thread smoke-tested, **not yet run in the game**
    created (a mod that cannot be loaded, or has no `IAnchorChainMod.TriggerEntryPoint`, is FAILED and takes the mods that
    need it with it), and only then the rest starts in dependency order, otherwise in the game's mod-list order.
 
-Writing a mod for it: [docs/for-mod-authors.md](docs/for-mod-authors.md) (BepInEx plugins, Anchor Chain mods, `keel.ini`
+**For mod authors:** your mod loads as built, nothing to recompile or add. List R.A.T.S. Keel as your Workshop item's required
+item (3835527459): Keel brings Anchor Chain's library, so your players need no Anchor Chain item. When a game update breaks a
+mod, Keel's report names the missing method, field or type. Writing a mod for it: [docs/for-mod-authors.md](docs/for-mod-authors.md) (BepInEx plugins, Anchor Chain mods, `keel.ini`
 for mods with one DLL per game build).
+
+## Takeover
+
+While R.A.T.S. Keel is switched on in the game's Mods menu, it is the only mod loader that runs. Other loaders that are still
+installed (Anchor Chain's preloader, Alpine's Mod Loader) are kept from starting, so every mod is started once, by Keel.
+
+- **How:** Keel keeps a small BepInEx patcher, `BepInEx\patchers\SeaPowerKeel.Patcher.dll`. BepInEx runs patchers before any
+  plugin; Keel's takes the other loaders out of the list of plugins BepInEx starts. It changes no game file and patches no
+  game code.
+- **Their files stay as they are.** Nothing is renamed, moved or deleted, and their code is not read: they are recognized by
+  their plugin id. Switch Keel off in the Mods menu (or set `Loading.TakeOver = false`) and they start again at the next start.
+- **Keel installs and updates the patcher itself** from its Workshop folder: nothing to copy by hand, and fixes arrive with Keel's
+  Workshop updates. A patcher in use is set aside as `.old` and replaced for the next start.
+- **The first start after the update** still has the other loader running: Keel leaves that loader's mods to it once, so
+  nothing starts twice, and says *restart the game once*. From the next start on Keel runs everything.
+- **The report says what happened:** `BepInEx\Keel-takeover.txt` (written by the patcher at every start) and a line in Keel's
+  report name the loader that was kept from starting.
+- If the game folder cannot be written to, Keel says so; run `KeelSetup.exe` then.
+
+Status: built and checked offline (the self-tests: the rules, the record, installing and updating the patcher, KeelSetup);
+**not yet run in the game.**
 
 ## Differences from Anchor Chain's loader
 
@@ -187,6 +213,13 @@ The Anchor Chain compatibility changes (CHANGELOG, "Unreleased") are checked off
 Written from scratch. Anchor Chain (SeaPower-Modders, MIT) is the community chainloader Sea Power code mods are built on;
 Keel reads Anchor Chain mods through their public attributes and interface so players can use both.
 
-MIT license.
+## License
+
+- **The code is MIT** ([LICENSE](LICENSE)): read it, learn from it, fork it, send fixes.
+- **The name and the look are not part of that.** "R.A.T.S.", "R.A.T.S. Keel", the logo, the Workshop pictures and texts and the
+  plugin ids `dev.sewerlabs.seapowerkeel*` belong to the author; all rights reserved.
+- **No re-uploads.** Do not upload Keel or a copy of it to the Steam Workshop or elsewhere under these names, with these pictures,
+  or in a way that looks official or like a successor. A fork under its own name, look and plugin ids is fine.
+- Anchor Chain's library (`lib/`, MIT) and BepInEx keep their own licenses: [lib/THIRD-PARTY.txt](lib/THIRD-PARTY.txt).
 
 *R.A.T.S. – Ratte's Assorted Tactical Systems*

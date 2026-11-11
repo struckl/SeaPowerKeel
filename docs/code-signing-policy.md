@@ -13,7 +13,9 @@ Every signed release is approved by hand. Multi-factor authentication is require
 
 ## What the programs do to your system
 
-`KeelSetup.exe` says what it will change before you click Install: it adds BepInEx if the game has none, installs Keel's starter file, and renames another loader's preloader so only one loader is active. **Restore**, in the same window, undoes exactly those changes.
+`KeelSetup.exe` says what it will change before you click Install: it adds BepInEx if the game has none, installs Keel's starter file and its takeover patcher (`BepInEx\patchers\SeaPowerKeel.Patcher.dll`), and renames another loader's preloader so only one loader is active. **Restore**, in the same window, undoes exactly those changes.
+
+Keel itself, in the game, keeps that takeover patcher current: it copies it from its own Workshop folder into `BepInEx\patchers` when it is missing or older. The patcher keeps other mod loaders from starting while Keel is switched on; it changes no file.
 
 `KeelWatcher.exe` waits for the game to end, and shows a window if it did not end normally.
 

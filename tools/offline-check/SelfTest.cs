@@ -63,6 +63,7 @@ internal static class SelfTest
             PreventionChecks(tmp, managed, core);
             SetupChecks(tmp);
             WhatsNewChecks(tmp);
+            TakeoverChecks(tmp);
         }
         finally
         {
@@ -264,6 +265,66 @@ internal static class SelfTest
         run3.Apply(new[] { third }, true, notes.Add);
         run3.Mark("quit", "");
         Check(third.State == PluginState.Pending && !File.Exists(Path.Combine(dir, "Keel-held.txt")), "an updated mod gets another chance");
+    }
+
+    private static void TakeoverChecks(string tmp)
+    {
+        Console.WriteLine("11. Takeover: while Keel is on, other loaders do not start; Keel installs and updates its patcher");
+        string[] withStub = { "io.github.seapower_modders.anchorchain_preloader", Takeover.StubGuid };
+        Check(Takeover.WhyNot(withStub, true, "") == null, "Keel on, stub there: other loaders are kept from starting");
+        Check(Takeover.WhyNot(new[] { "alpine.seapower.modloader" }, true, "") != null, "no stub in BepInEx\\plugins: nothing is taken out");
+        Check(Takeover.WhyNot(withStub, false, "") != null, "Keel switched off in the mod list: the other loader starts");
+        Check(Takeover.WhyNot(withStub, true, "[Loading]\nTakeOver = false\n") != null, "TakeOver = false in Keel's settings: the other loader starts");
+        Check(Takeover.WhyNot(withStub, true, "[Report]\nTakeOver = false\n[Loading]\nTakeOver = true\n") == null, "only [Loading] TakeOver counts");
+        Check(Takeover.IsOtherLoader("alpine.seapower.modloader") && Takeover.IsOtherLoader("io.github.seapower_modders.anchorchain_preloader")
+              && Takeover.IsOtherLoader("IO.GITHUB.SEAPOWER_MODDERS.ANCHORCHAIN") && !Takeover.IsOtherLoader("dev.sewerlabs.seapowerkeel.stub")
+              && !Takeover.IsOtherLoader("anchorchain.sonaraudio") && !Takeover.IsOtherLoader(null),
+              "Anchor Chain and Alpine are recognized by plugin id; Keel and ordinary mods are not");
+
+        var rec = new Takeover.Record { WrittenUtc = new DateTime(2026, 11, 11, 20, 0, 0, DateTimeKind.Utc) };
+        rec.Kept.Add(new Takeover.Blocked { Guid = "alpine.seapower.modloader", Name = "Alpine's Mod Loader", File = @"C:\g\BepInEx\plugins\AnchorChain.Preloader.dll" });
+        string recPath = Path.Combine(tmp, "Keel-takeover.txt");
+        File.WriteAllText(recPath, rec.Write());
+        Takeover.Record back = Takeover.Record.Read(recPath);
+        Check(back != null && back.WrittenUtc == rec.WrittenUtc && back.Kept.Count == 1 && back.Kept[0].Name == "Alpine's Mod Loader"
+              && back.Kept[0].File.EndsWith("AnchorChain.Preloader.dll") && back.Off == null && back.Error == null, "the record says which loader was kept from starting");
+        File.WriteAllText(recPath, new Takeover.Record { WrittenUtc = rec.WrittenUtc, Off = "R.A.T.S. Keel is switched off" }.Write());
+        back = Takeover.Record.Read(recPath);
+        Check(back.Off == "R.A.T.S. Keel is switched off" && back.Kept.Count == 0, "and why it took nothing out");
+        File.WriteAllText(recPath, "garbage");
+        Check(Takeover.Record.Read(recPath) == null && Takeover.Record.Read(Path.Combine(tmp, "none.txt")) == null, "a broken or missing record counts as none");
+
+        string keelDir = Path.Combine(tmp, "keelmod");
+        string patchers = Path.Combine(tmp, "game", "BepInEx", "patchers");
+        Directory.CreateDirectory(keelDir);
+        string source = Path.Combine(keelDir, Takeover.PatcherFile);
+        Check(Takeover.Install(source, patchers, out bool changed).Contains("missing") && !changed, "no patcher in Keel's folder: nothing written, the reason given");
+        File.WriteAllBytes(source, new byte[] { 1, 2, 3 });
+        Check(Takeover.Install(source, patchers, out changed) == "installed" && changed, "first start: the patcher is installed");
+        Check(Takeover.Install(source, patchers, out changed) == "current" && !changed, "next start: it is current, nothing written");
+        File.WriteAllBytes(source, new byte[] { 4, 5, 6, 7 });
+        string target = Path.Combine(patchers, Takeover.PatcherFile);
+        string result;
+        using (new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))   // as BepInEx holds a loaded patcher
+            result = Takeover.Install(source, patchers, out changed);
+        Check(result == "updated" && File.ReadAllBytes(target).SequenceEqual(new byte[] { 4, 5, 6, 7 }) && File.Exists(target + ".old"),
+              "a Keel update brings a new patcher even while the old one is in use (it is set aside as .old)");
+        Takeover.Install(source, patchers, out _);
+        Check(!File.Exists(target + ".old"), "the .old copy is cleared at the next start");
+        Check(Directory.GetFiles(patchers, "*.dll").Length == 1, "BepInEx sees one patcher DLL only");
+
+        // Setup installs it too, and Restore takes it away again.
+        string game = Path.Combine(tmp, "setup-takeover", "steamapps", "common", "Sea Power");
+        Directory.CreateDirectory(Path.Combine(game, "BepInEx", "core"));
+        File.WriteAllText(Path.Combine(game, SetupCore.ExeName), "x");
+        File.WriteAllText(Path.Combine(game, "winhttp.dll"), "theirs");
+        File.WriteAllText(Path.Combine(game, "BepInEx", "core", "BepInEx.dll"), "theirs");
+        var s = new SetupCore(game);
+        s.Install(new byte[] { 1 }, Array.Empty<byte>(), new byte[] { 9, 9 });
+        string setupPatcher = Path.Combine(game, "BepInEx", "patchers", Takeover.PatcherFile);
+        Check(File.Exists(setupPatcher), "KeelSetup installs the takeover patcher");
+        s.Restore();
+        Check(!File.Exists(setupPatcher) && File.Exists(Path.Combine(game, "winhttp.dll")), "Restore removes it and leaves BepInEx that was there");
     }
 
     private static void SetupChecks(string tmp)

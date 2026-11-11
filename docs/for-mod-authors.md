@@ -3,6 +3,18 @@
 Keel runs two kinds of plugins from the game's mod folders (Workshop items and `Sea Power_Data\StreamingAssets\<folder>`).
 You do not need to reference Keel.
 
+**Your mod loads as built.** Nothing to recompile, nothing to add.
+
+- **List R.A.T.S. Keel as your Workshop item's required item** (Steam: your item, *Add/Remove Required Items*, Workshop item
+  3835527459). Keel brings Anchor Chain's library, so your players need no Anchor Chain item and none of its manual install
+  steps: subscribe, run `KeelSetup.exe` once, play.
+- **Anchor Chain mods and plain BepInEx plugins run as they are** (sections 1 and 2).
+- **Bug reports that say what broke.** When a game update breaks your mod, Keel's report (`BepInEx\Keel-report.txt`) names
+  the missing method, field or type and the Harmony patch whose target is gone; *Save logs* gives players one zip to attach.
+- **One mod, both game builds:** a flat-map and a 3D-globe DLL plus a small `keel.ini` (below).
+- **While Keel is on, it is the only loader:** an Anchor Chain or Alpine preloader that is still installed does not start, so
+  your mod is never started twice.
+
 ## 1. A plain BepInEx plugin (recommended)
 
 ```csharp
@@ -22,9 +34,8 @@ the plugin to `Chainloader.PluginInfos`, so other plugins find it the BepInEx wa
 
 ## 2. An Anchor Chain mod
 
-`[ACPlugin]` on an `IAnchorChainMod`, with `[ACDependency]` / `[ACIncompatibility]`, as Anchor Chain describes. While
-Anchor Chain runs, Keel leaves these to it. When Anchor Chain is not running (for example when its preloader cannot start
-on a game build), Keel starts them itself: it takes the types from Anchor Chain's DLL (a subscribed copy, else the
+`[ACPlugin]` on an `IAnchorChainMod`, with `[ACDependency]` / `[ACIncompatibility]`, as Anchor Chain describes. Keel
+starts them itself (Anchor Chain's own loader does not start while Keel is on): it takes the types from Anchor Chain's DLL (a subscribed copy, else the
 one Keel ships) and calls `TriggerEntryPoint` through the `IAnchorChainMod` interface (an explicit implementation works). Like Anchor
 Chain it loads every DLL and creates every mod before the first one starts, only looks at public plugin classes, and handles
 `[ACConfig]` (default `<id>.ini` in your mod folder, the player's copy `<id>_user.ini` in `StreamingAssets/ACConfigs`, new keys
