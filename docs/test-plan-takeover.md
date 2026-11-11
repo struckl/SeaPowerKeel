@@ -53,3 +53,5 @@ For the build after 0.4.0 (takeover, self-installing patcher) together with the 
 - Put back: `AnchorChain.Preloader.dll.keel-off`, his mod list, Keel on.
 - Results into `docs/test-<date>-takeover.md`, README/CHANGELOG status lines, `mods.json` `tested_in_game`.
 - Green: archive the "Mod changes news display" session (his word 2026-11-12).
+- Red: fix it here, or hand a What's new fault to that session (it built the card) with the log and screenshots; test again,
+  then archive (his word 2026-11-12).
