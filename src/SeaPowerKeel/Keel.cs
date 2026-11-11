@@ -117,6 +117,9 @@ internal sealed class KeelHost : MonoBehaviour
                 log.LogWarning($"Keel will not see which file the game was loading in a crash: {trail}");
             StartWatcher();
         }
+        string compat = CompatDialog.Install();
+        if (compat != null)
+            log.LogInfo($"Game version dialog stays the game's own: {compat}");
         // Here, in Awake: the game has not read its mod list yet.
         try
         {

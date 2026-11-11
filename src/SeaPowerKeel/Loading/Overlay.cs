@@ -452,6 +452,11 @@ internal sealed class Overlay
             foot = "Starting " + s.CurrentIndex + "/" + s.Total + ": " + Shorten(s.Current, 42) + (s.CurrentFor >= 1 ? "  -  " + s.CurrentFor.ToString("0") + " s" : "");
             footColor = s.CurrentFor >= 5 ? Amber : Text;
         }
+        else if (LoadingWindow.WaitingFor != null)
+        {
+            foot = "Waiting for you: " + LoadingWindow.WaitingFor;
+            footColor = Amber;
+        }
         else if (s.Idle >= 2.5)
         {
             foot = "Still loading  -  " + s.Idle.ToString("0") + " s since the last message" + (string.IsNullOrEmpty(s.LastEvent) ? "" : ": " + Shorten(s.LastEvent, 34));

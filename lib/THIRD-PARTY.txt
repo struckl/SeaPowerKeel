@@ -1,4 +1,4 @@
-lib\AnchorChain.keel.bin is AnchorChain.dll from Anchor Chain by the SeaPower-Modders (MIT), built with the globe fix sent as PR #20.
+lib\AnchorChain.keel.bin is AnchorChain.dll 1.1.0 from Anchor Chain by the SeaPower-Modders (MIT), byte for byte the official Workshop file (SHA-256 e2728110...): some mods check that hash before they run.
 Keel uses it only as a library, so Anchor Chain mods find the types they were built against. It does not start Anchor Chain.
 The .bin name keeps Anchor Chain's preloader and mod scanners from treating it as a mod.
 

@@ -25,6 +25,8 @@ internal static class LoadingWindow
 
     /// <summary>One short line about a crash or a crash hunt: the summary card turns amber and shows it. Set before the card appears.</summary>
     internal static volatile string Alert;
+    /// <summary>The game waits for the player (a dialog in the game window): shown instead of "still loading".</summary>
+    internal static volatile string WaitingFor;
     /// <summary>The window and its summary card are up, so nothing else has to announce problems.</summary>
     internal static volatile bool Shown;
 
