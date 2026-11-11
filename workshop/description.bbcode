@@ -42,6 +42,8 @@ Keel is the mod loader that looks before it loads. It runs Sea Power's code mods
 [*]You no longer need the Anchor Chain item: Keel brings its own copy of Anchor Chain's library (MIT) for the mods built against it. Run in the game on the 3D globe public beta (build 261107) with no Anchor Chain on the PC. On 0.8.7 keep Anchor Chain subscribed, that is the tested way there. Keel handles ACConfig files itself (checked offline; no mod in the game test used it)
 [*]Start the game. Ctrl+Shift+K shows the report
 [/olist]
+[b]Mods menu:[/b] after the game's Reload, Keel starts code mods you switched on and takes switched-off ones out as far as the running game allows; Restart in the same dialog closes the game and starts it again. [b]Send report[/b] in the crash and report windows sends your logs to the R.A.T.S. developer, user name removed, only when you click Send.
+
 [b]Restart after every change to the mod list.[/b] Keel starts while the game starts and reads the mod list then. If BepInEx\LogOutput.log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on in Mods and restart.
 If you keep Anchor Chain's preloader, Anchor Chain loads its mods as before and Keel steps aside for them, so nothing starts twice.
 
