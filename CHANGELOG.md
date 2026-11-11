@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - What's new
+
+- **What's new since your last game.** Keel remembers the mods it loaded in `BepInEx\Keel-seen.txt` (versions, Steam's update time for Workshop items, and a quick fingerprint of each folder, so data mods count too). At the next start a card at the top right of the main menu names what changed: mods that are new, updated (`1.3.0 → 1.4.0`), gone, and mods that ran last time and now fail, which lead the list with the reason. Under each, the first lines of what its author wrote: the sections of the mod's `CHANGELOG.md` above the version you had, else just the version. A click closes the card, a mission start takes it away, and Ctrl+Shift+K and `Keel-report.txt` show the full list with every line. Nothing on the first start, and nothing when nothing changed.
+- **Workshop change notes, opt-in** (`WhatsNew.WorkshopNotes`, off by default): for updated Workshop mods, Keel reads the item's public Steam changelog page and shows the notes written between your last start and this update (each note carries its time). Off by default because Keel sends nothing unless you ask (see the privacy policy); offline or unreachable, the `CHANGELOG.md` is used.
+- Offline checks: the comparison, the file, Steam's update times, the Workshop notes by time and the CHANGELOG sections (156 of 156 pass). Not run in the game yet.
+
 ## 0.4.0 - 2026-11-11 - game 0.9.0, Mods menu Restart and Reload, Send report
 
 - **Declared for game 0.9.0.** The mod's `_info.ini` now says it fits 0.8.7 up to every 0.9.x, so the game no longer lists it as "not declared to be compatible", and Steam hands this and later updates to 0.9.0 players (the game skips Workshop updates whose declaration does not fit its version). Keel references no game assembly; its by-name hooks (the Mods menu dialog, the file trail, the mod list) are all in 0.9.0 (build 261111); run in the game on 0.9.0: start-up with 17 mods, Reload and Restart.

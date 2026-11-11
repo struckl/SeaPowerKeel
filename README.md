@@ -33,6 +33,7 @@ folders, sort out dependencies and start order, start them), and on top of that:
   went wrong.
 - **Always works on the beta branch.** Keel uses nothing of the game that changes between builds; on the 3D globe beta, where
   Anchor Chain's preloader does not start, Keel runs the Anchor Chain mods.
+- **What's new since your last game.** Keel remembers the mods it loaded (`BepInEx\Keel-seen.txt`). When something changed, a card at the top right of the main menu names the mods that are new, updated (with the version jump), gone, or ran last time and fail now, with the first lines of what the author wrote about the update: the mod's `CHANGELOG.md` (the sections above the version you had), or, if you switch on `WhatsNew.WorkshopNotes`, the Workshop change notes written since your last start. A click closes it; it goes when a mission starts; Ctrl+Shift+K shows the full list. The first start with it says nothing (nothing to compare with yet).
 - **A log with times.** `BepInEx\Keel-log.txt` has every log line of the game, BepInEx and all mods with the time of day and
   the seconds since the game started; an exception gets a line saying which mod it came from, with its stack trace (also in
   LogOutput.log). BepInEx's own log has no times and is overwritten at every start; Keel keeps the last sessions too
@@ -91,6 +92,9 @@ See [docs/code-signing-policy.md](docs/code-signing-policy.md): who may approve 
 | `Logging.KeepSessions` | `3` | Earlier sessions' logs to keep |
 | `Report.Hotkey` | `Ctrl+Shift+K` | Report window |
 | `Report.NoticeOnProblems` | `true` | Notice after start-up when a mod did not start or threw |
+| `WhatsNew.Show` | `true` | The What's new card after a start where mods changed |
+| `WhatsNew.WorkshopNotes` | `false` | Read updated Workshop mods' change notes from their Steam changelog page (only for mods that changed); off: `CHANGELOG.md` or just the version |
+| `WhatsNew.Seconds` | `0` | How long the card stays; 0 = until clicked or a mission starts |
 | `Loading window.Show` | `true` | The loading window ([docs/loading-window.md](docs/loading-window.md)) |
 | `Loading window.Spot` | `Marker` | `Marker` (the blank band under the main menu's news box), `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight` of the game's window |
 | `Loading window.Scale` | `0` | Size; 0 = by the game window's height (1.5 on a 4K screen) |

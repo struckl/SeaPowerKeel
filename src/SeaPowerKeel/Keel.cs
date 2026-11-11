@@ -62,6 +62,8 @@ internal sealed class KeelHost : MonoBehaviour
     private ConfigEntry<string> disabled;
     private ConfigEntry<string> hotkey;
     private ConfigEntry<bool> notice;
+    private ConfigEntry<bool> whatsNewOn, workshopNotes;
+    private ConfigEntry<float> whatsNewSeconds;
     private ConfigEntry<float> uiScale;
     private KeelLog keelLog;
     private CrashGuard crash;
@@ -141,6 +143,14 @@ internal sealed class KeelHost : MonoBehaviour
         hotkey = config.Bind("Report", "Hotkey", "Ctrl+Shift+K", "Shows and hides the report window.");
         notice = config.Bind("Report", "NoticeOnProblems", true,
             "After start-up, show a short notice in the corner when a mod did not start or threw errors.");
+        whatsNewOn = config.Bind("WhatsNew", "Show", true,
+            "After a start where mods changed since the last one (new, updated, gone, or newly in trouble), show a What's new card at the " +
+            @"top right of the main menu with what each author wrote about the update. Keel remembers the mods in BepInEx\Keel-seen.txt.");
+        workshopNotes = config.Bind("WhatsNew", "WorkshopNotes", false,
+            "For updated Workshop mods, read the author's change notes from the item's Steam Workshop changelog page " +
+            "(steamcommunity.com, only for mods that changed; Keel sends nothing else). Off: the mod's CHANGELOG.md or just the version.");
+        whatsNewSeconds = config.Bind("WhatsNew", "Seconds", 0f,
+            "How long the card stays; 0 = until clicked or a mission starts.");
         ConfigEntry<bool> timedLog = config.Bind("Logging", "TimestampedLog", true,
             @"Write BepInEx\Keel-log.txt: every log line of the game, BepInEx and all mods with time of day and seconds since the game " +
             "started, and the mod an exception came from (with its stack trace).");
@@ -215,6 +225,8 @@ internal sealed class KeelHost : MonoBehaviour
         log.LogInfo($"Found {Keel.Plugins.Count} plugin(s) in {Keel.Plugins.Select(p => p.Dll).Distinct().Count()} DLL(s) ({watch.ElapsedMilliseconds} ms).");
         foreach (SkippedDll d in skippedDlls)
             log.LogInfo($"DLL left out: {d.Path} - {d.Reason}");
+        if (whatsNewOn.Value)
+            StartWhatsNew(enabled);
         // Before any mod is touched: what the last session left, so a mod that took the game down cannot do it again.
         crash?.Apply(Keel.Plugins, holdCrashers.Value, n =>
         {
@@ -617,7 +629,10 @@ internal sealed class KeelHost : MonoBehaviour
     {
         try
         {
-            File.WriteAllText(reportPath, Report.Text(Keel.Plugins, Header(), notes, skippedDlls));
+            string text = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
+            if (news is { Count: > 0 })
+                text += Environment.NewLine + "WHAT'S NEW SINCE THE LAST START" + Environment.NewLine + WhatsNew.Text(news).Replace("\n", Environment.NewLine);
+            File.WriteAllText(reportPath, text);
         }
         catch (Exception ex)
         {
@@ -760,9 +775,21 @@ internal sealed class KeelHost : MonoBehaviour
 
     private void PollReportInput()
     {
-        if (!showWindow) return;
+        if (!showWindow && !NewsVisible) return;
         if (!pointerProbed) { pointerProbed = true; pointer = ProbePointer(); }
         if (pointer == null) return;
+        if (!showWindow)
+        {
+            // The What's new card: a click on it closes it (the report's hotkey still shows everything).
+            try
+            {
+                var (click, pos, _) = pointer();
+                if (click && newsRect.Contains(new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale)))
+                    newsClosed = true;
+            }
+            catch (Exception) { pointer = null; }
+            return;
+        }
         try
         {
             var (click, pos, esc) = pointer();
@@ -823,6 +850,7 @@ internal sealed class KeelHost : MonoBehaviour
             TakePackProblems();
             keelLog?.Flush();
             HookModMenu();
+            FinishWhatsNew();
             if (wantNotice && !noticeArmed && GameState.StartupDone())
             {
                 noticeArmed = true;
@@ -904,6 +932,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (!showWindow)
         {
             windowCentered = false;
+            DrawNews(screenW);
             return;
         }
         window.width = Mathf.Min(900, screenW - 40);
@@ -920,6 +949,173 @@ internal sealed class KeelHost : MonoBehaviour
         GUI.DrawTexture(new Rect(0, 0, screenW, screenH), shade);
         GUI.DrawTexture(new Rect(window.x - 1, window.y - 1, window.width + 2, window.height + 2), edge);
         window = GUI.Window(0x4B45454C, window, DrawWindow, GUIContent.none, windowStyle);
+    }
+
+    // ---- What's new (see WhatsNew.cs) ----
+
+    private Dictionary<string, SeenMod> seenLast, seenNow;
+    private volatile List<NewsItem> newsFound;      // new, updated and gone mods with their notes, from the worker thread
+    private volatile bool newsLooked;
+    private bool newsSaved;
+    private List<NewsItem> news;                     // what the card and the report show
+    private bool newsClosed, newsArmed;
+    private float newsUntil;
+    private long newsSceneTicks;
+    private Rect newsRect;
+    private GUIStyle newsCard, newsTitle, newsName, newsLine, newsFoot;
+    private readonly Dictionary<NewsKind, GUIStyle> newsPills = new();
+
+    /// <summary>Right after the scan, on a worker thread: what changed since the last start, and the authors' notes for it.</summary>
+    private void StartWhatsNew(List<ModFolder> enabled)
+    {
+        string path = Path.Combine(Paths.BepInExRootPath, WhatsNew.FileName);
+        List<PluginEntry> plugins = Keel.Plugins.ToList();
+        string workshopRoot = ModFolders.WorkshopRoot;
+        bool fetch = workshopNotes.Value;
+        System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                seenLast = WhatsNew.Read(path);
+                seenNow = WhatsNew.Look(enabled, plugins, workshopRoot);
+                List<NewsItem> found = WhatsNew.Compare(seenLast, seenNow, enabled);
+                WhatsNew.AddNotes(found, fetch ? id => WhatsNew.FetchWorkshopPage(id, 6000) : null);
+                newsFound = found;
+            }
+            catch (Exception ex)
+            {
+                newsFound = new List<NewsItem>();
+                log.LogWarning($"What's new: {ex.Message}");
+            }
+            newsLooked = true;
+        });
+    }
+
+    /// <summary>Once the mods are started and the notes are in: the card's list, the report, and this start remembered for the next.</summary>
+    private void FinishWhatsNew()
+    {
+        if (newsSaved || !done || !newsLooked)
+            return;
+        newsSaved = true;
+        if (seenNow == null)
+            return;
+        news = WhatsNew.Problems(seenLast, Keel.Plugins).Concat(newsFound ?? new List<NewsItem>()).ToList();
+        try
+        {
+            WhatsNew.MarkOk(seenNow, Keel.Plugins);
+            WhatsNew.Write(Path.Combine(Paths.BepInExRootPath, WhatsNew.FileName), seenNow);
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning($"Cannot remember this start's mods for What's new: {ex.Message}");
+        }
+        if (news.Count == 0)
+            return;
+        log.LogInfo($"What's new since the last start ({news.Count}):{Environment.NewLine}{WhatsNew.Text(news).TrimEnd()}");
+        WriteReport();
+    }
+
+    private bool NewsVisible
+    {
+        get
+        {
+            if (news is not { Count: > 0 } || newsClosed || !GameState.StartupDone() || !GameState.MenuUp())
+                return false;
+            if (!newsArmed)
+            {
+                newsArmed = true;
+                newsSceneTicks = Loading.LoadingWindow.SceneLoadedTicks;
+                newsUntil = whatsNewSeconds.Value > 0 ? Time.realtimeSinceStartup + whatsNewSeconds.Value : float.MaxValue;
+            }
+            // It belongs to the main menu: gone for good once a mission or another scene loads, or its time is up.
+            if (Loading.LoadingWindow.MissionRunning || Loading.LoadingWindow.SceneLoadedTicks != newsSceneTicks || Time.realtimeSinceStartup > newsUntil)
+            {
+                newsClosed = true;
+                return false;
+            }
+            return !Loading.LoadingWindow.OnMenuSubPage;
+        }
+    }
+
+    private void EnsureNewsStyles()
+    {
+        if (newsCard != null)
+            return;
+        EnsureStyles();
+        newsCard = new GUIStyle { padding = new RectOffset(16, 16, 12, 12) };
+        newsCard.normal.background = Solid("#14181f", 0.94f);
+        newsTitle = Text(12, "#8b95a3", FontStyle.Bold, 8);
+        newsName = Text(14, "#f2f5f8", FontStyle.Normal, 1);
+        newsLine = Text(12, "#c3cad3", FontStyle.Normal, 1);
+        newsFoot = Text(11, "#7f8a98", FontStyle.Normal, 0);
+        newsFoot.margin = new RectOffset(0, 0, 6, 0);
+        foreach ((NewsKind kind, string color) in new[]
+        {
+            (NewsKind.Problem, "#b83c36"), (NewsKind.Updated, "#2f6aa8"), (NewsKind.New, "#2c7a4d"), (NewsKind.Gone, "#4a5361"),
+        })
+        {
+            var pill = new GUIStyle { fontSize = 10, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, margin = new RectOffset(0, 10, 2, 0) };
+            pill.normal.background = Solid(color);
+            pill.normal.textColor = UnityEngine.Color.white;
+            newsPills[kind] = pill;
+        }
+    }
+
+    private const int NewsMods = 5, NewsLines = 2;
+
+    /// <summary>The card at the top right of the main menu.</summary>
+    private void DrawNews(float screenW)
+    {
+        if (!NewsVisible)
+            return;
+        EnsureNewsStyles();
+        const float width = 440, margin = 24;
+        float left = screenW - width - margin;
+        GUILayout.BeginArea(new Rect(left, margin, width, 2000));
+        GUILayout.BeginVertical(newsCard);
+        GUILayout.Label($"WHAT'S NEW SINCE YOUR LAST GAME  ·  {Keel.Name}", newsTitle);
+        foreach (NewsItem n in news.Take(NewsMods))
+            NewsRow(n, NewsLines);
+        int more = news.Count - NewsMods;
+        GUILayout.Label((more > 0 ? $"+{more} more  ·  " : "") + $"{hotkey.Value} shows all  ·  click to close", newsFoot);
+        GUILayout.EndVertical();
+        if (Event.current.type == EventType.Repaint)
+        {
+            Rect r = GUILayoutUtility.GetLastRect();
+            newsRect = new Rect(left + r.x, margin + r.y, r.width, r.height);
+        }
+        GUILayout.EndArea();
+        if (Event.current.type == EventType.MouseDown && newsRect.Contains(Event.current.mousePosition))
+        {
+            newsClosed = true;
+            Event.current.Use();
+        }
+    }
+
+    /// <summary>One mod in the card (<paramref name="maxLines"/> of its notes) or in the report window (all of them).</summary>
+    private void NewsRow(NewsItem n, int maxLines)
+    {
+        EnsureNewsStyles();
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(n.Tag, newsPills[n.Kind], GUILayout.Width(74), GUILayout.Height(18));
+        GUILayout.BeginVertical();
+        string head = n.Kind == NewsKind.Updated && n.From.Length > 0 && n.To.Length > 0 && n.From != n.To
+            ? $"<b>{n.Name}</b>  <color=#8b95a3>{n.From} → {n.To}</color>"
+            : $"<b>{n.Name}</b>{(n.To.Length > 0 ? $"  <color=#8b95a3>{n.To}</color>" : "")}";
+        GUILayout.Label(head, newsName);
+        int shown = 0;
+        foreach (string line in n.Lines)
+        {
+            if (shown++ >= maxLines)
+            {
+                GUILayout.Label($"<color=#7f8a98>… {n.Lines.Count - maxLines} more line(s)</color>", newsLine);
+                break;
+            }
+            GUILayout.Label(maxLines < int.MaxValue && line.Length > 140 ? line.Substring(0, 137) + "…" : line, newsLine);
+        }
+        GUILayout.EndVertical();
+        GUILayout.EndHorizontal();
+        GUILayout.Space(6);
     }
 
     private bool HeldOffered => crash is { HeldActive: true };
@@ -1212,6 +1408,13 @@ internal sealed class KeelHost : MonoBehaviour
         knob.normal.background = thumb;
         bar.fixedWidth = knob.fixedWidth = 8;
         scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, bar, GUIStyle.none);
+        if (news is { Count: > 0 })
+        {
+            GUILayout.Label($"WHAT'S NEW SINCE THE LAST START  ({news.Count})", groupStyle);
+            foreach (NewsItem n in news)
+                NewsRow(n, int.MaxValue);
+            GUILayout.Space(8);
+        }
         int group = -1;
         foreach (PluginEntry p in Report.Sorted(Keel.Plugins))
         {

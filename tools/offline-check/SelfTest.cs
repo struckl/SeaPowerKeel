@@ -62,6 +62,7 @@ internal static class SelfTest
             CrashGuardChecks(tmp);
             PreventionChecks(tmp, managed, core);
             SetupChecks(tmp);
+            WhatsNewChecks(tmp);
         }
         finally
         {
@@ -70,6 +71,83 @@ internal static class SelfTest
         Console.WriteLine();
         Console.WriteLine($"{checks - failures} of {checks} checks passed" + (failures > 0 ? $", {failures} FAILED" : ""));
         return failures > 0 ? 1 : 0;
+    }
+
+    private static void WhatsNewChecks(string tmp)
+    {
+        Console.WriteLine("10. What's new: what changed since the last start, and the authors' words for it");
+        string root = Path.Combine(tmp, "wn");
+        string ws = Path.Combine(root, "steamapps", "workshop", "content", "1286220");
+        string a = Path.Combine(ws, "111"), b = Path.Combine(ws, "222"), local = Path.Combine(root, "MyLocal");
+        foreach (string d in new[] { a, b, local }) Directory.CreateDirectory(d);
+        File.WriteAllText(Path.Combine(a, "_info.ini"), "[Language_de]\nName=Alpha DE\n[Language_en]\nName=Alpha Mod\n");
+        File.WriteAllText(Path.Combine(a, "a.dll"), "v1");
+        File.WriteAllText(Path.Combine(b, "b.ini"), "data");
+        File.WriteAllText(Path.Combine(local, "CHANGELOG.md"), "# Changelog\n\n## 1.2.0 - x\n\n- **Bold** new thing\n- `code` [link](http://x)\n\n## 1.1.0\n\n- older\n\n## 1.0.0\n\n- first\n");
+        string acf = Path.Combine(root, "steamapps", "workshop", "appworkshop_1286220.acf");
+        void Acf(long ta) => File.WriteAllText(acf, "\"AppWorkshop\"\n{\n\t\"appid\"\t\t\"1286220\"\n\t\"WorkshopItemsInstalled\"\n\t{\n\t\t\"111\"\n\t\t{\n\t\t\t\"size\"\t\t\"1\"\n\t\t\t\"timeupdated\"\t\t\"" + ta + "\"\n\t\t}\n\t}\n\t\"WorkshopItemDetails\"\n\t{\n\t\t\"222\"\n\t\t{\n\t\t\t\"timeupdated\"\t\t\"5\"\n\t\t}\n\t}\n}\n");
+        Acf(1794001000);
+        Check(WhatsNew.SteamTimes(ws).TryGetValue(111, out long t1) && t1 == 1794001000 && !WhatsNew.SteamTimes(ws).ContainsKey(222), "Steam's timeupdated is read for installed items only");
+        Check(WhatsNew.NameOf(a) == "Alpha Mod", "the mod's English name from _info.ini");
+
+        var fa = new ModFolder { Path = a, Name = "111", SteamId = 111, Enabled = true };
+        var fb = new ModFolder { Path = b, Name = "222", SteamId = 222, Enabled = true };
+        var fl = new ModFolder { Path = local, Name = "MyLocal", Enabled = true };
+        PluginEntry Plug(ModFolder f, string guid, string v, PluginState s) => new() { Guid = guid, Name = guid, Folder = f, Version = new Version(v), State = s };
+
+        var first = new List<ModFolder> { fa, fb, fl };
+        var plugins1 = new List<PluginEntry> { Plug(fa, "alpha", "1.0.0", PluginState.Running), Plug(fl, "loc", "1.0.0", PluginState.Running) };
+        var seen1 = WhatsNew.Look(first, plugins1, ws);
+        Check(WhatsNew.Compare(null, seen1, first).Count == 0, "the very first start says nothing");
+        WhatsNew.MarkOk(seen1, plugins1);
+        string file = Path.Combine(root, WhatsNew.FileName);
+        WhatsNew.Write(file, seen1);
+        var back = WhatsNew.Read(file);
+        Check(back.Count == 3 && back["111"].Updated == 1794001000 && back["111"].Ok.Contains("alpha") && back["MyLocal"].Versions["loc"] == "1.0.0", "the file reads back what was written");
+        Check(WhatsNew.Compare(back, WhatsNew.Look(first, plugins1, ws), first).Count == 0, "nothing changed: no news");
+
+        // Second start: alpha updated on the Workshop, b unsubscribed, local updated, a new local mod, loc now fails.
+        File.WriteAllText(Path.Combine(a, "a.dll"), "v2 longer");
+        Acf(1794002000);
+        Directory.Delete(b, true);
+        string fresh = Path.Combine(root, "Fresh");
+        Directory.CreateDirectory(fresh);
+        var fn = new ModFolder { Path = fresh, Name = "Fresh", Enabled = true };
+        var second = new List<ModFolder> { fa, fl, fn };
+        var plugins2 = new List<PluginEntry>
+        {
+            Plug(fa, "alpha", "1.1.0", PluginState.Running), Plug(fl, "loc", "1.2.0", PluginState.Failed), Plug(fn, "fresh", "0.1.0", PluginState.Running),
+        };
+        plugins2[1].Reason = "needs X";
+        var news = WhatsNew.Compare(back, WhatsNew.Look(second, plugins2, ws), second);
+        NewsItem alpha = news.FirstOrDefault(n => n.Key == "111");
+        Check(alpha is { Kind: NewsKind.Updated, From: "1.0.0", To: "1.1.0", PrevUpdated: 1794001000, Updated: 1794002000, Name: "Alpha Mod" }, "a Workshop update: old and new version, both Steam times");
+        Check(news.Any(n => n.Key == "222" && n.Kind == NewsKind.Gone), "an unsubscribed mod is gone");
+        Check(news.Any(n => n.Key == "Fresh" && n.Kind == NewsKind.New && n.To == "0.1.0"), "a new mod is new");
+        Check(news.Any(n => n.Key == "MyLocal" && n.Kind == NewsKind.Updated && n.From == "1.0.0" && n.To == "1.2.0"), "a local mod's version jump");
+        var problems = WhatsNew.Problems(back, plugins2);
+        Check(problems.Count == 1 && problems[0].Name == "loc" && problems[0].Lines[0].Contains("needs X"), "a mod that ran last time and fails now is a problem, with the reason");
+
+        // Notes: Workshop page entries between the two Steam times; else the CHANGELOG above the old version.
+        string page = "<p id=\"1794002000\">1.1.0: new radar<br>fix &quot;x&quot;</p> <p id=\"1794001500\">1.0.5 <b>beta</b></p> <p id=\"1794000900\">1.0.0 old</p>";
+        var w = WhatsNew.WorkshopNotes(page, 1794001000, 1794002000);
+        Check(w.SequenceEqual(new[] { "1.1.0: new radar", "fix \"x\"", "1.0.5 beta" }), "Workshop notes: every update since the last start, newest first, HTML made plain");
+        Check(WhatsNew.WorkshopNotes(page, 0, 1794002000).SequenceEqual(new[] { "1.1.0: new radar", "fix \"x\"" }), "a new mod: only its newest note");
+        Check(WhatsNew.WorkshopNotes(page, 1794003000, 1794004000).Count == 0, "no note after the last start: none");
+        var log = WhatsNew.ChangelogNotes(local, "1.0.0");
+        Check(log.SequenceEqual(new[] { "Bold new thing", "code link", "older" }), "CHANGELOG: the sections above the old version, Markdown removed");
+        Check(WhatsNew.ChangelogNotes(local, "").SequenceEqual(new[] { "Bold new thing", "code link" }), "CHANGELOG with no old version: the top section");
+        Check(WhatsNew.ChangelogLines(new[] { "## Unreleased", "- not yet", "## 1.2.0", "- yes", "## 1.1.0", "- no" }, "1.1.0").SequenceEqual(new[] { "yes" }), "an Unreleased section is not in the player's build");
+
+        WhatsNew.AddNotes(news, id => id == 111 ? page : null);
+        Check(alpha.Source == "Workshop" && alpha.Lines.Count == 3, "a Workshop mod gets its Workshop notes");
+        NewsItem loc = news.First(n => n.Key == "MyLocal");
+        Check(loc.Source == "CHANGELOG" && loc.Lines.Count == 3, "a local mod gets its CHANGELOG");
+        var offline = WhatsNew.Compare(back, WhatsNew.Look(second, plugins2, ws), second);
+        File.WriteAllText(Path.Combine(a, "CHANGELOG.md"), "## 1.1.0\n- from the file\n");
+        WhatsNew.AddNotes(offline, _ => throw new System.Net.WebException("offline"));
+        Check(offline.First(n => n.Key == "111").Lines.SequenceEqual(new[] { "from the file" }), "Steam unreachable: the CHANGELOG instead, no error");
+        Check(WhatsNew.Text(news).Contains("UPDATED  Alpha Mod  1.0.0 → 1.1.0   (from Workshop)"), "the report text");
     }
 
     /// <summary>
