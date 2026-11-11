@@ -117,10 +117,6 @@ internal sealed class KeelHost : MonoBehaviour
                 log.LogWarning($"Keel will not see which file the game was loading in a crash: {trail}");
             StartWatcher();
         }
-        ModMenuRestart.Restart = RestartGame;
-        string modMenu = ModMenuRestart.Install();
-        if (modMenu != null)
-            log.LogWarning($"No Restart button in the Mods menu: {modMenu}");
         // Here, in Awake: the game has not read its mod list yet.
         try
         {
@@ -325,6 +321,7 @@ internal sealed class KeelHost : MonoBehaviour
     private Runner liveRunner;
     private List<ModFolder> liveFolders;
     private bool hotLoading;
+    private readonly HashSet<string> turnedOffDlls = new(StringComparer.OrdinalIgnoreCase);
 
     private static bool SameFolder(ModFolder a, ModFolder b) =>
         a != null && b != null && string.Equals(Path.GetFullPath(a.Path).TrimEnd('\\', '/'), Path.GetFullPath(b.Path).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
@@ -363,6 +360,7 @@ internal sealed class KeelHost : MonoBehaviour
             {
                 int patches = liveRunner.TurnOff(p);
                 turnedOff++;
+                turnedOffDlls.Add(Path.GetFullPath(p.Dll));
                 p.Stop(PluginState.Skipped, $"Switched off in the running game: Keel took {patches} patch(es) off{(p.Kind == PluginKind.BepInEx ? " and stopped the plugin" : "")}. What the mod set up itself stays until the game restarts.");
                 log.LogInfo($"TURNED OFF: {p.Display} {p.Version} ({p.Folder.Label}) - {patches} patch(es) removed");
             }
@@ -382,8 +380,14 @@ internal sealed class KeelHost : MonoBehaviour
             var running = new HashSet<string>(Keel.Plugins.Where(p => p.State is PluginState.Running or PluginState.RunningWithErrors).Select(p => p.Guid));
             fresh = Scanner.Scan(added, Warn, skippedDlls, Paths.ManagedPath, Paths.BepInExAssemblyDirectory);
             foreach (PluginEntry p in fresh)
+            {
                 if (running.Contains(p.Guid))
                     p.Stop(PluginState.Skipped, "Already running from another folder.");
+                // Its code from the first start is still loaded, with whatever it remembers: a second start in the same game
+                // is not a clean one (seen with Topo: "already loaded, skipping"). A restart is.
+                else if (turnedOffDlls.Contains(Path.GetFullPath(p.Dll)))
+                    p.Stop(PluginState.NotStarted, "Switched off and on again in this game: its code from the first start is still loaded, so it starts again only after a restart.");
+            }
             // An entry of a mod switched off earlier in this game makes room for the new one.
             Keel.Plugins.RemoveAll(old => old.State == PluginState.Skipped && fresh.Any(n => n.Guid == old.Guid));
             Keel.Plugins.AddRange(fresh);
@@ -422,7 +426,7 @@ internal sealed class KeelHost : MonoBehaviour
             crash?.WriteModsFile(Keel.Plugins);
         }
 
-        string missed = string.Join(", ", fresh.Where(Report.IsProblem).Select(p => p.Display));
+        string missed = string.Join(", ", fresh.Where(Report.IsProblem).Select(p => p.Display).Distinct());
         string note = $"Mods menu reload: started {started} code mod(s), switched {turnedOff} off." +
                       (missed.Length > 0 ? $" Did not start: {missed} (see below)." : "") +
                       (turnedOff > 0 ? " A switched-off mod is fully gone only after a restart." : "");
@@ -815,12 +819,30 @@ internal sealed class KeelHost : MonoBehaviour
             CrashCatcher.KeepInstalled();
             TakePackProblems();
             keelLog?.Flush();
+            HookModMenu();
             if (wantNotice && !noticeArmed && GameState.StartupDone())
             {
                 noticeArmed = true;
                 noticeUntil = Time.realtimeSinceStartup + 30;
             }
         }
+    }
+
+    private bool modMenuHooked;
+
+    // Not in Awake: patching the Mods menu runs its static constructor, which registers UI properties with Noesis, and before the
+    // game's UI is up that kills the game in native code (seen 2026-11-11). Once the main menu exists the UI is ready.
+    private void HookModMenu()
+    {
+        if (modMenuHooked || !done || !GameState.StartupDone() || !GameState.MenuUp())
+            return;
+        modMenuHooked = true;
+        ModMenuRestart.Restart = RestartGame;
+        string why = ModMenuRestart.Install();
+        if (why != null)
+            log.LogWarning($"No Restart button in the Mods menu: {why}");
+        else
+            log.LogInfo("Mods menu: Restart button and Reload follow-up ready.");
     }
 
     private void OnApplicationQuit()

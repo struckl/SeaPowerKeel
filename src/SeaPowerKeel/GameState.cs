@@ -131,6 +131,13 @@ internal static class GameState
         catch (Exception) { return false; }
     }
 
+    /// <summary>True once the game's menu system exists, so its UI (Noesis) is up.</summary>
+    public static bool MenuUp()
+    {
+        try { return Find(T("SeapowerUI.ViewModels.MenuSystemViewModel")) != null; }
+        catch (Exception) { return false; }
+    }
+
     /// <summary>The game's <c>SeaPower.IniHandler</c> type (null if this build has none under that name).</summary>
     public static Type IniHandlerType => T("SeaPower.IniHandler");
 
