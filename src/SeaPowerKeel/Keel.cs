@@ -764,6 +764,7 @@ internal sealed class KeelHost : MonoBehaviour
             var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom
             if (closeRect.Contains(gui)) showWindow = false;
             else if (logsRect.Contains(gui)) SaveLogs();
+            else if (sendRect.Contains(gui)) SendReport();
             else if (HeldOffered && heldRect.Contains(gui)) HeldButton();
             else if (!HeldOffered && restartRect.Contains(gui)) RestartButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
@@ -999,6 +1000,29 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
+    private Rect sendRect;
+    private float sendAt = -10f;
+
+    // Send report: KeelWatcher packs the logs without the Windows user name, shows them and sends only on the player's click.
+    private void SendReport()
+    {
+        if (Time.realtimeSinceStartup - sendAt < 3f)
+            return;     // the game may deliver the click through IMGUI and through the device check alike
+        sendAt = Time.realtimeSinceStartup;
+        WriteReport();
+        keelLog?.Flush();
+        try
+        {
+            string exe = Path.Combine(Path.GetDirectoryName(OwnPath) ?? "", "KeelWatcher.exe");
+            Process.Start(new ProcessStartInfo(exe, $"--send \"{Paths.BepInExRootPath}\" \"{GameState.BuildName}\"") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
+            notes.Add("A Keel window opens over the game: it shows what gets sent, and sends only when you click Send.");
+        }
+        catch (Exception ex)
+        {
+            notes.Add($"Could not open the send window: {ex.Message}");
+        }
+    }
+
     // The name a mod folder shows in the game's mod list.
     private static string FolderLabel(string folder)
     {
@@ -1199,6 +1223,8 @@ internal sealed class KeelHost : MonoBehaviour
             GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         if (Button("Save logs", 110, ref logsRect))
             SaveLogs();
+        if (Button("Send report", 120, ref sendRect))
+            SendReport();
         if (HeldOffered && Button(heldClicked ? "Restart the game" : "Let held mods run", 160, ref heldRect))
             HeldButton();
         if (!HeldOffered && Button(restartArmed ? "Click again to restart" : "Restart the game", 180, ref restartRect))

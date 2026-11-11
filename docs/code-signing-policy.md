@@ -23,6 +23,8 @@ This program will not transfer any information to other networked systems unless
 
 *Save logs* writes a zip to your own Desktop and sends it nowhere. The logs contain file paths, so also your Windows user name: keep that in mind if you share the file. The game itself has its own crash reporter, which is not part of Keel.
 
+*Send report* is the only part of Keel that sends anything, and only when you click *Send* in its window, after it has shown you the list of files. It sends the same logs as *Save logs*, with your Windows user name replaced by `%USERNAME%` in every path, plus the note you typed, Keel's version and the game build, to the R.A.T.S. feedback board at hub.sewerlabs.dev. There they are kept for the developer only, never shown in public, and deleted when no longer needed. The board stores a keyed hash of your IP address for its rate limit, never the address itself.
+
 ## Third-party components
 
 `KeelSetup.exe` contains unmodified BepInEx and UnityDoorstop (GNU LGPL 2.1), see `lib/THIRD-PARTY.txt`.

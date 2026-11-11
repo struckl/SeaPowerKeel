@@ -30,6 +30,13 @@ internal static class Watcher
                 LogBundle.Reveal(zip);
             return 0;
         }
+        if (args.Length >= 2 && args[0] == "--send")      // the report window's Send report: the send window, then nothing else
+        {
+            SetProcessDPIAware();
+            Application.EnableVisualStyles();
+            Sender.Run(args[1], args.Length > 2 ? args[2] : null);
+            return 0;
+        }
         if (args.Length == 3 && args[0] == "--relaunch")      // the report window's Restart the game: wait for the game to quit, then start it
         {
             if (int.TryParse(args[1], out int old))
@@ -139,6 +146,9 @@ internal static class Watcher
             }
         };
         row.Controls.Add(logs);
+        var report = new Button { Text = "Send report", AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(0, 0, P(8), 0) };
+        report.Click += (s, e) => Sender.Run(dir, null, form);
+        row.Controls.Add(report);
         column.Controls.Add(row);
         form.Controls.Add(column);
         form.AcceptButton = start;
@@ -206,7 +216,7 @@ internal static class Watcher
         }
 
         return "Keel couldn't tell which mod caused this. It may be the game itself, or a mod's models or files.\n\n" +
-               "If it keeps happening, click Save logs and attach the file to a bug report.";
+               "If it keeps happening, click Send report to send the logs to the R.A.T.S. developer, or Save logs and attach the file to a bug report.";
     }
 
     private static void Restart(string exe)
