@@ -8,13 +8,17 @@ namespace SeaPowerKeel;
 /// <summary>
 /// A Restart button in the game's own "reload" dialog (Mods menu, Apply). The game only reloads its data there: a code mod switched on
 /// or off does not start or stop until the game is started again. The dialog's message box has a middle button the game leaves unused;
-/// Keel fills it. Restart saves the mod list the way the game's own button does, then quits and starts the game again through
+/// Keel fills it, and marks the game's own Reload so Keel follows the new mod list after it (KeelHost.HotLoad). Restart saves the mod list the way the game's own button does, then quits and starts the game again through
 /// KeelWatcher. The dialog is the same on both game builds (0.8.7 and the 3D globe build); everything is looked up by name, so a build
 /// without it only loses the button.
 /// </summary>
 internal static class ModMenuRestart
 {
-    internal const string Note = "\n\nR.A.T.S. Keel: code mods (DLLs) only start or stop with a full restart. Restart saves the mod list, closes the game and starts it again.";
+    internal const string Note = "\n\nR.A.T.S. Keel: Reload also starts code mods you switched on and takes switched-off ones out as far as the running game allows. " +
+                                 "Restart is the clean way: it saves the mod list, closes the game and starts it again.";
+
+    /// <summary>Set when the player clicks the game's Reload: Keel then follows the new mod list once the menu is back.</summary>
+    internal static bool ReloadRequested;
 
     /// <summary>Set by Keel: quits the game and starts it again.</summary>
     internal static Action Restart;
@@ -54,7 +58,12 @@ internal static class ModMenuRestart
             Traverse t = Traverse.Create(box);
             t.Property("MiddleCommand").SetValue(command);
             t.Property("MiddleCommandLabel").SetValue("Restart");
-            t.Property("AcknowledgeCommandLabel").SetValue("Reload only");
+            t.Property("AcknowledgeCommandLabel").SetValue("Reload");
+            if (t.Property("AcknowledgeCommand").GetValue() is System.Windows.Input.ICommand reload)
+            {
+                Action<object> then = x => { ReloadRequested = true; reload.Execute(x); };
+                t.Property("AcknowledgeCommand").SetValue(Activator.CreateInstance(commandType, then));
+            }
             string message = t.Property("Message").GetValue() as string ?? "";
             if (!message.Contains("R.A.T.S. Keel"))
                 t.Property("Message").SetValue(message + Note);

@@ -165,6 +165,12 @@ internal sealed class KeelHost : MonoBehaviour
         {
             if (mode == UnityEngine.SceneManagement.LoadSceneMode.Single) Loading.LoadingWindow.SceneLoadedTicks = DateTime.UtcNow.Ticks;
             crash?.Mark("scene", scene.name);
+            // The game's Reload in the Mods menu loads the first scene again: then Keel follows the new mod list.
+            if (mode == UnityEngine.SceneManagement.LoadSceneMode.Single && ModMenuRestart.ReloadRequested && done && !hotLoading)
+            {
+                ModMenuRestart.ReloadRequested = false;
+                StartCoroutine(HotLoad());
+            }
         };
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
@@ -239,6 +245,8 @@ internal sealed class KeelHost : MonoBehaviour
         yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
+        liveRunner = runner;
+        liveFolders = enabled;
         if (keelLog != null)
             keelLog.OwnerOf = runner.OwnerOf;
         // Unity hands exceptions to BepInEx without saying which mod threw; Keel adds a line that does, with the stack trace,
@@ -312,6 +320,116 @@ internal sealed class KeelHost : MonoBehaviour
         // The summary card says it, and a click on it opens the report; the notice is for players who switched that window off.
         wantNotice = notice.Value && !Loading.LoadingWindow.Shown && (crashNotice != null || Keel.Plugins.Any(Report.IsProblem));
         // Errors that come later show up in the window; the file is rewritten when the window opens and at quit.
+    }
+
+    private Runner liveRunner;
+    private List<ModFolder> liveFolders;
+    private bool hotLoading;
+
+    private static bool SameFolder(ModFolder a, ModFolder b) =>
+        a != null && b != null && string.Equals(Path.GetFullPath(a.Path).TrimEnd('\\', '/'), Path.GetFullPath(b.Path).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// After the game's Reload (Mods menu): code mods in folders switched on since start-up are checked and started the normal way,
+    /// mods in folders switched off are taken out as far as the running game allows (<see cref="Runner.TurnOff"/>). A mod that only
+    /// works when started with the game is better served by Restart; the dialog says so.
+    /// </summary>
+    private IEnumerator HotLoad()
+    {
+        hotLoading = true;
+        yield return null;
+        yield return null;
+        var watch = Stopwatch.StartNew();
+        List<ModFolder> folders;
+        while ((folders = GameState.GameModList()) == null && watch.Elapsed.TotalSeconds < 60)
+            yield return new WaitForSecondsRealtime(0.25f);
+        folders ??= ModFolders.FromDisk();
+        if (GameState.Globe)
+        {
+            watch.Restart();
+            while (!GameState.StartupDone() && watch.Elapsed.TotalSeconds < 180)
+                yield return new WaitForSecondsRealtime(0.25f);
+        }
+        List<ModFolder> now = folders.Where(f => f.Enabled).ToList();
+        List<ModFolder> added = now.Where(f => !liveFolders.Any(o => SameFolder(o, f))).ToList();
+        List<ModFolder> removed = liveFolders.Where(o => !now.Any(f => SameFolder(o, f))).ToList();
+        log.LogInfo($"Reload from the Mods menu: {added.Count} mod folder(s) switched on, {removed.Count} switched off.");
+
+        // Switched off: out as far as possible.
+        int turnedOff = 0;
+        foreach (PluginEntry p in Keel.Plugins.Where(p => removed.Any(f => SameFolder(f, p.Folder))).ToList())
+        {
+            if (p.State is PluginState.Running or PluginState.RunningWithErrors)
+            {
+                int patches = liveRunner.TurnOff(p);
+                turnedOff++;
+                p.Stop(PluginState.Skipped, $"Switched off in the running game: Keel took {patches} patch(es) off{(p.Kind == PluginKind.BepInEx ? " and stopped the plugin" : "")}. What the mod set up itself stays until the game restarts.");
+                log.LogInfo($"TURNED OFF: {p.Display} {p.Version} ({p.Folder.Label}) - {patches} patch(es) removed");
+            }
+            else if (p.State == PluginState.Pending)
+            {
+                p.Stop(PluginState.Skipped, "Its folder was switched off in the Mods menu.");
+            }
+        }
+        liveFolders = now;
+
+        // Switched on: the same steps as at start-up, for the new folders only.
+        int started = 0;
+        var fresh = new List<PluginEntry>();
+        if (added.Count > 0)
+        {
+            liveRunner.AddFolders(added);
+            var running = new HashSet<string>(Keel.Plugins.Where(p => p.State is PluginState.Running or PluginState.RunningWithErrors).Select(p => p.Guid));
+            fresh = Scanner.Scan(added, Warn, skippedDlls, Paths.ManagedPath, Paths.BepInExAssemblyDirectory);
+            foreach (PluginEntry p in fresh)
+                if (running.Contains(p.Guid))
+                    p.Stop(PluginState.Skipped, "Already running from another folder.");
+            // An entry of a mod switched off earlier in this game makes room for the new one.
+            Keel.Plugins.RemoveAll(old => old.State == PluginState.Skipped && fresh.Any(n => n.Guid == old.Guid));
+            Keel.Plugins.AddRange(fresh);
+            RuleAnchorChain(now, liveRunner);
+            yield return Check();
+            var elsewhere = new HashSet<string>(Chainloader.PluginInfos.Keys);
+            elsewhere.UnionWith(running);
+            elsewhere.UnionWith(Keel.Plugins.Where(p => p.State == PluginState.LeftToAnchorChain).Select(p => p.Guid));
+            var off = new HashSet<string>(disabled.Value.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0));
+            List<PluginEntry> order = Planner.Plan(Keel.Plugins, elsewhere, off, Process.GetCurrentProcess().ProcessName);
+            PrimeAnchorChainLoader(liveRunner, now, folders, order);
+            PrepareAcConfigs(now, folders, order);
+            if (order.Any(p => p.State != PluginState.Pending))
+                order = Planner.Replan(Keel.Plugins, elsewhere);
+            var sequence = new Sequencer
+            {
+                Prepare = p =>
+                {
+                    crash?.Mark("load", p.Guid);
+                    liveRunner.Prepare(p);
+                },
+                Start = p =>
+                {
+                    crash?.Mark("start", p.Guid);
+                    liveRunner.Start(p);
+                },
+                Starting = (p, index, total) => log.LogInfo($"STARTING (after reload) {index}/{total}: {p.Display} {p.Version} ({p.Folder.Label})"),
+                Replan = () => Planner.Replan(Keel.Plugins, elsewhere),
+                Started = p => log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
+                                       $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " - " + p.Reason : "")}"),
+            };
+            foreach (PluginEntry _ in sequence.Run(order))
+                yield return null;
+            started = sequence.StartedCount;
+            crash?.Mark("done", "");
+            crash?.WriteModsFile(Keel.Plugins);
+        }
+
+        string missed = string.Join(", ", fresh.Where(Report.IsProblem).Select(p => p.Display));
+        string note = $"Mods menu reload: started {started} code mod(s), switched {turnedOff} off." +
+                      (missed.Length > 0 ? $" Did not start: {missed} (see below)." : "") +
+                      (turnedOff > 0 ? " A switched-off mod is fully gone only after a restart." : "");
+        notes.Add(note);
+        log.LogInfo(note);
+        WriteReport();
+        hotLoading = false;
     }
 
     // The window a player sees when the game dies has to come from outside the game.

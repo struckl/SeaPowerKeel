@@ -53,7 +53,7 @@ a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-n
    into `Sea Power\BepInEx\plugins`.
 3. Start the game. Ctrl+Shift+K shows the report.
 
-**Restart after every change to the mod list.** The stub runs once, while the game starts, and reads the mod list then. Keel adds a *Restart* button to the game's own reload dialog in the Mods menu (it saves the list, closes the game and starts it again; the game's *Reload only* reloads data but starts no code mod), and *Restart the game* to its report window (Ctrl+Shift+K, click twice). If Keel
+**Restart after every change to the mod list.** The stub runs once, while the game starts, and reads the mod list then. **Or let Keel follow:** after the game's *Reload* in the Mods menu (Mods, Apply), Keel starts the code mods you switched on and takes switched-off ones out as far as the running game allows (their patches come off, a BepInEx plugin is stopped; what a mod set up itself stays until a restart, as the game cannot unload code). The same dialog has a *Restart* button (saves the list, closes the game and starts it again), and the report window (Ctrl+Shift+K) has *Restart the game* (click twice). If Keel
 (or any mod) was switched off at that moment, nothing loads, and switching it on in the running game does not start it: restart the
 game. The same goes for subscribing to, removing or reinstalling a mod, and for Steam re-downloading Keel's folder. If the game
 log says "R.A.T.S. Keel is switched off in the game's mod list", switch Keel on in Mods and restart.

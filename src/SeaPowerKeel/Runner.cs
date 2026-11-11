@@ -78,8 +78,18 @@ internal sealed class Runner
     {
         this.log = log;
         this.host = host;
-        // Libraries a mod ships (and Anchor Chain's DLL, for Anchor Chain mods): found by assembly name when a mod asks
-        // for one, first in mod-list order.
+        AddFolders(folders);
+        AppDomain.CurrentDomain.AssemblyResolve += Resolve;
+        AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
+        Application.logMessageReceived += OnLog;
+    }
+
+    /// <summary>
+    /// Libraries a mod ships (and Anchor Chain's DLL, for Anchor Chain mods): found by assembly name when a mod asks for one,
+    /// first in mod-list order. Called again for folders switched on in the running game.
+    /// </summary>
+    public void AddFolders(IEnumerable<ModFolder> folders)
+    {
         foreach (ModFolder f in folders)
         {
             try
@@ -96,9 +106,46 @@ internal sealed class Runner
                 // unreadable folder: the scanner already said so
             }
         }
-        AppDomain.CurrentDomain.AssemblyResolve += Resolve;
-        AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
-        Application.logMessageReceived += OnLog;
+    }
+
+    /// <summary>
+    /// Takes a running mod out as far as the running game allows: its Harmony patches come off and a BepInEx plugin's component
+    /// is destroyed. Its assembly stays loaded (Mono cannot unload it), and objects or events the mod set up itself stay until
+    /// the game restarts. Returns the number of patches removed.
+    /// </summary>
+    public int TurnOff(PluginEntry p)
+    {
+        Assembly asm = loaded.TryGetValue(Path.GetFullPath(p.Dll), out Assembly a) ? a : p.Instance?.GetType().Assembly;
+        int removed = 0;
+        if (asm != null)
+        {
+            var harmony = new HarmonyLib.Harmony("dev.sewerlabs.seapowerkeel.turnoff");
+            foreach (MethodBase target in HarmonyLib.Harmony.GetAllPatchedMethods().ToList())
+            {
+                HarmonyLib.Patches info = HarmonyLib.Harmony.GetPatchInfo(target);
+                if (info == null)
+                    continue;
+                foreach (HarmonyLib.Patch patch in info.Prefixes.Concat(info.Postfixes).Concat(info.Transpilers).Concat(info.Finalizers)
+                                                        .Where(x => x.PatchMethod?.DeclaringType?.Assembly == asm).ToList())
+                {
+                    try
+                    {
+                        harmony.Unpatch(target, patch.PatchMethod);
+                        removed++;
+                    }
+                    catch (Exception ex)
+                    {
+                        log.LogWarning($"{p.Display}: could not take its patch off {target.DeclaringType?.Name}.{target.Name}: {ex.Message}");
+                    }
+                }
+            }
+        }
+        if (p.Instance is MonoBehaviour behaviour && behaviour != null)
+        {
+            UnityEngine.Object.Destroy(behaviour);
+            Chainloader.PluginInfos.Remove(p.Guid);
+        }
+        return removed;
     }
 
     public bool HasLibrary(string assemblyName) => libraryIndex.ContainsKey(assemblyName);
