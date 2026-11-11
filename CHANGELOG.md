@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Restart from the Mods menu.** The game's reload dialog (Mods, Apply) gets a *Restart* button: it saves the mod list as the game's own button does, closes the game and starts it again, so code mods switched on or off take effect. The game's own button is now called *Reload only* (it reloads data, not code mods). The report window (Ctrl+Shift+K) has *Restart the game* too (two clicks: a mission in progress is lost). Built and checked offline on both builds (compat: 0 missing); **not run in the game yet**.
 - **README: Linux (Steam Proton).** Switch Anchor Chain off in the game's Mods menu *and* unsubscribe from it on Steam, as a player reported; switched off in the Mods menu alone, Anchor Chain still loads its mods and Keel steps aside. Not run on Linux by us.
 
 ## 0.3.1 - 2026-11-09

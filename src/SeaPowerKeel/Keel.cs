@@ -117,6 +117,10 @@ internal sealed class KeelHost : MonoBehaviour
                 log.LogWarning($"Keel will not see which file the game was loading in a crash: {trail}");
             StartWatcher();
         }
+        ModMenuRestart.Restart = RestartGame;
+        string modMenu = ModMenuRestart.Install();
+        if (modMenu != null)
+            log.LogWarning($"No Restart button in the Mods menu: {modMenu}");
         // Here, in Awake: the game has not read its mod list yet.
         try
         {
@@ -643,6 +647,7 @@ internal sealed class KeelHost : MonoBehaviour
             if (closeRect.Contains(gui)) showWindow = false;
             else if (logsRect.Contains(gui)) SaveLogs();
             else if (HeldOffered && heldRect.Contains(gui)) HeldButton();
+            else if (!HeldOffered && restartRect.Contains(gui)) RestartButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
         }
         catch (Exception) { pointer = null; }
@@ -835,6 +840,22 @@ internal sealed class KeelHost : MonoBehaviour
         heldClicked = true;
         crash.ClearHeld();
         notes.Add("The held mods run again from the next start: exit and start the game.");
+    }
+
+    private Rect restartRect;
+    private bool restartArmed;
+
+    // Two clicks: a mission in progress is lost with the restart.
+    private void RestartButton()
+    {
+        if (!FreshClick())
+            return;
+        if (!restartArmed)
+        {
+            restartArmed = true;
+            return;
+        }
+        RestartGame();
     }
 
     private Rect logsRect;
@@ -1062,6 +1083,8 @@ internal sealed class KeelHost : MonoBehaviour
             SaveLogs();
         if (HeldOffered && Button(heldClicked ? "Restart the game" : "Let held mods run", 160, ref heldRect))
             HeldButton();
+        if (!HeldOffered && Button(restartArmed ? "Click again to restart" : "Restart the game", 180, ref restartRect))
+            RestartButton();
         GUILayout.FlexibleSpace();
         if (Button("Close", 100, ref closeRect))
             showWindow = false;
