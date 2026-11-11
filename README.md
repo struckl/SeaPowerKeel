@@ -1,5 +1,7 @@
 # Sea Power: R.A.T.S. Keel
 
+> **Sea Power 0.9.0 (11 November 2026):** 0.4.0 declares the new game version in its `_info.ini` (0.8.7 up to every 0.9.x), so the game no longer lists it as "not declared to be compatible" and Steam passes its updates to 0.9.0 players. Run in the game on 0.9.0 (build 261111): start-up with 17 mods, the Mods menu's Reload and Restart.
+
 *R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals*
 
 A mod loader for Sea Power's code mods and a replacement for Anchor Chain's loader (Anchor Chain mods keep working). It does the job a chainloader does (find the plugin DLLs in the game's mod
