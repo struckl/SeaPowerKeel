@@ -23,3 +23,15 @@ The game now asks at every start (and after a reload) about mods "not declared t
 | Mods, Accept, Restart | Old game gone after 1 s, new one after 7 s; after Ignore on the game's dialog, 17 running, Topo back. |
 
 Not run: 0.8.7 flat map; a mission after a reload.
+
+## Third run, game 0.9.0 hotfix (Steam 26599003, game code unchanged), same evening
+
+Keel 0.4.0 with the 0.9.0 builds of all R.A.T.S. mods installed.
+
+| Step | Result |
+|---|---|
+| Start | The game's version dialog showed Keel's list: six code mods with short names and "made for 0.8.x"; our mods no longer listed. Keel's loading window said "Waiting for you: the game asks about mods"; after Ignore it went back to loading. |
+| Anchor Chain library = official 1.1.0 file | 17 running, Anchor Chain mods included. |
+| Report window, Send report | Send window listed the files; with a note, Send gave report #2; on the board: 17 files, no user name in any. |
+
+The dialog's last line was reworded after this run (it claimed most mods still work); text only, not seen in the game. The loading window's "seconds since the last message" counts the time the dialog waited too.

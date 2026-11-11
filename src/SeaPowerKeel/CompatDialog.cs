@@ -147,7 +147,7 @@ internal static class CompatDialog
             sb.Append("\nData mods  (units, sounds, pictures, missions)\n");
             sb.Append(string.Join("\n", data)).Append("\n");
         }
-        sb.Append("\nIgnore keeps them on: most mods still work, and their makers often just have not updated the version line yet.");
+        sb.Append("\nIgnore keeps them on; the other button switches them off and reloads.");
         return sb.ToString();
     }
 
