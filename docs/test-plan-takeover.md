@@ -29,6 +29,14 @@ For the build after 0.4.0 (takeover, self-installing patcher) together with the 
    starting", every mod RUNNING under Keel (no OTHER LOADER), Euromod's AC Pack included. **Screenshot of the report.**
 3. Run a mission (Intro 01) briefly: no double start (no mod's log line twice).
 
+## Run 2b: Euromod stages (his word 2026-11-12: test them too)
+
+1. Euromod Main + AC Pack on, AC Pack settings: Extended Guidance off. Restart. **Expect** the report's top line
+   `Euromod setup: Euromod + AC Pack (updated …), Extended Guidance off.` **Screenshot.**
+2. AC Pack settings menu: Extended Guidance on, restart. **Expect** `+ Extended Guidance ON (experimental)` and EG's DLL RUNNING.
+3. AC Pack off in Mods, restart: `Euromod setup: Euromod (Main Pack).`
+4. Check `Mods\ACPack\submods.ini` really is where the menu saves (LocalLow\Triassic Games\Sea Power).
+
 ## Run 3: first start after the update (patcher not there yet)
 
 1. Close. Delete `BepInEx\patchers\SeaPowerKeel.Patcher.dll`, keep Alpine's preloader active.

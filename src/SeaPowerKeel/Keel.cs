@@ -226,6 +226,7 @@ internal sealed class KeelHost : MonoBehaviour
 
         List<ModFolder> enabled = folders.Where(f => f.Enabled).ToList();
         log.LogInfo($"{enabled.Count} of {folders.Count} mod folders are on.");
+        DetectSetups(enabled);
 
         // 3. Find the plugins (metadata only).
         watch.Restart();
@@ -695,8 +696,26 @@ internal sealed class KeelHost : MonoBehaviour
         log.LogWarning(message);
     }
 
+    private string setupLine;   // e.g. "Euromod setup: Euromod + AC Pack + Extended Guidance ON (experimental)." or null
+
     private string Header() =>
-        $"{Keel.Name} {Keel.Version} (stub {StubVersion}) – Sea Power, {GameState.BuildName} – {DateTime.Now:yyyy-MM-dd HH:mm}";
+        $"{Keel.Name} {Keel.Version} (stub {StubVersion}) – Sea Power, {GameState.BuildName} – {DateTime.Now:yyyy-MM-dd HH:mm}" +
+        (setupLine != null ? Environment.NewLine + setupLine : "");
+
+    private void DetectSetups(List<ModFolder> enabled)
+    {
+        try
+        {
+            string submods = ModSetups.SubmodsIni(Application.persistentDataPath);
+            setupLine = ModSetups.Detect(enabled, File.Exists(submods) ? File.ReadAllText(submods) : null, WhatsNew.SteamTimes(ModFolders.WorkshopRoot)).Line();
+            if (setupLine != null)
+                log.LogInfo(setupLine);
+        }
+        catch (Exception ex)
+        {
+            log.LogWarning($"Could not tell the Euromod setup: {ex.Message}");
+        }
+    }
 
     private void WriteReport()
     {

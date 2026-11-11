@@ -64,6 +64,7 @@ internal static class SelfTest
             SetupChecks(tmp);
             WhatsNewChecks(tmp);
             TakeoverChecks(tmp);
+            EuromodChecks(tmp);
         }
         finally
         {
@@ -265,6 +266,33 @@ internal static class SelfTest
         run3.Apply(new[] { third }, true, notes.Add);
         run3.Mark("quit", "");
         Check(third.State == PluginState.Pending && !File.Exists(Path.Combine(dir, "Keel-held.txt")), "an updated mod gets another chance");
+    }
+
+    private static void EuromodChecks(string tmp)
+    {
+        Console.WriteLine("12. Euromod setup line: which of the three stages runs (Main / + AC Pack / + Extended Guidance)");
+        string main = Path.Combine(tmp, "eu", ModSetups.EuromodMain.ToString());
+        string ac = Path.Combine(tmp, "eu", ModSetups.EuromodAcPack.ToString());
+        string local = Path.Combine(tmp, "eu", "MyAcPackCopy");
+        foreach (string d in new[] { main, ac, local })
+            Directory.CreateDirectory(d);
+        File.WriteAllText(Path.Combine(local, ModSetups.AcPackMarker), "x");
+        var fMain = new ModFolder { Path = main, Name = main, SteamId = ModSetups.EuromodMain, Enabled = true };
+        var fAc = new ModFolder { Path = ac, Name = ac, SteamId = ModSetups.EuromodAcPack, Enabled = true };
+        var fLocal = new ModFolder { Path = local, Name = "MyAcPackCopy", Enabled = true };
+        var times = new Dictionary<ulong, long> { [ModSetups.EuromodAcPack] = new DateTimeOffset(2026, 11, 11, 20, 26, 0, TimeSpan.Zero).ToUnixTimeSeconds() };
+
+        Check(ModSetups.Detect(new ModFolder[0], null, null).Line() == null, "no Euromod: no line");
+        Check(ModSetups.Detect(new[] { fMain }, null, null).Line() == "Euromod setup: Euromod (Main Pack).", "stage 1: Main Pack only");
+        string s2 = ModSetups.Detect(new[] { fMain, fAc }, null, times).Line();
+        Check(s2.StartsWith("Euromod setup: Euromod + AC Pack (updated 2026-11-1") && s2.Contains("Extended Guidance off"), "stage 2: + AC Pack, its update date, EG off when submods.ini is missing: " + s2);
+        string ini = "; AC Pack submods.\n[Submods]\nExtendedGuidance=true\nTestRange=false\nHullDamage=true\nBroken=maybe\n";
+        string s3 = ModSetups.Detect(new[] { fMain, fAc }, ini, times).Line();
+        Check(s3.Contains("+ Extended Guidance ON (experimental)") && s3.EndsWith("AC Pack submods off: TestRange."), "stage 3: EG on, switched-off submods listed: " + s3);
+        Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Submods]\nExtendedGuidance=false\n", null).Eg, "EG=false: off");
+        Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Other]\nExtendedGuidance=true\n", null).Eg, "only [Submods] counts");
+        Check(ModSetups.Detect(new[] { fLocal }, null, null).Line().Contains("AC Pack without the Euromod Main Pack"), "a local AC Pack copy is recognized by ACPackSettings.dll, and a missing Main Pack is said");
+        Check(ModSetups.SubmodsIni(@"C:\LocalLow\Triassic Games\Sea Power").EndsWith(@"Mods\ACPack\submods.ini"), "the AC Pack's switches are read from Mods\\ACPack\\submods.ini");
     }
 
     private static void TakeoverChecks(string tmp)
