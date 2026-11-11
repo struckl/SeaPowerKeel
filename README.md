@@ -4,6 +4,8 @@
 
 *R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals*
 
+**Bugs, ideas, questions:** [R.A.T.S. feedback board](https://hub.sewerlabs.dev/s/keel)
+
 A mod loader for Sea Power's code mods and a replacement for Anchor Chain's loader (Anchor Chain mods keep working). It does the job a chainloader does (find the plugin DLLs in the game's mod
 folders, sort out dependencies and start order, start them), and on top of that:
 
