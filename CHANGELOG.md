@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **The menu takes clicks again after the report is closed** with Alternative Game Interface on: Keel closed its window on the mouse press, so its button kept the mouse; AGI then held back every click from the game's menu (board post #3). Keel now lets go of the mouse when its window closes
-- Not yet run in the game
+- **Tested in the game on 0.9.1** with Alternative Game Interface 2.0.0: the menu takes clicks after the report is closed by Close, Esc and the hotkey
 
 ## 0.5.2 - 2026-11-12 - player reports: cards go away, start early earlier
 

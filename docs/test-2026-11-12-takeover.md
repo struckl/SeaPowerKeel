@@ -65,3 +65,14 @@ in run 2: panel width and one-line text; the Keel card no longer fades. Driver a
 | 3/4 | Right click on What's new / Keel card | **RED, fixed, GREEN:** the game never handed the right click to the cards; Keel now polls the right button itself. Retest: What's new hides, the Keel card glides down, then hides |
 | 5 | Fade | **GREEN:** both cards gone 68 s after they showed |
 | 6 | Report window (Hussar) | **GREEN:** opens from the card, Close closes it, nothing stays |
+
+## Board post #3: Alternative Game Interface (test plan `test-plan-0.5.3.md`, followed TESTING.md)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Report from the card, Close, then SCENARIOS | **GREEN:** Scenarios opened, Back worked (AGI 2.0.0 running, 18 mods) |
+| 2 | Report closed by Esc / by Ctrl+Shift+K, then the menu | **GREEN:** Mod Manager and Scenarios opened after each |
+| 3 | Mod Manager with AGI after the report | **GREEN** |
+
+- Not reproduced on the old build first (the cause is read from AGI's code: it holds back mouse releases while `GUIUtility.hotControl` is set).
+- Put back: AGI unticked through the Mod Manager + Keel's Restart; game left open.
