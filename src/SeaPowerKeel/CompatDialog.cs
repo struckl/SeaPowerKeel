@@ -169,7 +169,7 @@ internal static class CompatDialog
         var sb = new StringBuilder(first).Append("\n");
         if (code.Count > 0)
         {
-            sb.Append("\nCode mods  (R.A.T.S. Keel checks each one against this game version before it starts it,\nand leaves out one that would stop missions from loading)\n");
+            sb.Append("\nCode mods\n");
             sb.Append(string.Join("\n", code)).Append("\n");
         }
         if (data.Count > 0)
