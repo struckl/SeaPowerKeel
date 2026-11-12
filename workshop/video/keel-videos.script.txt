@@ -7,10 +7,10 @@ P6	Now restart the game once. While the game loads, Keel's loading window in the
 P7	Want more mods? Tick them in the Mod Manager, and use Keel's Restart button.
 P8	On the next start, What's new shows what changed, with the authors' notes. A click opens the full report.
 P9	Keel replaces Anchor Chain and Alpine's Mod Loader. Euromod and the A C Pack with its add-ons run as they are. That is all. Dismissed, Captains. Rah-teh out.
-BK1	Well then. Salveh fellow Rats and Captains! This time: what Keel does when a mod breaks.
-BK9	Errors, crashes and their cause, all in one place. That is all. Dismissed, Captains. Rah-teh out.
-TK1	Well then. Salveh fellow Rats and Captains! Coming from Anchor Chain or Alpine's Mod Loader? Nothing to uninstall.
-TK5	Want it back? Restore in Keel Setup puts everything back the way it was. That is all. Dismissed, Captains. Rah-teh out.
+P9b	Keel replaces Anchor Chain and Alpine's Mod Loader. Euromod and the A C Pack with its add-ons run as they are. That is all. Dismissed Captains.
+BK1	Well then. Salveh fellow Rats and Captains! In this video I want to show you what Keel does when a mod breaks.
+BK9b	Errors, crashes and their cause, all in one place. That is all. Dismissed Captains.
+TK5b	Want it back? Restore in Keel Setup puts everything back the way it was. That is all. Dismissed Captains.
 TK1	Well then. Salveh fellow Rats and Captains! In this video I want to show you how to move from Anchor Chain or Alpine's Mod Loader to Rats Keel. Nothing to uninstall.
 k2	This time: what Keel does when a mod breaks.
 k3	Here, a test mod fails while starting. The game keeps going, and the Keel card turns amber.
@@ -25,3 +25,4 @@ t2	Keel Setup finds the other loader, sets its preloader aside, and installs Kee
 t3	Switch Rats Keel on in the Mod Manager, and restart the game.
 t4	From now on, Keel runs every mod. The other loader stays out, and nothing starts twice.
 t5	Want it back? Restore in Keel Setup puts everything back the way it was.
+DE	[German, multilingual model] Ratte, Ende.
