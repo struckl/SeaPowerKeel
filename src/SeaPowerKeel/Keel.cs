@@ -872,12 +872,12 @@ internal sealed class KeelHost : MonoBehaviour
         if (pointer == null) return;
         if (!showWindow)
         {
-            // The What's new card: a click on it closes it (the report's hotkey still shows everything).
+            // The What's new card: its X closes it, a click anywhere else on it opens the full list.
             try
             {
                 var (click, pos, _) = pointer();
-                if (click && newsRect.Contains(new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale)))
-                    newsClosed = true;
+                if (click)
+                    NewsClick(new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale));
             }
             catch (Exception) { pointer = null; }
             return;
@@ -1054,7 +1054,8 @@ internal sealed class KeelHost : MonoBehaviour
     private bool newsClosed, newsArmed;
     private float newsUntil;
     private long newsSceneTicks;
-    private Rect newsRect;
+    private Rect newsRect, newsCloseRect;
+    private GUIStyle newsClose;
     private GUIStyle newsCard, newsTitle, newsName, newsLine, newsFoot;
     private readonly Dictionary<NewsKind, GUIStyle> newsPills = new();
 
@@ -1148,6 +1149,8 @@ internal sealed class KeelHost : MonoBehaviour
         newsLine = Text(12, "#c3cad3", FontStyle.Normal, 1);
         newsFoot = Text(11, "#7f8a98", FontStyle.Normal, 0);
         newsFoot.margin = new RectOffset(0, 0, 6, 0);
+        newsClose = Text(15, "#c3cad3", FontStyle.Bold, 0);
+        newsClose.alignment = TextAnchor.MiddleCenter;
         foreach ((NewsKind kind, string color) in new[]
         {
             (NewsKind.Problem, "#b83c36"), (NewsKind.Updated, "#2f6aa8"), (NewsKind.New, "#2c7a4d"), (NewsKind.Gone, "#4a5361"),
@@ -1172,11 +1175,20 @@ internal sealed class KeelHost : MonoBehaviour
         float left = screenW - width - margin;
         GUILayout.BeginArea(new Rect(left, margin, width, 2000));
         GUILayout.BeginVertical(newsCard);
+        GUILayout.BeginHorizontal();
         GUILayout.Label($"WHAT'S NEW SINCE YOUR LAST GAME  ·  {Keel.Name}", newsTitle);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label("×", newsClose, GUILayout.Width(22), GUILayout.Height(18));
+        if (Event.current.type == EventType.Repaint)
+        {
+            Rect x = GUILayoutUtility.GetLastRect();
+            newsCloseRect = new Rect(left + x.x - 6, margin + x.y - 6, x.width + 12, x.height + 12);   // a little larger than the glyph
+        }
+        GUILayout.EndHorizontal();
         foreach (NewsItem n in news.Take(NewsMods))
             NewsRow(n, NewsLines);
         int more = news.Count - NewsMods;
-        GUILayout.Label((more > 0 ? $"+{more} more  ·  " : "") + $"{hotkey.Value} shows all  ·  click to close", newsFoot);
+        GUILayout.Label((more > 0 ? $"+{more} more  ·  " : "") + "click for every mod and every line  ·  × closes", newsFoot);
         GUILayout.EndVertical();
         if (Event.current.type == EventType.Repaint)
         {
@@ -1184,11 +1196,28 @@ internal sealed class KeelHost : MonoBehaviour
             newsRect = new Rect(left + r.x, margin + r.y, r.width, r.height);
         }
         GUILayout.EndArea();
-        if (Event.current.type == EventType.MouseDown && newsRect.Contains(Event.current.mousePosition))
+        if (Event.current.type == EventType.MouseDown && NewsClick(Event.current.mousePosition))
+            Event.current.Use();
+    }
+
+    // A click at a GUI position: the X closes the card, anywhere else on it opens the report window at its What's new list
+    // (every changed mod, old → new version, all of the author's lines). The card stays until its X is clicked. A click reaches
+    // Keel through IMGUI and through the device check alike: it counts once.
+    private bool NewsClick(Vector2 gui)
+    {
+        if (!NewsVisible || !newsRect.Contains(gui))
+            return false;
+        if (!FreshClick())
+            return true;
+        if (newsCloseRect.Contains(gui))
         {
             newsClosed = true;
-            Event.current.Use();
+            return true;
         }
+        scroll = Vector2.zero;          // What's new is the first section of the list
+        if (!showWindow)
+            ToggleWindow();
+        return true;
     }
 
     /// <summary>One mod in the card (<paramref name="maxLines"/> of its notes) or in the report window (all of them).</summary>

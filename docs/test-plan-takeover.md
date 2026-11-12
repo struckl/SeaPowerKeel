@@ -19,7 +19,7 @@ For the build after 0.4.0 (takeover, self-installing patcher) together with the 
 2. **Expect:** `BepInEx\patchers\SeaPowerKeel.Patcher.dll` appears (log: "Takeover patcher installed").
 3. **Expect the What's new card** at the top right of the main menu: Keel updated (`0.4.0 → …`) with its CHANGELOG lines,
    the four Euromod items as new. **Screenshot.**
-4. Click the card: it closes. Ctrl+Shift+K: the full list. **Screenshot.**
+4. Click the card (not its ×): the report window opens on the What's new list with every line; the card is back after the window closes. Then click the card's ×: it closes. **Screenshot of both.**
 
 ## Run 2: the other loader comes back (Alpine's preloader is set aside today)
 
