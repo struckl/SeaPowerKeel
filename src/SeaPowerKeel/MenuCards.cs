@@ -49,10 +49,15 @@ internal sealed partial class KeelHost
         {
             if (!cardOn || cardHidden)
                 return false;
-            if (LoadingWindow.MissionRunning || LoadingWindow.SceneLoadedTicks != cardSceneTicks)
-            {
-                cardHidden = true;          // it belongs to the main menu only
+            // It belongs to the main menu's top page, and comes back to it every time (his word 2026-11-12: always visible
+            // there): away while a mission or another scene runs, back once the menu is up again (also after a Mods menu reload).
+            if (LoadingWindow.MissionRunning)
                 return false;
+            if (LoadingWindow.SceneLoadedTicks != cardSceneTicks)
+            {
+                if (!GameState.MenuUp() || !GameState.StartupDone())
+                    return false;
+                cardSceneTicks = LoadingWindow.SceneLoadedTicks;
             }
             return !LoadingWindow.OnMenuSubPage;
         }

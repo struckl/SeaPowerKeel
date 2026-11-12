@@ -589,7 +589,9 @@ internal sealed partial class KeelHost : MonoBehaviour
         // it for Anchor Chain's library (Alpine's is named the same and is not Anchor Chain's): Keel's stand-in is loaded first.
         if (takeoverRecord?.Kept.Any(b => Path.GetFileName(b.File).Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase)) == true)
             runner.UsePreloaderStandIn();
-        notes.Add($"Keel starts the Anchor Chain mods itself (types from {acDll}).");
+        string acNote = $"Keel starts the Anchor Chain mods itself (types from {acDll}).";
+        if (!notes.Contains(acNote))
+            notes.Add(acNote);          // a Mods menu reload runs this again: the note once (test 2026-11-12)
     }
 
     // Anchor Chain started after Keel's first look: its mods are its own from then on (never started twice).
