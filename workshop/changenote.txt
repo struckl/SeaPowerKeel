@@ -1,1 +1,2 @@
-0.5.1: the loading window now starts at the top right of the game window on a new install (it was in the middle of the screen). An existing setting stays as you set it.
+- Loading window starts at the top right on a new install (was in the middle of the screen)
+- Your own setting stays

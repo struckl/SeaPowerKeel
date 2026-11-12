@@ -2,32 +2,53 @@
 
 ## 0.5.1 - 2026-11-12 - loading window at the top right
 
-- **The loading window starts at the top right** of the game window on a new install (it was in the middle, under the main menu's news box). An existing setting (`Loading window.Spot`) stays as you set it.
+- **Loading window starts top right** on a new install (was in the middle of the screen)
+- **Your own setting stays** (`Loading window.Spot`)
 
 ## 0.5.0 - 2026-11-12 - takeover, What's new, Euromod stages, better reports
 
-- **Keel is the loader while it is on.** Keel no longer steps aside for another mod loader. Anchor Chain's preloader and Alpine's Mod Loader, when still installed, are kept from starting while R.A.T.S. Keel is switched on in the Mods menu, so Keel runs every mod and nothing starts twice. A small BepInEx patcher (`BepInEx\patchers\SeaPowerKeel.Patcher.dll`) does it before BepInEx starts any plugin: it takes those loaders out of BepInEx's plugin list by their plugin id. Their files are not renamed, moved or read; switch Keel off (or `Loading.TakeOver = false`) and they start again.
-- **The patcher installs and updates itself.** Keel copies it from its Workshop folder into `BepInEx\patchers` when it is missing or older (a copy in use is set aside as `.old`), so players never handle it and fixes come with Workshop updates. KeelSetup.exe installs it too, and Restore removes it. On the first start after the update the other loader is still running: Keel leaves its mods to it that once, so nothing starts twice, and the summary card and notice say *restart once*. `BepInEx\Keel-takeover.txt` and the report say which loader was kept from starting.
-- With a kept-out preloader still in `BepInEx\plugins`, Keel loads its own stand-in for Anchor Chain's preloader interface first, so BepInEx does not pick up that file (Alpine's is named `AnchorChain.Preloader.dll` too).
-- **Euromod setup in the report.** Players run Euromod in three stages (Main Pack, + AC Pack, + its experimental Extended Guidance). The report's first lines (so also *Save logs* and *Send report*) and the log say which one ran, e.g. `Euromod setup: Euromod + AC Pack (updated 2026-11-11) + Extended Guidance ON (experimental); AC Pack submods off: welldeck.` Read from the enabled folders and the AC Pack's own switches (`Mods\ACPack\submods.ini`, its id `euromod.extended-guidance`).
-- **Extended Guidance switch in Keel's report window** (Ctrl+Shift+K or a click on the summary card): *Turn EG on* / *Turn EG off* writes the AC Pack's own switch, the same one its settings gear writes; it counts from the next start, and *Restart the game* next to it does that. Run in the game on 0.9.1: switched on, restarted, Extended Guidance active, a mission (Red Sea Breakout) ran with no error.
-- **Old AC Pack warning.** On game 0.9.x an AC Pack older than its 2026-11-11 update (which fixes two bugs caused by 0.9) is named in the report and the log, with how to get the update.
-- **Mods that wait for the end of the load screen work again.** Keel starts mods after the game's start-up load screen on purpose; a mod that adds its menu entries when that screen ends (the Alternative mods' *ALTERNATIVE MODS* entry) missed it on starts where nothing held the screen. Keel now tells such a mod once, after it started, that the screen has ended. Run in the game on 0.9.1: the entry is there on every start.
-- **The game's version question says it comes with Keel:** its top bar reads *MESSAGE · R.A.T.S. Keel* when Keel lists the mods; the list itself is shorter (no Keel sentence).
-- **The cards on the main menu are drawn by the game.** The loading window is an own window only while the game can stand still (a slow mod starting); once it has glided to the bottom left, the game draws the Keel card in the same place and the window fades out. Same card; a click opens the report. It now stays on the main menu's top page for good (no fading), hides on menu pages and goes in a mission.
-- **What's new is born out of the Keel card.** When something changed, the card divides like a cell (it bulges, pinches and splits) and What's new grows from the bottom left corner upwards, pushing the Keel card above it. Both always fit inside the grey menu panel, between EXIT and the version text, at any resolution: as wide as the panel, every line cut to fit, and with too little room What's new shows fewer mods ("+N more") or a one-line card. The top right corner stays free.
-- **What's new, short and full:** the card shows one line per mod; Keel's report window shows two lines per mod, and a click on a mod opens all of its notes (another click closes them).
-- **Send report says what it is:** the board's mail is titled *Crash report* only when the game crashed, else *Report*, and names the game build (e.g. 0.9.1-261112, not just "3D globe map") and a one-line summary ("41 running, 2 failed: …"). The report's first line has the build too. Found in the first 12 player reports.
-- **The report stays current during a Mods menu reload:** it is rewritten after every mod the reload starts and says how far it got, so a report sent (or a crash) in the middle shows the real state (a player's report showed 3 mods while 27 of 30 had started).
-- **What's new:** the authors' notes are plain text (`### Fixes ###` becomes *Fixes:*, BBCode and Markdown marks go); the card sits a little lower, so buttons mods put in the top right corner (the AC Pack's settings gear) stay free; a changed `CHANGELOG.md` or `README.md` alone is no "new build"; a mod without a version shows its newest released section, not *Unreleased*.
-- **For mod authors** on the Workshop page, in the README and `docs/for-mod-authors.md`: your mod loads as built; list R.A.T.S. Keel as your required item.
-- **License note:** the code stays MIT; the name, logo, pictures and texts are not part of it, and re-uploads of Keel are not allowed.
-- Offline checks: the takeover rules, the record, installing and updating the patcher (also while in use), KeelSetup, the Euromod stages (181 of 181 pass). Run in the game on 0.9.1 (2026-11-12): Alpine kept from starting, Keel off lets it start, the patcher updated itself while in use, Euromod with AC Pack and Extended Guidance started 41 mods. A first patcher (1.0.0, a Harmony hook) stopped BepInEx from starting in that test and never shipped; 1.1.0 writes BepInEx's plugin cache itself.
+### Keel takes over
+- **Anchor Chain's and Alpine's loaders no longer start** while Keel is on: every mod starts once, under Keel
+- **Their files stay untouched**: switch Keel off (or `Loading.TakeOver = false`) and they start again
+- **Done by a small patcher** in `BepInEx\patchers`; Keel installs and updates it itself, KeelSetup too
+- **First start after the update**: the old loader runs once more, Keel asks for one restart
+- **The report names the loader kept out** (also `BepInEx\Keel-takeover.txt`)
 
-- **What's new since your last game.** Keel remembers the mods it loaded in `BepInEx\Keel-seen.txt` (versions, Steam's update time for Workshop items, and a quick fingerprint of each folder, so data mods count too). At the next start a card at the top right of the main menu names what changed: mods that are new, updated (`1.3.0 → 1.4.0`), gone, and mods that ran last time and now fail, which lead the list with the reason. Under each, the first lines of what its author wrote (see the next point), else just the version. The card's × closes it; a click anywhere else on it opens the full list (every changed mod, old → new version, every line the author wrote) at the top of Keel's report window, as Ctrl+Shift+K does; a mission start takes the card away, and `Keel-report.txt` has the list too (his wish 2026-11-12). Nothing on the first start, and nothing when nothing changed.
-- **The author's words.** For updated Workshop mods, Keel reads the item's public Steam changelog page and shows the notes written between your last start and this update (each note carries its time); only mods that changed are looked up. Local mods, and Workshop mods when Steam cannot be reached, get the sections of the mod's `CHANGELOG.md` above the version you had. `WhatsNew.WorkshopNotes = false` keeps Keel off the network for this; the privacy policy says so.
-- Fixes from the first game test (0.9.1, 2026-11-12): a mod that writes its settings into its own folder (BetterTacMap's `settings.cfg`) no longer shows UPDATED at every start: Workshop items are compared by Steam's update time, local folders without `.cfg`/`.log`/`.tmp`/`.bak` files. Keel itself shows its version jump (its folder has no plugin entry). An update with no words from its author says what it was ("Same version number, new files (a new build)."). Keel's package now ships `CHANGELOG.md`. The log names, per changed mod, where its lines came from and why a Workshop page could not be read.
-- Offline checks: the comparison, the file, Steam's update times, the Workshop notes by time, the CHANGELOG sections and the game-test cases. In the game on 0.9.1: the card, its × and the click that opens the full list; Workshop notes of the four Euromod items shown.
+### What's new since your last game
+- **A card on the main menu** lists mods that are new, updated, gone or now broken
+- **Born out of the Keel card** with a cell-split animation, at the bottom left
+- **Always inside the menu panel**, between EXIT and the version text; fewer mods when tight
+- **The author's own words**: Workshop change notes, else the mod's `CHANGELOG.md`
+- **Short on the card, full in the report**: one line per mod; a click on a mod shows all its notes
+- **Notes as plain text**: Markdown and BBCode marks removed
+
+### Main menu cards drawn by the game
+- **Keel card drawn by the game**, not a Windows window; the loading window hands over to it
+- **Always visible** on the menu's top page; hides on menu pages and in a mission
+
+### Euromod
+- **Report names your stage**: Main Pack, + AC Pack, + Extended Guidance
+- **Extended Guidance button** in the report window (AC Pack's own switch, from the next start)
+- **Outdated AC Pack flagged** on game 0.9.x
+
+### Reports and dialogs
+- **Send report says crash or not**, the game build and a one-line summary
+- **Report stays current during a Mods menu reload**
+- **Message boxes say R.A.T.S. Keel in their top bar** when Keel adds to them
+- **ALTERNATIVE MODS menu entry back on every start** (mods that wait for the end of the load screen)
+
+### Fixes
+- **No false UPDATED** for mods that write settings into their own folder, or for a changed `CHANGELOG.md`
+- **Keel's own version jump shown**
+- **Anchor Chain note once** in the report
+
+### Other
+- **For mod authors**: list R.A.T.S. Keel as your required item (`docs/for-mod-authors.md`)
+- **License**: code stays MIT; name, logo, pictures and texts are not part of it; no re-uploads
+
+### Tested
+- **Game 0.9.1**: 17 and 43 mods, Euromod + AC Pack + Extended Guidance in a mission, Alpine kept out, reload and restart
+- **Offline**: 205 checks pass
 
 ## 0.4.0 - 2026-11-11 - game 0.9.0, Mods menu Restart and Reload, Send report
 
