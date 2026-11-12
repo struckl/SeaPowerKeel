@@ -48,7 +48,7 @@ public static class Keel
     }
 }
 
-internal sealed class KeelHost : MonoBehaviour
+internal sealed partial class KeelHost : MonoBehaviour
 {
     internal static string PendingStubVersion, PendingPath;
     public string StubVersion = PendingStubVersion;
@@ -925,17 +925,21 @@ internal sealed class KeelHost : MonoBehaviour
 
     private void PollReportInput()
     {
-        if (!showWindow && !NewsVisible) return;
+        if (!showWindow && !NewsVisible && !CardVisible) return;
         if (!pointerProbed) { pointerProbed = true; pointer = ProbePointer(); }
         if (pointer == null) return;
         if (!showWindow)
         {
-            // The What's new card: its X closes it, a click anywhere else on it opens the full list.
+            // The cards at the bottom left: What's new (its × closes it, a click elsewhere opens the full list) and the Keel card.
             try
             {
                 var (click, pos, _) = pointer();
                 if (click)
-                    NewsClick(new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale));
+                {
+                    var at = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);
+                    if (!NewsClick(at))
+                        CardClick(at, 0);
+                }
             }
             catch (Exception) { pointer = null; }
             return;
@@ -1079,9 +1083,10 @@ internal sealed class KeelHost : MonoBehaviour
         if (!showWindow && Time.realtimeSinceStartup < noticeUntil)
         {
             int bad = Keel.Plugins.Count(Report.IsProblem);
-            // Above the loading summary card, which sits at the bottom left of the main menu for the same half minute.
+            // Above the cards at the bottom left of the main menu (the Keel card, What's new), which are there for the same half minute.
             float height = crashNotice != null ? 170 : restartForTakeover ? 120 : 70;
-            var r = new Rect(20, screenH - 135 - height, 470, height);
+            float above = StackTop;
+            var r = new Rect(20, (float.IsNaN(above) ? screenH - 135 : above - 8) - height, 470, height);
             GUI.Box(r, GUIContent.none);
             GUI.Label(new Rect(r.x + 10, r.y + 6, r.width - 20, r.height - 12),
                       (crashNotice != null ? $"<b>{crashNotice}</b>\n" : "") +
@@ -1091,7 +1096,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (!showWindow)
         {
             windowCentered = false;
-            DrawNews(screenW);
+            DrawMenuCards(screenW, screenH);
             return;
         }
         window.width = Mathf.Min(900, screenW - 40);
@@ -1235,42 +1240,6 @@ internal sealed class KeelHost : MonoBehaviour
     private readonly HashSet<NewsItem> newsOpen = new();                      // mods opened in the report window
     private readonly Dictionary<NewsItem, Rect> newsRowRects = new();         // their rows, in the scroll view's content
     private Rect newsScrollRect;                                              // the scroll view, in the window
-
-    /// <summary>The card at the top right of the main menu.</summary>
-    private void DrawNews(float screenW)
-    {
-        if (!NewsVisible)
-            return;
-        EnsureNewsStyles();
-        // 72 from the top: the top right corner is where mods put their own buttons (the AC Pack's settings gear, 2026-11-12).
-        const float width = 440, margin = 24, top = 72;
-        float left = screenW - width - margin;
-        GUILayout.BeginArea(new Rect(left, top, width, 2000));
-        GUILayout.BeginVertical(newsCard);
-        GUILayout.BeginHorizontal();
-        GUILayout.Label($"WHAT'S NEW SINCE YOUR LAST GAME  ·  {Keel.Name}", newsTitle);
-        GUILayout.FlexibleSpace();
-        GUILayout.Label("×", newsClose, GUILayout.Width(22), GUILayout.Height(18));
-        if (Event.current.type == EventType.Repaint)
-        {
-            Rect x = GUILayoutUtility.GetLastRect();
-            newsCloseRect = new Rect(left + x.x - 6, top + x.y - 6, x.width + 12, x.height + 12);   // a little larger than the glyph
-        }
-        GUILayout.EndHorizontal();
-        foreach (NewsItem n in news.Take(NewsMods))
-            NewsRow(n, NewsLines);
-        int more = news.Count - NewsMods;
-        GUILayout.Label((more > 0 ? $"+{more} more  ·  " : "") + "click for every mod and every line  ·  × closes", newsFoot);
-        GUILayout.EndVertical();
-        if (Event.current.type == EventType.Repaint)
-        {
-            Rect r = GUILayoutUtility.GetLastRect();
-            newsRect = new Rect(left + r.x, top + r.y, r.width, r.height);
-        }
-        GUILayout.EndArea();
-        if (Event.current.type == EventType.MouseDown && NewsClick(Event.current.mousePosition))
-            Event.current.Use();
-    }
 
     // A click at a GUI position: the X closes the card, anywhere else on it opens the report window at its What's new list
     // (every changed mod, old → new version, all of the author's lines). The card stays until its X is clicked. A click reaches

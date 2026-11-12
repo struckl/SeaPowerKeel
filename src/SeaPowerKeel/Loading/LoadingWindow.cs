@@ -30,6 +30,26 @@ internal static class LoadingWindow
     /// <summary>The window and its summary card are up, so nothing else has to announce problems.</summary>
     internal static volatile bool Shown;
 
+    // ---- hand-over to the game (rule 2026-11-12: every window is drawn by the game) ---------------------------------------
+    // The own window exists only because the game's main thread can stand still while a mod starts. Once it has glided to its
+    // summary spot the game draws again: the overlay publishes where it is, Keel's GUI draws the same card there and says so,
+    // and the overlay fades out. If the game-drawn card never says so, the overlay keeps its own summary (the old way).
+
+    /// <summary>The start-up progress (counts, times) that both summary cards show.</summary>
+    internal static Progress Progress;
+    /// <summary>The overlay sits on its summary spot: left, top, width, height in pixels of the game window, and its scale.</summary>
+    internal static volatile bool SummaryReady;
+    internal static int SummaryX, SummaryY, SummaryW, SummaryH;
+    internal static float SummaryScale = 1f;
+    /// <summary>The overlay window is gone (faded, clicked away, handed over); set by its thread.</summary>
+    internal static volatile bool OverlayGone;
+    /// <summary>Keel's GUI draws the summary card now: the overlay fades out.</summary>
+    internal static volatile bool GameDrawsSummary;
+    /// <summary>The overlay's settings the game-drawn card follows.</summary>
+    internal static double SummarySeconds = 60;
+    internal static bool ClickHides = true;
+    internal const string ProfileUrl = "https://steamcommunity.com/profiles/76561198169349193";
+
     public static void Start(ConfigFile config, ManualLogSource log)
     {
         try
@@ -60,6 +80,9 @@ internal static class LoadingWindow
             try { started = Process.GetCurrentProcess().StartTime; }
             catch (Exception) { started = DateTime.Now; }
             var progress = new Progress(() => (DateTime.Now - started).TotalSeconds);
+            Progress = progress;
+            SummarySeconds = summary.Value;
+            ClickHides = click.Value;
             BepInEx.Logging.Logger.Listeners.Add(new Feed(progress));
             if (!Enum.TryParse(spot.Value, out Spot s)) s = Spot.Marker;
             new Overlay(progress, new OverlayOptions

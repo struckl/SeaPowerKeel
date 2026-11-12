@@ -36,7 +36,9 @@ internal sealed class Overlay
     private static Native.WndProc proc;                     // kept alive: Win32 holds only the pointer
     private static Native.EnumWindowsProc enumProc;
 
-    private enum Stage { Full, Moving, Summary, Away, Fading }
+    private enum Stage { Full, Moving, Summary, Away, Fading, HandOff }
+
+    private const double HandOffSeconds = 0.25;
 
     private readonly Progress progress;
     private readonly OverlayOptions options;
@@ -113,6 +115,7 @@ internal sealed class Overlay
         foreach (IntPtr f in new[] { fontText, fontBold, fontSmall })
             if (f != IntPtr.Zero) Native.DeleteObject(f);
         Closed = true;
+        LoadingWindow.OverlayGone = true;
     }
 
     private void SetAlpha(float a) =>
@@ -196,14 +199,31 @@ internal sealed class Overlay
                 double k = Math.Min(1.0, t / MoveSeconds), e = 1 - Math.Pow(1 - k, 3);         // ease out
                 now = Lerp(from, to, e);
                 Native.SetWindowPos(hwnd, IntPtr.Zero, now.Left, now.Top, now.Right - now.Left, now.Bottom - now.Top, Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
-                if (k >= 1.0) { stage = Stage.Summary; stageStart = Now; }
+                if (k >= 1.0)
+                {
+                    stage = Stage.Summary; stageStart = Now;
+                    // Where the card is, in pixels of the game window: the game-drawn card takes over right there.
+                    LoadingWindow.SummaryX = now.Left - game.Left; LoadingWindow.SummaryY = now.Top - game.Top;
+                    LoadingWindow.SummaryW = now.Right - now.Left; LoadingWindow.SummaryH = now.Bottom - now.Top;
+                    LoadingWindow.SummaryScale = scale;
+                    LoadingWindow.SummaryReady = true;
+                }
+                break;
+            }
+            case Stage.HandOff:
+            {
+                double k = Math.Min(1.0, t / HandOffSeconds);
+                SetAlpha(options.Opacity * (float)(1 - k));
+                if (k >= 1.0) { Native.KillTimer(hwnd, new UIntPtr(1)); Native.DestroyWindow(hwnd); return; }
                 break;
             }
             case Stage.Summary:
+                if (LoadingWindow.GameDrawsSummary) { Begin(Stage.HandOff); break; }      // the game draws the card now
                 if (LoadingWindow.OnMenuSubPage) { Native.ShowWindow(hwnd, Native.SW_HIDE); Begin(Stage.Away); return; }      // Scenarios, Options ...: gone at once
                 if (options.SummarySeconds > 0 && t > options.SummarySeconds) Begin(Stage.Fading);
                 break;
             case Stage.Away:
+                if (LoadingWindow.GameDrawsSummary) { Native.KillTimer(hwnd, new UIntPtr(1)); Native.DestroyWindow(hwnd); return; }
                 if (!LoadingWindow.OnMenuSubPage)      // back on the menu's top page: there again at once, with a fresh timer
                 {
                     stage = Stage.Summary; stageStart = Now;

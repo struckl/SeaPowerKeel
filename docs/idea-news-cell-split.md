@@ -1,6 +1,6 @@
-# Idea: What's new splits off the loading card (later version)
+# What's new splits off the Keel card
 
-His wish 2026-11-12, for a later Keel version. Not built yet.
+His wish 2026-11-12. **Built in 0.5.0** (`src/SeaPowerKeel/MenuCards.cs`, the overlay's hand-over in `Loading/Overlay.cs`); the game draws both cards (rule: every window is drawn by the game). Not yet run in the game at the time of writing.
 
 ## Today
 
