@@ -17,3 +17,11 @@ e2b	Best not to click around in the game while your mods are starting. Let it fi
 g1	Add more mods any time. Keel's Restart button in the Mods menu saves your list and restarts the game.
 g2	On the next start, What's new grows out of the Keel card: every new or updated mod, with its author's notes.
 g3	One click opens the full report.
+e2b	Best not to click around while your mods are starting. Just let it finish.
+e3v2	When it slides into the corner, Keel has loaded. Errors and problems would show up right here, on the Keel card.
+g1v2	Want more mods? Tick them in the Mod Manager, and use Keel's Restart button.
+g2v2	On the next start, What's new shows what changed, with the authors' notes.
+g3v2	A click opens the full report.
+f1v2	Keel replaces Anchor Chain and Alpine's Mod Loader.
+f2v2	Euromod and the A C Pack with its add-ons run as they are.
+f3v2	Fair winds, Captains.
