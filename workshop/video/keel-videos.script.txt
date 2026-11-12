@@ -1,0 +1,27 @@
+P1	Well then. Salveh fellow Rats and Captains! This is Rats Keel, the mod loader for Sea Power. Today we install it on a completely clean game: no BepInEx, no mods, nothing else.
+P2	Step one: subscribe to Rats Keel on the Steam Workshop.
+P3	Step two: open Keel's Workshop folder and run Keel Setup.
+P4	It finds your game, adds BepInEx if it is missing, and installs Keel. One click on Install, and it is done.
+P5	Step three: start Sea Power, open the Mod Manager, switch Rats Keel on, together with the mods you want, and accept.
+P6	Now restart the game once. While the game loads, Keel's loading window in the top right counts every mod as it starts. Best not to click around while your mods are starting, just let it finish. When it slides into the corner, Keel has loaded. Errors and problems would show up right here, on the Keel card.
+P7	Want more mods? Tick them in the Mod Manager, and use Keel's Restart button.
+P8	On the next start, What's new shows what changed, with the authors' notes. A click opens the full report.
+P9	Keel replaces Anchor Chain and Alpine's Mod Loader. Euromod and the A C Pack with its add-ons run as they are. That is all. Dismissed, Captains. Rah-teh out.
+BK1	Well then. Salveh fellow Rats and Captains! This time: what Keel does when a mod breaks.
+BK9	Errors, crashes and their cause, all in one place. That is all. Dismissed, Captains. Rah-teh out.
+TK1	Well then. Salveh fellow Rats and Captains! Coming from Anchor Chain or Alpine's Mod Loader? Nothing to uninstall.
+TK5	Want it back? Restore in Keel Setup puts everything back the way it was. That is all. Dismissed, Captains. Rah-teh out.
+TK1	Well then. Salveh fellow Rats and Captains! In this video I want to show you how to move from Anchor Chain or Alpine's Mod Loader to Rats Keel. Nothing to uninstall.
+k2	This time: what Keel does when a mod breaks.
+k3	Here, a test mod fails while starting. The game keeps going, and the Keel card turns amber.
+k4	One click, and the report shows which mod failed, and why.
+k5	Now a worse case: a test mod that crashes the whole game.
+k6	Keel's crash window names the mod that did it, and keeps it switched off for now.
+k7	Send report packs your logs, with your Windows user name removed, and sends them to us. You get a report number.
+k8	Start the game again. The crashed mod stays out, and everything else runs.
+k9	Errors, crashes and their cause, all in one place.
+t1	Coming from Anchor Chain or Alpine's Mod Loader? Nothing to uninstall.
+t2	Keel Setup finds the other loader, sets its preloader aside, and installs Keel's takeover.
+t3	Switch Rats Keel on in the Mod Manager, and restart the game.
+t4	From now on, Keel runs every mod. The other loader stays out, and nothing starts twice.
+t5	Want it back? Restore in Keel Setup puts everything back the way it was.
