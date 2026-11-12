@@ -1,1 +1,2 @@
-- With Alternative Game Interface on, the menu stopped taking clicks after Keel's report was closed: fixed (Keel now lets go of the mouse when its window closes)
+- An × on both cards (Keel card and What's new), at the same spot; it closes the card
+- No right click any more, and the cards no longer fade on their own: they stay until you close them
