@@ -16,5 +16,6 @@ Run in the game by the Keel session on his go. Screenshots stay on the developer
 | Euromod run B: Extended Guidance on (`Mods\ACPack\submods.ini`, `ExtendedGuidance=true`, written by hand in the AC Pack's format) | **GREEN at start-up:** `+ Extended Guidance ON (experimental)`, ExtendedGuidance 0.10.33 RUNNING, 41 running. Not checked: that the AC Pack's own menu writes that file (only its strings say so). |
 | Mission with Euromod + EG | **Not run:** the driver's menu clicks miss once Euromod adds its EUROMOD category, and he took the PC back. |
 | Run 3 (first start without the patcher) | Not run. |
+| What's new card with × (85ff4e1), 13:55 | **GREEN:** card with × and "click for every mod and every line · × closes". A click on the card opens the report window at WHAT'S NEW (2); closing the window leaves the card up; × closes the card without opening anything. Card forced by setting Radio and Topo one version back in `Keel-seen.txt` (the six hotfixes had been seen by an earlier start). Gap: our own mods show "No change notes from the author": none of them ships `CHANGELOG.md` in its mod folder (only Keel does). |
 
 Left as: Euromod Main, US Naval Aviation, Cost Tracker and AC Pack ticked in his Mod Manager, `submods.ini` with EG on, game at the Scenarios screen. Alpine's file as `.keel-off`, Keel on.
