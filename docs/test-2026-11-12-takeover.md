@@ -76,3 +76,15 @@ in run 2: panel width and one-line text; the Keel card no longer fades. Driver a
 
 - Not reproduced on the old build first (the cause is read from AGI's code: it holds back mouse releases while `GUIUtility.hotControl` is set).
 - Put back: AGI unticked through the Mod Manager + Keel's Restart; game left open.
+
+## 0.5.4 run (21:20, 0.9.1, plan `docs/test-plan-0.5.4.md`)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Keel card has an × | **GREEN:** × top right, title not cut. His finding: not at the same spot as What's new's → fixed (`CloseSpot`, both cards), second start: both × line up |
+| 2 | No fade | **GREEN:** both cards still up 102 s after they showed |
+| 3 | Right click does nothing | **GREEN:** right click on both cards, both stay |
+| 4 | What's new × | **GREEN:** closes, the Keel card glides down |
+| 5 | Keel card click | **GREEN:** report opens; Close closes it, the card stays |
+| 6 | Keel card × | **GREEN:** card goes, no report (also on the second start with the moved ×) |
+| 7 | Menu takes clicks | **GREEN:** Credits opened after 6, Back worked |

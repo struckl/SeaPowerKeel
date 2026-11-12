@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.5.4 - 2026-11-12 - an × on both cards
 
-- **An × on both cards**: the Keel card has one now, like What's new; it closes the card
+- **An × on both cards**: the Keel card has one now, at the same spot as What's new's; it closes the card
 - **No right click any more**: the × is easier to find than a hidden right click
 - **Cards stay until you close them**: no more fading on their own (0.5.2 faded them after 60 s)
 - **`Loading window.SummarySeconds` is gone**: the setting only timed that fade

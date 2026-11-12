@@ -299,6 +299,9 @@ internal sealed partial class KeelHost
         GUI.color = was;
     }
 
+    /// <summary>Where a card's × sits: the same spot on both cards (his word 2026-11-12), 16 in and 12 down from the top right.</summary>
+    private static Rect CloseSpot(Rect card) => new Rect(card.xMax - 16 - 22, card.y + 12, 22, 18);
+
     /// <summary>The Keel card: what Keel did, how long the game took, what to look at (the overlay's summary, drawn by the game).</summary>
     private void DrawSummaryCard(Rect r, float alpha, float textAlpha)
     {
@@ -323,9 +326,9 @@ internal sealed partial class KeelHost
         string ver = string.IsNullOrEmpty(s.KeelVersion) ? "" : " " + s.KeelVersion;
         // An × top right closes it, like What's new (his word 2026-11-12: "just add a x to both, no right click").
         EnsureNewsStyles();
-        var close = new Rect(r.xMax - pad - 16 * u, y + 2 * u, 18 * u, 18 * u);
+        var close = CloseSpot(r);          // the very spot of What's new's ×
         GUI.Label(close, "×", newsClose);
-        cardCloseRect = new Rect(close.x - 6 * u, close.y - 6 * u, close.width + 12 * u, close.height + 12 * u);
+        cardCloseRect = new Rect(close.x - 6, close.y - 6, close.width + 12, close.height + 12);
         GUI.Label(new Rect(r.x + pad, y, tw - 22 * u, 24 * u),
             Fit("Keel" + ver + " started " + s.Running + (s.Running == 1 ? " mod" : " mods") + (s.KeelSeconds >= 1 ? " in " + s.KeelSeconds.ToString("0") + " s" : ""), cardHead, tw - 22 * u), cardHead);
         y += 24 * u;
@@ -373,7 +376,7 @@ internal sealed partial class KeelHost
         if (draw)
         {
             GUI.Label(new Rect(r.x + padX, y, inner - 26, th), title, oneTitle);
-            var close = new Rect(r.xMax - padX - 22, y, 22, 18);
+            var close = CloseSpot(r);
             GUI.Label(close, "×", newsClose);
             newsCloseRect = new Rect(close.x - 6, close.y - 6, close.width + 12, close.height + 12);
         }
