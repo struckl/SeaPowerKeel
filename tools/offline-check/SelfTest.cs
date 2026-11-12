@@ -327,11 +327,11 @@ internal static class SelfTest
         Check(ModSetups.Detect(new[] { fMain }, null, null).Line() == "Euromod setup: Euromod (Main Pack).", "stage 1: Main Pack only");
         string s2 = ModSetups.Detect(new[] { fMain, fAc }, null, times).Line();
         Check(s2.StartsWith("Euromod setup: Euromod + AC Pack (updated 2026-11-1") && s2.Contains("Extended Guidance off"), "stage 2: + AC Pack, its update date, EG off when submods.ini is missing: " + s2);
-        string ini = "; AC Pack submods.\n[Submods]\nExtendedGuidance=true\nTestRange=false\nHullDamage=true\nBroken=maybe\n";
+        string ini = "; AC Pack submods.\n[Submods]\neuromod.extended-guidance=true\nTestRange=false\nHullDamage=true\nBroken=maybe\n";
         string s3 = ModSetups.Detect(new[] { fMain, fAc }, ini, times).Line();
         Check(s3.Contains("+ Extended Guidance ON (experimental)") && s3.EndsWith("AC Pack submods off: TestRange."), "stage 3: EG on, switched-off submods listed: " + s3);
-        Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Submods]\nExtendedGuidance=false\n", null).Eg, "EG=false: off");
-        Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Other]\nExtendedGuidance=true\n", null).Eg, "only [Submods] counts");
+        Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Submods]\neuromod.extended-guidance=false\n", null).Eg, "EG=false: off");
+        Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Other]\neuromod.extended-guidance=true\n", null).Eg, "only [Submods] counts");
         Check(ModSetups.Detect(new[] { fLocal }, null, null).Line().Contains("AC Pack without the Euromod Main Pack"), "a local AC Pack copy is recognized by ACPackSettings.dll, and a missing Main Pack is said");
         Check(ModSetups.SubmodsIni(@"C:\LocalLow\Triassic Games\Sea Power").EndsWith(@"Mods\ACPack\submods.ini"), "the AC Pack's switches are read from Mods\\ACPack\\submods.ini");
 
@@ -344,12 +344,12 @@ internal static class SelfTest
         Check(ModSetups.Detect(new[] { fLocal }, null, oldTimes, "0.9.1").Warning() == null, "a local AC Pack copy (no Steam time): no warning");
 
         // The report window's EG button writes the AC Pack's own switch, leaving every other line as it was.
-        Check(ModSetups.SetSubmod(null, "ExtendedGuidance", true) == "[Submods]\nExtendedGuidance=true\n", "EG on with no file: the section is made");
-        string withEg = ModSetups.SetSubmod(ini, "ExtendedGuidance", false);
-        Check(withEg == ini.Replace("ExtendedGuidance=true", "ExtendedGuidance=false"), "EG off: only that line changes");
+        Check(ModSetups.SetSubmod(null, "euromod.extended-guidance", true) == "[Submods]\neuromod.extended-guidance=true\n", "EG on with no file: the section is made");
+        string withEg = ModSetups.SetSubmod(ini, "euromod.extended-guidance", false);
+        Check(withEg == ini.Replace("euromod.extended-guidance=true", "euromod.extended-guidance=false"), "EG off: only that line changes");
         string other = "[Other]\nX=1\n[Submods]\nTestRange=false\n\n[More]\nY=2\n";
-        Check(ModSetups.SetSubmod(other, "ExtendedGuidance", true) == "[Other]\nX=1\n[Submods]\nTestRange=false\nExtendedGuidance=true\n\n[More]\nY=2\n", "EG added at the end of [Submods], other sections kept");
-        Check(ModSetups.ReadSubmods(ModSetups.SetSubmod("; note\n", "ExtendedGuidance", true))["ExtendedGuidance"], "what the button writes reads back as on");
+        Check(ModSetups.SetSubmod(other, "euromod.extended-guidance", true) == "[Other]\nX=1\n[Submods]\nTestRange=false\neuromod.extended-guidance=true\n\n[More]\nY=2\n", "EG added at the end of [Submods], other sections kept");
+        Check(ModSetups.ReadSubmods(ModSetups.SetSubmod("; note\n", "euromod.extended-guidance", true))["euromod.extended-guidance"], "what the button writes reads back as on");
     }
 
     private static void TakeoverChecks(string tmp)

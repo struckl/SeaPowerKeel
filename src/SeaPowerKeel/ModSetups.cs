@@ -11,14 +11,14 @@ namespace SeaPowerKeel;
 /// bug report says which stage it came from. Today: Euromod. Players speak of three stages: Euromod (the Main Pack), Euromod +
 /// AC Pack (Chevron 9's Anchorchain Expansion Pack, code), and the AC Pack with its experimental Extended Guidance (EG) on.
 /// The AC Pack keeps its submod switches in <c>&lt;persistentDataPath&gt;\Mods\ACPack\submods.ini</c>, section
-/// <c>[Submods]</c>, <c>Id=true|false</c>; a missing entry is on, except ExtendedGuidance, which is off.
+/// <c>[Submods]</c>, <c>Id=true|false</c>; a missing entry is on, except euromod.extended-guidance (Extended Guidance), which is off. Ids are the AC Pack's (`euromod.<name>`).
 /// </summary>
 internal static class ModSetups
 {
     public const ulong EuromodMain = 3629144864;
     public const ulong EuromodAcPack = 3784474738;
     public const string AcPackMarker = "ACPackSettings.dll";
-    public const string EgId = "ExtendedGuidance";
+    public const string EgId = "euromod.extended-guidance";   // the AC Pack's own id (its menu writes it; seen in the game 2026-11-12)
     /// <summary>Steam time of the AC Pack update "fixes two bugs caused by 0.9" (2026-11-11 20:11 UTC): older copies break on 0.9.x.</summary>
     public const long AcPackFix09 = 1794427884;
 
@@ -39,7 +39,7 @@ internal static class ModSetups
                          : (Main ? "Euromod + AC Pack" : "AC Pack without the Euromod Main Pack")
                            + (AcPackUpdated != null ? $" (updated {AcPackUpdated}{(AcPackOld ? ", OLD" : "")})" : "")
                            + (Eg ? " + Extended Guidance ON (experimental)" : ", Extended Guidance off");
-            return "Euromod setup: " + stage + (SubmodsOff.Count > 0 ? $"; AC Pack submods off: {string.Join(", ", SubmodsOff)}" : "") + ".";
+            return "Euromod setup: " + stage + (SubmodsOff.Count > 0 ? $"; AC Pack submods off: {string.Join(", ", SubmodsOff.Select(s => s.StartsWith("euromod.") ? s.Substring(8) : s))}" : "") + ".";
         }
 
         /// <summary>What to tell the player about the AC Pack, or null.</summary>
