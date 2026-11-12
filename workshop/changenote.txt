@@ -1,3 +1,1 @@
-- Keel card and What's new go away again: right click hides them, and they fade after a minute
-- No SKIPPED warning for a mod's backup entry (a second entry in the same DLL is fine)
-- Mods that ask to start early now start before the first loading-screen picture
+- With Alternative Game Interface on, the menu stopped taking clicks after Keel's report was closed: fixed (Keel now lets go of the mouse when its window closes)

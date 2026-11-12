@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.3 - 2026-11-12 - menu takes clicks after the report (Alternative Game Interface)
 
 - **The menu takes clicks again after the report is closed** with Alternative Game Interface on: Keel closed its window on the mouse press, so its button kept the mouse; AGI then held back every click from the game's menu (board post #3). Keel now lets go of the mouse when its window closes
 - **Tested in the game on 0.9.1** with Alternative Game Interface 2.0.0: the menu takes clicks after the report is closed by Close, Esc and the hotkey
