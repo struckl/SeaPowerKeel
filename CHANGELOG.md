@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **The menu takes clicks again after the report is closed** with Alternative Game Interface on: Keel closed its window on the mouse press, so its button kept the mouse; AGI then held back every click from the game's menu (board post #3). Keel now lets go of the mouse when its window closes
+- Not yet run in the game
+
 ## 0.5.2 - 2026-11-12 - player reports: cards go away, start early earlier
 
 - **Keel card and What's new go away again**: a right click hides them, and they fade on their own after `SummarySeconds` (players asked)

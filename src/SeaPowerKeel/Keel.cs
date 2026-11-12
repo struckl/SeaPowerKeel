@@ -1111,10 +1111,21 @@ internal sealed partial class KeelHost : MonoBehaviour
     // ---- in-game report (IMGUI: drawn on top of the game's own UI, needs nothing from the game) ----
 
     private GUIStyle wrap, small, title;
+    private bool windowWasShown;
 
     private void OnGUI()
     {
         Event e = Event.current;
+        // Keel closes its window on the mouse press (the polled click), so the button under the mouse never gets its release and
+        // keeps GUIUtility.hotControl. Alternative Game Interface hands mouse releases to the game's interface only while
+        // hotControl is 0: the whole menu stopped taking clicks after the report was closed (board post #3, 2026-11-12).
+        // So once the window is gone, Keel lets go of the mouse.
+        if (windowWasShown && !showWindow)
+        {
+            GUIUtility.hotControl = 0;
+            GUIUtility.keyboardControl = 0;
+        }
+        windowWasShown = showWindow;
         if (e.type == EventType.KeyDown && e.keyCode == key && e.control == keyCtrl && e.shift == keyShift && e.alt == keyAlt)
         {
             ToggleWindow();
