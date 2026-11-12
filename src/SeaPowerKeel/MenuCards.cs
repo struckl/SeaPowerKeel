@@ -184,59 +184,61 @@ internal sealed partial class KeelHost
     private static float EaseOutBack(float t) { const float c = 1.4f; t -= 1f; return 1f + (c + 1f) * t * t * t + c * t * t; }
 
     /// <summary>
-    /// One frame of the division, p from 0 to 1. A (0-0.25): the card bulges, bubbles swell out of its lower edge. B (0.25-0.65):
-    /// the Keel card rises out of it, a neck of shrinking bubbles between the two halves, a few drops pop off when it tears.
-    /// C (0.65-1): What's new grows from the bottom up to its size, pushing the Keel card above it; its text fades in.
+    /// One frame of the division, p from 0 to 1, as a budding cell:
+    /// A (0-0.3): the Keel card lifts and a round bud swells out of its lower edge, with a few small bubbles.
+    /// B (0.3-0.65): the card rises further, the bud flattens into a small card on the corner; the neck between them, a column of
+    /// bubbles, thins and tears, and a few drops pop off.
+    /// C (0.65-1): the bud grows from the bottom up into What's new (springy), pushing the Keel card above it; its text fades in.
+    /// Everything stays above the card's old lower edge (below it are the game's version text and the screen's edge).
     /// </summary>
     private void DrawSplit(float p, Rect home, float width, float bottom, float newsH, float alpha)
     {
-        float x = home.x, h = home.height, w0 = home.width, y0 = home.y;
-        Rect upper, lower = Rect.zero;
-        if (p < 0.25f)
+        float x = home.x, h = home.height, w0 = home.width, y0 = home.y, cx = x + w0 / 2;
+        if (p < 0.3f)
         {
-            float q = p / 0.25f, swell = Mathf.Sin(q * Mathf.PI * 0.5f);
-            upper = new Rect(x, y0, w0, h + h * 0.18f * swell);
-            DrawBody(upper, alpha);
-            // bubbles swelling out of the lower edge
-            for (int i = 0; i < 5; i++)
-            {
-                float cx = x + w0 * (0.18f + 0.16f * i), r = h * (0.10f + 0.04f * (i % 2)) * swell;
-                Circle(cx, upper.yMax - r * 0.4f, r, alpha);
-            }
-            DrawSummaryCard(new Rect(x, y0, w0, h), alpha, 1f);
+            float q = p / 0.3f, e = Smooth(q), swell = Mathf.Sin(q * Mathf.PI * 0.5f);
+            var upper = new Rect(x, y0 - 0.45f * h * e, w0, h);
+            float r = 0.42f * h * swell;
+            Circle(cx, upper.yMax + r * 0.1f, r, alpha);                                   // the bud
+            for (int i = -1; i <= 1; i += 2)                                               // bubbles beside it
+                Circle(cx + i * (r + 0.12f * h * swell), upper.yMax + 0.05f * h, 0.12f * h * swell, alpha);
+            DrawSummaryCard(upper, alpha, 1f);
             return;
         }
         if (p < 0.65f)
         {
-            float q = (p - 0.25f) / 0.40f, e = Smooth(q);
-            lower = new Rect(x, y0, w0, h);
-            upper = new Rect(x, y0 - (h + CardGap) * e, w0, h);
-            DrawBody(lower, alpha);
-            // the neck: a column of bubbles whose width shrinks to nothing
-            float neckW = w0 * 0.7f * Mathf.Pow(1f - e, 1.6f), top = upper.yMax - h * 0.25f, bot = lower.y + h * 0.25f;
+            float q = (p - 0.3f) / 0.35f, e = Smooth(q);
+            var upper = new Rect(x, y0 - 0.45f * h - 0.30f * h * e, w0, h);
+            float bw = Mathf.Lerp(0.84f * h, 0.55f * w0, e), bh = Mathf.Lerp(0.84f * h, 0.5f * h, e);
+            var bud = new Rect(cx - bw / 2, bottom - bh, bw, bh);
+            DrawBody(bud, alpha);
+            // the neck: a column of bubbles between the two, thinning to nothing
+            float neckW = Mathf.Min(bw, w0) * 0.6f * (1f - Smooth(Mathf.Clamp01((q - 0.15f) / 0.85f)));
             if (neckW > 1f)
-                for (float cy = top; cy <= bot; cy += Mathf.Max(2f, neckW * 0.25f))
-                    for (float cx = x + w0 / 2 - neckW / 2 + neckW * 0.25f; cx <= x + w0 / 2 + neckW / 2 - neckW * 0.25f + 0.1f; cx += Mathf.Max(2f, neckW * 0.25f))
-                        Circle(cx, cy, neckW * 0.25f, alpha);
-            if (q > 0.75f)
             {
-                float d = (q - 0.75f) / 0.25f;            // drops flying off where it tore
-                float mid = (upper.yMax + lower.y) / 2;
+                float step = Mathf.Max(2f, neckW * 0.3f);
+                for (float cy = upper.yMax - neckW * 0.3f; cy <= bud.y + neckW * 0.3f; cy += step)
+                    for (float bx = cx - neckW / 2 + neckW * 0.3f; bx <= cx + neckW / 2 - neckW * 0.3f + 0.1f; bx += step)
+                        Circle(bx, cy, neckW * 0.3f, alpha);
+            }
+            if (q > 0.8f)
+            {
+                float d = (q - 0.8f) / 0.2f, mid = (upper.yMax + bud.y) / 2;      // drops popping off where it tore
                 for (int i = -1; i <= 1; i++)
-                    Circle(x + w0 / 2 + i * w0 * 0.12f * (1 + d), mid + (i == 0 ? -1 : 1) * h * 0.08f * d, h * 0.05f * (1 - d), alpha);
+                    Circle(cx + i * w0 * 0.1f * (1 + d), mid + (i == 0 ? -1 : 1) * h * 0.06f * d, h * 0.045f * (1 - d), alpha);
             }
             DrawSummaryCard(upper, alpha, 1f);
             return;
         }
         {
             float q = (p - 0.65f) / 0.35f, e = EaseOutBack(q), s = Smooth(q);
-            float w = Mathf.Lerp(w0, width, s);
-            float lh = Mathf.Max(h * 0.6f, h + (newsH - h) * e);
-            lower = new Rect(x, bottom - lh, w, lh);
-            upper = new Rect(x, lower.y - CardGap - h, w, h);
+            float lw = Mathf.Lerp(0.55f * w0, width, s), lh = Mathf.Max(0.3f * h, Mathf.LerpUnclamped(0.5f * h, newsH, e));
+            var lower = new Rect(Mathf.Lerp(cx - 0.275f * w0, x, s), bottom - lh, lw, lh);
+            float gap = Mathf.Lerp(0.25f * h, CardGap, s);
+            var upper = new Rect(x, lower.y - gap - h, Mathf.Lerp(w0, width, s), h);
             DrawBody(lower, alpha);
             newsRect = lower;
-            DrawNewsContent(lower, stackMods, Mathf.Clamp01((q - 0.45f) / 0.55f));
+            DrawNewsContent(lower, stackMods, Mathf.Clamp01((q - 0.78f) / 0.22f));      // the text once the card is almost its full width
             DrawSummaryCard(upper, alpha, 1f);
             cardTop = upper.y;
         }
