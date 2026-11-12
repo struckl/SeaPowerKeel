@@ -32,3 +32,26 @@ Left as: Euromod Main, US Naval Aviation, Cost Tracker and AC Pack ticked in his
 | AC Pack OptimalTargetDist | Its two transpilers do not fit 0.9.1 ("Unrecognized launch layout", "Unknown AAW rejection layout"); under Alpine it is a dialog, under Keel two log lines. The AC Pack's own issue. |
 
 Left as before the tests: Euromod items, Alpine unticked, Alpine's file `.keel-off`, no `submods.ini`; Mod Manager+ and Boost Loader subscribed but unticked.
+
+## 0.5.0 test run (split, game-drawn cards), 2026-11-12 15:35-15:55, game 0.9.1
+
+Run from TESTING.md, plan `docs/test-plan-0.5.0.md`. Two runs and one fix run between them.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Version question | GREEN: top bar *MESSAGE · R.A.T.S. KEEL*, list without the Keel sentence (driver picture) |
+| 2 | Keel card | GREEN: "Keel 0.5.0 started 41 mods in 19 s" |
+| 3 | Hand-over and split | GREEN: hand-over without a blink, split seen live by him ("very cool animation"); frames of the later phases in the burst |
+| 3a | Inside the grey panel, under EXIT | run 1 RED (cards wider than the panel, notes wrapping) → fixed → run 2 GREEN: panel width, one line each, above the version text |
+| 3b | Behaviour | GREEN: × closes What's new and the Keel card glides down; right click leaves it (always visible); Scenarios hides both |
+| 4/5 | Card click, report rows | GREEN: report opens at WHAT'S NEW; Radio row opens all notes, "click to close" |
+| 6 | Report line 1 | GREEN: `Sea Power 0.9.1-261112, 3D globe map` |
+| 7 | EG button | GREEN: "EG on after restart"; 11: after *Restart the game* the setup line says Extended Guidance ON |
+| 8 | ALTERNATIVE MODS | GREEN |
+| 9 | Mods menu reload | GREEN at the end (report rewritten, "41 running, 1 failed" = Automatic SAR, outdated); the mid-reload state not caught (one mod) |
+| 10 | Send report | not run: the feedback board change is not deployed |
+
+Findings fixed after the runs (built, self-tests 205/205, **not yet run in the game**): the Keel card comes back after a Mods menu
+reload (it was gone); the Anchor Chain note once in the report; the reload dialog says R.A.T.S. Keel in its top bar, not in the text;
+every game message box is logged (`Game message box:`); What's new's footer without "× closes". Fixed in the first fix run and seen
+in run 2: panel width and one-line text; the Keel card no longer fades. Driver and TESTING.md fixes: see the workspace repo (db54ab9).
