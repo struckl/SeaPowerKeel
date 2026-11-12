@@ -205,8 +205,21 @@ internal sealed partial class KeelHost : MonoBehaviour
 
         // 1. The game's mod list. 0.8.7 has it straight away, the globe build after a while; failing that, the same list from disk.
         var watch = Stopwatch.StartNew();
-        List<ModFolder> folders;
-        while ((folders = GameState.GameModList()) == null && watch.Elapsed.TotalSeconds < 60)
+        List<ModFolder> folders = null;
+        // A mod that asked to start early (rgreat 2026-11-12: "could be a bit earlier", he replaces the load-screen pictures)
+        // does not wait for the game's own list, which comes about 8 s after Keel: Keel reads the same list from usersettings.ini
+        // at once, so early mods start before the first load-screen picture. Everything else still waits for the load screen.
+        if (GameState.Globe)
+        {
+            List<ModFolder> disk = null;
+            try { disk = ModFolders.FromDisk(); } catch (Exception) { }
+            if (disk != null && disk.Any(f => f.Enabled && EarlyStart.FolderAsks(f.Path)))
+            {
+                folders = disk;
+                log.LogInfo("A mod asked to start early: Keel takes the mod list from usersettings.ini now instead of waiting for the game's.");
+            }
+        }
+        while (folders == null && (folders = GameState.GameModList()) == null && watch.Elapsed.TotalSeconds < 60)
             yield return new WaitForSecondsRealtime(0.25f);
         if (folders == null)
         {
