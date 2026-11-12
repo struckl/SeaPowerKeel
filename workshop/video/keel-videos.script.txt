@@ -25,4 +25,4 @@ t2	Keel Setup finds the other loader, sets its preloader aside, and installs Kee
 t3	Switch Rats Keel on in the Mod Manager, and restart the game.
 t4	From now on, Keel runs every mod. The other loader stays out, and nothing starts twice.
 t5	Want it back? Restore in Keel Setup puts everything back the way it was.
-DE	[German, multilingual model] Ratte, Ende.
+DE	[German, multilingual model, take 2] Ratte, Ende.
