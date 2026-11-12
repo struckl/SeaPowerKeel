@@ -13,3 +13,5 @@ dist-ci/
 .venv/
 __pycache__/
 .claude/
+
+docs/test-shots-takeover/
