@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Release builds of the loader and the stub, then dist\SeaPowerKeel\ with exactly what players get:
-    SeaPowerKeel.dll, SeaPowerKeel.Patcher.dll, _info.ini, LICENSE.txt, preview.jpg (workshop\preview.jpg) and copy-to-BepInEx-plugins\SeaPowerKeel.Stub.dll,
+    SeaPowerKeel.dll, SeaPowerKeel.Patcher.dll, _info.ini, LICENSE.txt, CHANGELOG.md, preview.jpg (workshop\preview.jpg) and copy-to-BepInEx-plugins\SeaPowerKeel.Stub.dll,
     the one file players copy into Sea Power\BepInEx\plugins once (Keel never loads it from the mod folder).
     With -Install the staged folder also replaces <GameDir>\Sea Power_Data\StreamingAssets\SeaPowerKeel\. Sea Power must be closed.
 
@@ -49,6 +49,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Build failed: KeelSetup' }
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Setup\bin\Release\net48\KeelSetup.exe') $dist
 Copy-Item (Join-Path $root 'src\SeaPowerKeel\mod\_info.ini') $dist
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $dist 'LICENSE.txt')
+Copy-Item (Join-Path $root 'CHANGELOG.md') $dist      # What's new shows its top sections to players of a local or offline copy
 New-Item -ItemType Directory -Force (Join-Path $dist 'lib') | Out-Null
 Copy-Item (Join-Path $root 'lib\AnchorChain.keel.bin'), (Join-Path $root 'lib\THIRD-PARTY.txt') (Join-Path $dist 'lib')
 $preview = Join-Path $root 'workshop\preview.jpg'

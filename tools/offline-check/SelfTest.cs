@@ -150,6 +150,30 @@ internal static class SelfTest
         WhatsNew.AddNotes(offline, _ => throw new System.Net.WebException("offline"));
         Check(offline.First(n => n.Key == "111").Lines.SequenceEqual(new[] { "from the file" }), "Steam unreachable: the CHANGELOG instead, no error");
         Check(WhatsNew.Text(news).Contains("UPDATED  Alpha Mod  1.0.0 → 1.1.0   (from Workshop)"), "the report text");
+
+        // Game test 2026-11-12: BetterTacMap rewrote settings.cfg in its Workshop folder at every start and was UPDATED every time.
+        var steady = WhatsNew.Look(second, plugins2, ws);
+        File.WriteAllText(Path.Combine(a, "settings.cfg"), "written by the mod " + Guid.NewGuid());
+        File.WriteAllText(Path.Combine(local, "MyLocal.cfg"), "written by the mod " + Guid.NewGuid());
+        Check(WhatsNew.Compare(steady, WhatsNew.Look(second, plugins2, ws), second).Count == 0, "a settings file the mod writes into its own folder is no update");
+        File.WriteAllText(Path.Combine(a, "extra.dll"), "files changed, Steam time not");
+        Check(WhatsNew.Compare(steady, WhatsNew.Look(second, plugins2, ws), second).Count == 0, "a Workshop item: Steam's update time decides, not its files");
+        File.WriteAllText(Path.Combine(fresh, "pack.ini"), "data changed");
+        var dataNews = WhatsNew.Compare(steady, WhatsNew.Look(second, plugins2, ws), second);
+        Check(dataNews.Count == 1 && dataNews[0].Key == "Fresh", "a local mod's changed files are an update");
+        WhatsNew.AddNotes(dataNews, null);
+        Check(dataNews[0].Lines.SequenceEqual(new[] { "Same version number, new files (a new build)." }), "same version, new files: said so when the author wrote nothing");
+        var oldStamps = WhatsNew.Look(second, plugins2, ws);
+        foreach (SeenMod m in oldStamps.Values) m.Stamp = "3:100:5";      // a file written by the first What's new build
+        File.WriteAllText(Path.Combine(fresh, "pack2.ini"), "x");
+        Check(WhatsNew.Compare(oldStamps, WhatsNew.Look(second, plugins2, ws), second).Count == 0, "a stamp from the older Keel is not compared: no UPDATED for all after the update");
+
+        // Keel's own folder has no plugin entry: its version is added by hand, so a new Keel shows its version jump.
+        string own = Path.Combine(local, "SeaPowerKeel.dll");
+        var k1 = WhatsNew.Look(second, plugins2, ws, own, "dev.sewerlabs.seapowerkeel", "0.4.0");
+        var k2 = WhatsNew.Look(second, plugins2, ws, own, "dev.sewerlabs.seapowerkeel", "0.5.0");
+        NewsItem keelNews = WhatsNew.Compare(k1, k2, second).FirstOrDefault(n => n.Key == "MyLocal");
+        Check(keelNews is { From: "0.4.0", To: "0.5.0" }, "Keel's own folder: its version jump");
     }
 
     /// <summary>

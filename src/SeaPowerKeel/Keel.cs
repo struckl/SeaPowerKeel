@@ -1065,15 +1065,21 @@ internal sealed class KeelHost : MonoBehaviour
         List<PluginEntry> plugins = Keel.Plugins.ToList();
         string workshopRoot = ModFolders.WorkshopRoot;
         bool fetch = workshopNotes.Value;
+        string ownPath = OwnPath;
         System.Threading.ThreadPool.QueueUserWorkItem(_ =>
         {
             try
             {
                 seenLast = WhatsNew.Read(path);
-                seenNow = WhatsNew.Look(enabled, plugins, workshopRoot);
+                seenNow = WhatsNew.Look(enabled, plugins, workshopRoot, ownPath, Keel.Guid, Keel.Version);
                 List<NewsItem> found = WhatsNew.Compare(seenLast, seenNow, enabled);
                 WhatsNew.AddNotes(found, fetch ? id => WhatsNew.FetchWorkshopPage(id, 6000) : null);
                 newsFound = found;
+                foreach (NewsItem n in found.Where(n => n.Kind is NewsKind.Updated or NewsKind.New))
+                    log.LogInfo($"What's new: {n.Name}: {n.Lines.Count} line(s) from {(n.Source.Length > 0 ? n.Source : "nowhere")}" +
+                                (n.SteamId != 0 ? $" (Workshop {n.SteamId}, Steam time {n.PrevUpdated} -> {n.Updated})" : ""));
+                foreach (string e in WhatsNew.FetchErrors)
+                    log.LogWarning($"What's new could not read a Workshop changelog page: {e}");
             }
             catch (Exception ex)
             {

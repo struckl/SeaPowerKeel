@@ -68,15 +68,20 @@ internal static class WhatsNew
 
     // ---- what is there now ----
 
-    public static Dictionary<string, SeenMod> Look(IEnumerable<ModFolder> folders, IEnumerable<PluginEntry> plugins, string workshopRoot)
+    /// <param name="ownDll">Keel's own DLL: its folder has no plugin entry, so Keel's version is added for it by hand.</param>
+    public static Dictionary<string, SeenMod> Look(IEnumerable<ModFolder> folders, IEnumerable<PluginEntry> plugins, string workshopRoot,
+                                                   string ownDll = null, string ownGuid = null, string ownVersion = null)
     {
         Dictionary<ulong, long> steamTimes = SteamTimes(workshopRoot);
         var mods = new Dictionary<string, SeenMod>(StringComparer.OrdinalIgnoreCase);
+        string ownFolder = Full(ownDll == null ? null : Path.GetDirectoryName(ownDll));
         foreach (ModFolder f in folders)
         {
             var m = new SeenMod { Key = KeyOf(f), Name = NameOf(f.Path) ?? f.Label, Stamp = Stamp(f.Path) };
             if (f.SteamId != 0 && steamTimes.TryGetValue(f.SteamId, out long t))
                 m.Updated = t;
+            if (ownFolder != null && ownGuid != null && string.Equals(Full(f.Path), ownFolder, StringComparison.OrdinalIgnoreCase))
+                m.Versions[ownGuid] = ownVersion ?? "";
             mods[m.Key] = m;
         }
         foreach (PluginEntry p in plugins)
@@ -135,18 +140,38 @@ internal static class WhatsNew
         }
     }
 
-    private static string Stamp(string folder)
+    private static string Full(string path)
+    {
+        try
+        {
+            return string.IsNullOrEmpty(path) ? null : Path.GetFullPath(path).TrimEnd('\\', '/');
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    // Files a mod (or the game) writes into its own folder while it runs: they change at every start and are no update.
+    // BetterTacMap rewrites settings.cfg in its Workshop folder each time (found in the game test 2026-11-12).
+    private static readonly string[] RuntimeFiles = { ".cfg", ".log", ".tmp", ".bak", ".lock" };
+
+    public const string StampVersion = "s2:";
+
+    internal static string Stamp(string folder)
     {
         try
         {
             long count = 0, size = 0, newest = 0;
             foreach (FileInfo fi in new DirectoryInfo(folder).EnumerateFiles("*", SearchOption.AllDirectories))
             {
+                if (RuntimeFiles.Any(x => fi.Name.EndsWith(x, StringComparison.OrdinalIgnoreCase)))
+                    continue;
                 count++;
                 size += fi.Length;
                 newest = Math.Max(newest, fi.LastWriteTimeUtc.Ticks);
             }
-            return $"{count}:{size}:{newest}";
+            return $"{StampVersion}{count}:{size}:{newest}";
         }
         catch (Exception)
         {
@@ -259,8 +284,13 @@ internal static class WhatsNew
                 news.Add(item);
                 continue;
             }
-            bool changed = was.Stamp != m.Stamp || (m.Updated != 0 && was.Updated != 0 && m.Updated != was.Updated)
-                           || m.Versions.Any(v => !was.Versions.TryGetValue(v.Key, out string old) || old != v.Value);
+            // A Workshop item changes only when Steam updates it: its update time decides. Else the folder's files do, compared
+            // only between stamps of the same kind (an older Keel's stamp counted every file, settings the mod writes included).
+            bool steamKnown = m.Updated != 0 && was.Updated != 0;
+            bool filesChanged = steamKnown
+                ? m.Updated != was.Updated
+                : was.Stamp != m.Stamp && was.Stamp.StartsWith(StampVersion) && m.Stamp.StartsWith(StampVersion);
+            bool changed = filesChanged || m.Versions.Any(v => !was.Versions.TryGetValue(v.Key, out string old) || old != v.Value);
             if (!changed)
                 continue;
             item.Kind = NewsKind.Updated;
@@ -334,7 +364,12 @@ internal static class WhatsNew
             {
                 n.Lines.AddRange(log);
                 n.Source = "CHANGELOG";
+                continue;
             }
+            // Nothing from the author: say at least what kind of change it was.
+            if (n.Kind == NewsKind.Updated)
+                n.Lines.Add(n.From.Length > 0 && n.From == n.To ? "Same version number, new files (a new build)."
+                            : n.From.Length == 0 && n.To.Length == 0 ? "Its files changed." : "No change notes from the author.");
         }
     }
 
@@ -429,6 +464,9 @@ internal static class WhatsNew
         return lines;
     }
 
+    /// <summary>Why pages could not be read (for the log): in the game the request runs on Unity's Mono, not .NET.</summary>
+    public static readonly System.Collections.Concurrent.ConcurrentBag<string> FetchErrors = new();
+
     /// <summary>The Workshop changelog page of an item, or null (any failure). Runs on a worker thread.</summary>
     public static string FetchWorkshopPage(ulong id, int timeoutMs)
     {
@@ -443,8 +481,9 @@ internal static class WhatsNew
             using var reader = new StreamReader(resp.GetResponseStream() ?? Stream.Null, Encoding.UTF8);
             return reader.ReadToEnd();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            FetchErrors.Add($"Workshop {id}: {ex.GetType().Name}: {ex.Message}");
             return null;
         }
     }
