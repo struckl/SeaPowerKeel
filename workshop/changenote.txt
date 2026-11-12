@@ -1,8 +1,9 @@
-0.4.0: ready for Sea Power 0.9.0, plus Restart, Reload and Send report.
-The game no longer lists Keel as "not declared to be compatible", and 0.9.0 players get its updates from the Workshop.
-Mods menu: the game's reload dialog gets a Restart button (saves your mod list, closes the game and starts it again). Its Reload now also starts code mods you switched on and takes switched-off ones out as far as the running game allows; a full Restart is the clean way.
-Report window (Ctrl+Shift+K): Restart the game (two clicks).
-Crash and report windows: Send report sends your logs to the R.A.T.S. developer in one click, with your Windows user name removed from every path; you see the file list and confirm first.
-The game's "not declared to be compatible" question now lists short mod names, code mods apart from data mods, with the version each one says it was made for.
-Anchor Chain mods that check Anchor Chain's file (the ROC mods) run again: Keel now ships the official Anchor Chain 1.1.0 file unchanged.
-Run in the game on 0.9.0 (build 261111): start-up with 17 mods, Reload, Restart, Send report from the report window.
+0.5.0: Keel takes over, What's new, Euromod stages, better reports.
+Keel is the loader while it is on: Anchor Chain's preloader and Alpine's Mod Loader are kept from starting, so every mod starts once, under Keel. Their files stay as they are; switch Keel off and they start again. The first start after this update still lets them run once and asks you to restart.
+What's new since your last game: when mods changed, a card grows out of the Keel card at the bottom left of the main menu with the mods that are new, updated or broken and a line from their authors. A click shows everything in Keel's report.
+The Keel card is now drawn by the game and stays on the main menu; both cards always fit the menu panel above the version text.
+Euromod players: the report names your stage (Main Pack, + AC Pack, + Extended Guidance), a button in the report switches Extended Guidance, and an outdated AC Pack is flagged.
+Mods that add menu entries at the end of the load screen (ALTERNATIVE MODS) show them on every start again.
+Send report: the report says the game build and whether the game crashed; the report stays current during a Mods menu reload.
+The game's message boxes say R.A.T.S. Keel in their top bar when Keel adds to them.
+Run in the game on 0.9.1 (build 261112): 17 and 43 mods, Euromod with AC Pack and Extended Guidance in a mission, Alpine kept out, Mods menu reload and restart.
