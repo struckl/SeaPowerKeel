@@ -31,7 +31,7 @@ Windows may say "unknown publisher" because the file is not signed yet: More inf
 [*][b]Bad patches are stopped before they start.[/b] A patch that does not fit the game method would corrupt memory, so Keel leaves it out
 [*][b]No more error-popup floods.[/b] After a game update, an outdated mod can bury your screen in error popups every frame. Keel names the mod and takes its broken patch off, so you keep playing
 [*][b]A mod that crashed the game stays out[/b] until it is updated, or until you click Let held mods run
-[*][b]Right build for your game.[/b] Mods that ship one DLL for the flat map and one for the 3D globe say which is which in a small keel.ini, and Keel starts only the one that fits
+[*][b]Right build for your game.[/b] When a mod ships a flat-map and a 3D-globe DLL, Keel starts the one that fits
 [*][b]Only the mods you switched on.[/b] Keel follows the game's Mods menu; switched-off mods are not even opened
 [/list]
 
@@ -41,15 +41,16 @@ Windows may say "unknown publisher" because the file is not signed yet: More inf
 [*][b]Bug reports in one click.[/b] Save logs puts every log into one zip on your Desktop. Send report sends them to the R.A.T.S. developer with your Windows user name removed, only when you click Send
 [*][b]The report.[/b] Ctrl+Shift+K shows every mod: running, running with errors, not started and why (missing dependency, conflict, wrong game build). Also in BepInEx\Keel-report.txt
 [*][b]A loading window.[/b] While the game starts, a small window shows each mod as it starts and how long it takes, then a summary card on the main menu
-[*][b]Logs with times.[/b] BepInEx\Keel-log.txt has every line of the game and all mods with the time and the mod each error came from; the last sessions are kept
+[*][b]Logs with times.[/b] BepInEx\Keel-log.txt: every line of the game and all mods, with the time and the mod each error came from
 [*][b]A readable version question.[/b] When the game asks about mods made for another version, Keel lists short names, code mods apart from data mods, with the version each was made for
+[*][b]What's new since your last game.[/b] A card on the main menu names the mods that were updated, added or broke, with a line from their author; a click on a mod shows all its notes
 [/list]
 
 [h2]Handy extras[/h2]
 [list]
 [*][b]Restart from the Mods menu.[/b] The game's reload dialog gets a Restart button: saves your list, closes the game and starts it again
 [*][b]Reload follows your changes.[/b] After the game's Reload, Keel starts code mods you switched on and takes switched-off ones out as far as the running game allows; Restart is the clean way
-[*][b]A faster start.[/b] In our test, eight switched-on mods were running 37 s after launch; the loader used before, which also loaded the switched-off ones, needed 116 s
+[*][b]Euromod players:[/b] the report names your stage (Main Pack, + AC Pack, + Extended Guidance), a button switches Extended Guidance, an outdated AC Pack is flagged
 [/list]
 
 [h2]What it changes[/h2]
@@ -57,7 +58,7 @@ Keel changes nothing in the game, in missions or in saves: it decides which code
 Keel cannot stop a crash inside the game's engine or your graphics driver; it tells you what it knows and keeps the same mod from doing it again. KeelWatcher.exe is the small program that shows the crash window, because a crashed game cannot. Logs saved with Save logs contain file paths, so also your Windows user name.
 
 [h2]Game versions[/h2]
-One Keel for both game versions; it uses nothing that differs between them. Run in the game on 0.9.0 (build 261111): start-up with 17 mods, Anchor Chain mods included, with no Anchor Chain on the PC, plus Reload, Restart and Send report. Run on 0.8.7 (flat map) with an earlier version, next to Anchor Chain and on its own; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there. The crash window and patch checks were run with test mods that break on purpose.
+One Keel for both game versions; it uses nothing that differs between them. Run in the game on 0.9.1 (build 261112): 43 mods, Euromod with AC Pack and Extended Guidance, a mission, Alpine's loader kept out. Run on 0.8.7 (flat map) with an earlier version; on 0.8.7 keep Anchor Chain subscribed, that is the tested way there. The crash window and patch checks were run with test mods that break on purpose.
 
 [h2]Settings[/h2]
 BepInEx\config\dev.sewerlabs.seapowerkeel.cfg: how strict the version check is, plugins to leave off, Anchor Chain mods on or off, broken-patch removal, holding out crashed mods, the report key, the log, the loading window.

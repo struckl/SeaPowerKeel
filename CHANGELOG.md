@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - What's new, takeover
+## 0.5.0 - 2026-11-12 - takeover, What's new, Euromod stages, better reports
 
 - **Keel is the loader while it is on.** Keel no longer steps aside for another mod loader. Anchor Chain's preloader and Alpine's Mod Loader, when still installed, are kept from starting while R.A.T.S. Keel is switched on in the Mods menu, so Keel runs every mod and nothing starts twice. A small BepInEx patcher (`BepInEx\patchers\SeaPowerKeel.Patcher.dll`) does it before BepInEx starts any plugin: it takes those loaders out of BepInEx's plugin list by their plugin id. Their files are not renamed, moved or read; switch Keel off (or `Loading.TakeOver = false`) and they start again.
 - **The patcher installs and updates itself.** Keel copies it from its Workshop folder into `BepInEx\patchers` when it is missing or older (a copy in use is set aside as `.old`), so players never handle it and fixes come with Workshop updates. KeelSetup.exe installs it too, and Restore removes it. On the first start after the update the other loader is still running: Keel leaves its mods to it that once, so nothing starts twice, and the summary card and notice say *restart once*. `BepInEx\Keel-takeover.txt` and the report say which loader was kept from starting.
@@ -10,6 +10,9 @@
 - **Old AC Pack warning.** On game 0.9.x an AC Pack older than its 2026-11-11 update (which fixes two bugs caused by 0.9) is named in the report and the log, with how to get the update.
 - **Mods that wait for the end of the load screen work again.** Keel starts mods after the game's start-up load screen on purpose; a mod that adds its menu entries when that screen ends (the Alternative mods' *ALTERNATIVE MODS* entry) missed it on starts where nothing held the screen. Keel now tells such a mod once, after it started, that the screen has ended. Run in the game on 0.9.1: the entry is there on every start.
 - **The game's version question says it comes with Keel:** its top bar reads *MESSAGE · R.A.T.S. Keel* when Keel lists the mods; the list itself is shorter (no Keel sentence).
+- **What's new, short and full:** the card shows one line per mod; Keel's report window shows two lines per mod, and a click on a mod opens all of its notes (another click closes them).
+- **Send report says what it is:** the board's mail is titled *Crash report* only when the game crashed, else *Report*, and names the game build (e.g. 0.9.1-261112, not just "3D globe map") and a one-line summary ("41 running, 2 failed: …"). The report's first line has the build too. Found in the first 12 player reports.
+- **The report stays current during a Mods menu reload:** it is rewritten after every mod the reload starts and says how far it got, so a report sent (or a crash) in the middle shows the real state (a player's report showed 3 mods while 27 of 30 had started).
 - **What's new:** the authors' notes are plain text (`### Fixes ###` becomes *Fixes:*, BBCode and Markdown marks go); the card sits a little lower, so buttons mods put in the top right corner (the AC Pack's settings gear) stay free; a changed `CHANGELOG.md` or `README.md` alone is no "new build"; a mod without a version shows its newest released section, not *Unreleased*.
 - **For mod authors** on the Workshop page, in the README and `docs/for-mod-authors.md`: your mod loads as built; list R.A.T.S. Keel as your required item.
 - **License note:** the code stays MIT; the name, logo, pictures and texts are not part of it, and re-uploads of Keel are not allowed.

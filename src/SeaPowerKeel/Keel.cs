@@ -953,6 +953,13 @@ internal sealed class KeelHost : MonoBehaviour
             else if (!HeldOffered && restartRect.Contains(gui)) RestartButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
             else if (euromod is { AcPack: true } && egRect.Contains(gui)) EgButton();
+            else if (new Rect(window.x + newsScrollRect.x, window.y + newsScrollRect.y, newsScrollRect.width, newsScrollRect.height).Contains(gui))
+            {
+                // Screen GUI units -> the scroll view's content: minus the window, the scroll view's place in it, plus the scroll.
+                var inContent = new Vector2(gui.x - window.x - newsScrollRect.x + scroll.x, gui.y - window.y - newsScrollRect.y + scroll.y);
+                foreach (KeyValuePair<NewsItem, Rect> row in newsRowRects)
+                    if (row.Value.Contains(inContent)) { ToggleNews(row.Key); break; }
+            }
         }
         catch (Exception) { pointer = null; }
     }
@@ -1222,7 +1229,12 @@ internal sealed class KeelHost : MonoBehaviour
         }
     }
 
-    private const int NewsMods = 5, NewsLines = 2;
+    // His layout 2026-11-12: the card is a glance (one line per mod), the report window shows two lines per mod and a click on a
+    // mod opens all its notes there.
+    private const int NewsMods = 5, NewsLines = 1, ReportNewsLines = 2;
+    private readonly HashSet<NewsItem> newsOpen = new();                      // mods opened in the report window
+    private readonly Dictionary<NewsItem, Rect> newsRowRects = new();         // their rows, in the scroll view's content
+    private Rect newsScrollRect;                                              // the scroll view, in the window
 
     /// <summary>The card at the top right of the main menu.</summary>
     private void DrawNews(float screenW)
@@ -1281,8 +1293,14 @@ internal sealed class KeelHost : MonoBehaviour
     }
 
     /// <summary>One mod in the card (<paramref name="maxLines"/> of its notes) or in the report window (all of them).</summary>
-    private void NewsRow(NewsItem n, int maxLines)
+    private void NewsRow(NewsItem n, int maxLines, bool inReport = false)
     {
+        bool open = inReport && newsOpen.Contains(n);
+        if (inReport)
+            maxLines = open ? int.MaxValue : ReportNewsLines;
+        int cut = inReport ? 160 : 64;          // the card's line is one row of its width
+        // Clickable in the report when anything is hidden: more lines than shown, or a shown line cut short.
+        bool more = inReport && (n.Lines.Count > ReportNewsLines || n.Lines.Take(ReportNewsLines).Any(l => l.Length > cut));
         EnsureNewsStyles();
         GUILayout.BeginHorizontal();
         GUILayout.Label(n.Tag, newsPills[n.Kind], GUILayout.Width(74), GUILayout.Height(18));
@@ -1296,14 +1314,38 @@ internal sealed class KeelHost : MonoBehaviour
         {
             if (shown++ >= maxLines)
             {
-                GUILayout.Label($"<color=#7f8a98>… {n.Lines.Count - maxLines} more line(s)</color>", newsLine);
+                if (inReport)
+                    GUILayout.Label($"<color=#7f8a98>… {n.Lines.Count - maxLines} more line(s): click to read all</color>", newsLine);
                 break;
             }
-            GUILayout.Label(maxLines < int.MaxValue && line.Length > 140 ? line.Substring(0, 137) + "…" : line, newsLine);
+            GUILayout.Label(maxLines < int.MaxValue && line.Length > cut ? line.Substring(0, cut - 3) + "…" : line, newsLine);
         }
+        if (open && more)
+            GUILayout.Label("<color=#7f8a98>click to close</color>", newsLine);
+        else if (more && n.Lines.Count <= ReportNewsLines)
+            GUILayout.Label("<color=#7f8a98>click to read all</color>", newsLine);
         GUILayout.EndVertical();
         GUILayout.EndHorizontal();
+        if (more)
+        {
+            Rect r = GUILayoutUtility.GetLastRect();
+            if (Event.current.type == EventType.Repaint)
+                newsRowRects[n] = r;
+            else if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
+            {
+                ToggleNews(n);
+                Event.current.Use();
+            }
+        }
         GUILayout.Space(6);
+    }
+
+    private void ToggleNews(NewsItem n)
+    {
+        if (!FreshClick())
+            return;
+        if (!newsOpen.Remove(n))
+            newsOpen.Add(n);
     }
 
     private bool HeldOffered => crash is { HeldActive: true };
@@ -1603,7 +1645,7 @@ internal sealed class KeelHost : MonoBehaviour
         {
             GUILayout.Label($"WHAT'S NEW SINCE THE LAST START  ({news.Count})", groupStyle);
             foreach (NewsItem n in news)
-                NewsRow(n, int.MaxValue);
+                NewsRow(n, int.MaxValue, inReport: true);
             GUILayout.Space(8);
         }
         int group = -1;
@@ -1631,6 +1673,10 @@ internal sealed class KeelHost : MonoBehaviour
         GUILayout.Space(8);
         GUILayout.Label($"The same report is in {reportPath}", sourceStyle);
         GUILayout.EndScrollView();
+        if (Event.current.type == EventType.Repaint)
+        {
+            newsScrollRect = GUILayoutUtility.GetLastRect();
+        }
         bar.normal.background = barWas;
         knob.normal.background = knobWas;
         bar.fixedWidth = barWidth;
