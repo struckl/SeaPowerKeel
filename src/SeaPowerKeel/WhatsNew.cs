@@ -154,9 +154,10 @@ internal static class WhatsNew
 
     // Files a mod (or the game) writes into its own folder while it runs: they change at every start and are no update.
     // BetterTacMap rewrites settings.cfg in its Workshop folder each time (found in the game test 2026-11-12).
-    private static readonly string[] RuntimeFiles = { ".cfg", ".log", ".tmp", ".bak", ".lock" };
+    // Notes files (.md: CHANGELOG, README) are no new build either: copying a CHANGELOG.md in made four mods UPDATED (2026-11-12).
+    private static readonly string[] RuntimeFiles = { ".cfg", ".log", ".tmp", ".bak", ".lock", ".md" };
 
-    public const string StampVersion = "s2:";
+    public const string StampVersion = "s3:";      // s3: .md files left out; a stamp of another version is not compared (no false UPDATED)
 
     internal static string Stamp(string folder)
     {
@@ -448,7 +449,8 @@ internal static class WhatsNew
                 if (sections >= 5)
                     break;
                 // With an old version: only sections that name a newer one ("Unreleased" is not in the player's build).
-                inside = old == null || heading != null;
+                // No old version (a mod without one): the first section that names a version; an "Unreleased" one is not shipped.
+                inside = heading != null || (old == null && !line.Contains("Unreleased"));
                 if (inside)
                     sections++;
                 continue;

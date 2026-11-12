@@ -14,6 +14,10 @@ internal static class SelfTest
 {
     private static int failures, checks;
 
+    // Shapes of a load-screen postfix (the Alternative mods use the first).
+    private static void FakeLoadScreenPostfix(bool __result) { }
+    private static void FakeNeedsMore(bool __result, int something) { }
+
     private static void Check(bool ok, string what)
     {
         checks++;
@@ -148,6 +152,11 @@ internal static class SelfTest
         Check(log.SequenceEqual(new[] { "Bold new thing", "code link", "older" }), "CHANGELOG: the sections above the old version, Markdown removed");
         Check(WhatsNew.ChangelogNotes(local, "").SequenceEqual(new[] { "Bold new thing", "code link" }), "CHANGELOG with no old version: the top section");
         Check(WhatsNew.ChangelogLines(new[] { "## Unreleased", "- not yet", "## 1.2.0", "- yes", "## 1.1.0", "- no" }, "1.1.0").SequenceEqual(new[] { "yes" }), "an Unreleased section is not in the player's build");
+        Check(WhatsNew.ChangelogLines(new[] { "## Unreleased", "- not yet", "## 0.2.2 – 2026-11-12", "- yes", "## 0.2.1", "- no" }, "").SequenceEqual(new[] { "yes" }),
+            "a mod without a version: its newest released section, not Unreleased (Clean Screen, 2026-11-12)");
+        Check(LoadScreenEnd.Args(typeof(SelfTest).GetMethod(nameof(FakeLoadScreenPostfix), BindingFlags.NonPublic | BindingFlags.Static).GetParameters()) is { Length: 1 } a1 && (bool)a1[0] == false
+              && LoadScreenEnd.Args(typeof(SelfTest).GetMethod(nameof(FakeNeedsMore), BindingFlags.NonPublic | BindingFlags.Static).GetParameters()) == null,
+            "load screen end: a postfix with __result gets false; one that needs other arguments is left");
 
         WhatsNew.AddNotes(news, id => id == 111 ? page : null);
         Check(alpha.Source == "Workshop" && alpha.Lines.Count == 3, "a Workshop mod gets its Workshop notes");

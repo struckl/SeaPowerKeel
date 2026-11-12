@@ -130,6 +130,9 @@ internal sealed class KeelHost : MonoBehaviour
         string compat = CompatDialog.Install();
         if (compat != null)
             log.LogInfo($"Game version dialog stays the game's own: {compat}");
+        string loadEnd = LoadScreenEnd.Install();
+        if (loadEnd != null)
+            log.LogInfo($"Keel cannot tell mods that wait for the load screen's end: {loadEnd}");
         // Here, in Awake: the game has not read its mod list yet.
         try
         {
@@ -325,9 +328,12 @@ internal sealed class KeelHost : MonoBehaviour
             Started = p => log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
                                    $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " - " + p.Reason : "")}"),
         };
+        HashSet<string> loadScreenHooks = LoadScreenEnd.Owners();
         foreach (PluginEntry _ in sequence.Run(order))
             yield return null;
         int started = sequence.StartedCount;
+        foreach (string line in LoadScreenEnd.Replay(loadScreenHooks))
+            log.LogInfo(line);
         foreach (PluginEntry p in Keel.Plugins.Where(p => p.State is PluginState.NotStarted))
             log.LogWarning($"NOT STARTED: {p.Display} {p.Version} ({p.Folder.Label}) – {p.Reason}");
 
@@ -1210,9 +1216,10 @@ internal sealed class KeelHost : MonoBehaviour
         if (!NewsVisible)
             return;
         EnsureNewsStyles();
-        const float width = 440, margin = 24;
+        // 72 from the top: the top right corner is where mods put their own buttons (the AC Pack's settings gear, 2026-11-12).
+        const float width = 440, margin = 24, top = 72;
         float left = screenW - width - margin;
-        GUILayout.BeginArea(new Rect(left, margin, width, 2000));
+        GUILayout.BeginArea(new Rect(left, top, width, 2000));
         GUILayout.BeginVertical(newsCard);
         GUILayout.BeginHorizontal();
         GUILayout.Label($"WHAT'S NEW SINCE YOUR LAST GAME  ·  {Keel.Name}", newsTitle);
@@ -1221,7 +1228,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (Event.current.type == EventType.Repaint)
         {
             Rect x = GUILayoutUtility.GetLastRect();
-            newsCloseRect = new Rect(left + x.x - 6, margin + x.y - 6, x.width + 12, x.height + 12);   // a little larger than the glyph
+            newsCloseRect = new Rect(left + x.x - 6, top + x.y - 6, x.width + 12, x.height + 12);   // a little larger than the glyph
         }
         GUILayout.EndHorizontal();
         foreach (NewsItem n in news.Take(NewsMods))
@@ -1232,7 +1239,7 @@ internal sealed class KeelHost : MonoBehaviour
         if (Event.current.type == EventType.Repaint)
         {
             Rect r = GUILayoutUtility.GetLastRect();
-            newsRect = new Rect(left + r.x, margin + r.y, r.width, r.height);
+            newsRect = new Rect(left + r.x, top + r.y, r.width, r.height);
         }
         GUILayout.EndArea();
         if (Event.current.type == EventType.MouseDown && NewsClick(Event.current.mousePosition))
