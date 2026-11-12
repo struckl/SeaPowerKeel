@@ -11,3 +11,9 @@ e4	One click on the card opens the full report. Every mod, and why one did not s
 f1	That is all you need. Keel replaces Anchor Chain and Alpine's Mod Loader. No other loader required.
 f2	Anchor Chain mods, Euromod, and the A C Pack with its add-ons run as they are.
 f3	Fair winds, and good hunting, Captains.
+d1v2	Step three: start Sea Power, open the Mod Manager, switch Rats Keel on, together with the mods you want, and accept.
+e2v2	While the game loads, Keel's loading window in the top right counts every mod as it starts.
+e2b	Best not to click around in the game while your mods are starting. Let it finish.
+g1	Add more mods any time. Keel's Restart button in the Mods menu saves your list and restarts the game.
+g2	On the next start, What's new grows out of the Keel card: every new or updated mod, with its author's notes.
+g3	One click opens the full report.
