@@ -910,10 +910,11 @@ internal sealed partial class KeelHost : MonoBehaviour
 
     private Rect closeRect, copyRect;      // in the report's GUI units (screen pixels / scale), set while the report draws
     private float guiScale = 1f;
-    private Func<(bool click, Vector2 pos, bool esc)> pointer;
+    // click = left button pressed this frame, right = right button (a right click hides a card: the game's IMGUI often never sees it)
+    private Func<(bool click, bool right, Vector2 pos, bool esc)> pointer;
     private bool pointerProbed;
 
-    private Func<(bool click, Vector2 pos, bool esc)> ProbePointer()
+    private Func<(bool click, bool right, Vector2 pos, bool esc)> ProbePointer()
     {
         const BindingFlags pub = BindingFlags.Public | BindingFlags.Instance;
         try
@@ -927,12 +928,14 @@ internal sealed partial class KeelHost : MonoBehaviour
                 return () =>
                 {
                     object m = mouseNow.GetValue(null), k = kbNow.GetValue(null);
-                    bool click = false, esc = false;
+                    bool click = false, right = false, esc = false;
                     Vector2 pos = default;
                     if (m != null)
                     {
                         object left = m.GetType().GetProperty("leftButton", pub)?.GetValue(m);
                         click = left?.GetType().GetProperty("wasPressedThisFrame", pub)?.GetValue(left) is bool c && c;
+                        object rb = m.GetType().GetProperty("rightButton", pub)?.GetValue(m);
+                        right = rb?.GetType().GetProperty("wasPressedThisFrame", pub)?.GetValue(rb) is bool r && r;
                         object p = m.GetType().GetProperty("position", pub)?.GetValue(m);
                         if (p?.GetType().GetMethod("ReadValue", Type.EmptyTypes)?.Invoke(p, null) is Vector2 v) pos = v;
                     }
@@ -941,7 +944,7 @@ internal sealed partial class KeelHost : MonoBehaviour
                         object escKey = k.GetType().GetProperty("escapeKey", pub)?.GetValue(k);
                         esc = escKey?.GetType().GetProperty("wasPressedThisFrame", pub)?.GetValue(escKey) is bool e && e;
                     }
-                    return (click, pos, esc);
+                    return (click, right, pos, esc);
                 };
             }
         }
@@ -958,7 +961,7 @@ internal sealed partial class KeelHost : MonoBehaviour
             if (mouseDown != null && keyDown != null && mousePos != null)
             {
                 mouseDown.Invoke(null, new object[] { 0 });      // throws right away when the old input is switched off
-                return () => ((bool)mouseDown.Invoke(null, new object[] { 0 }), (Vector3)mousePos.GetValue(null),
+                return () => ((bool)mouseDown.Invoke(null, new object[] { 0 }), (bool)mouseDown.Invoke(null, new object[] { 1 }), (Vector3)mousePos.GetValue(null),
                               (bool)keyDown.Invoke(null, new object[] { KeyCode.Escape }));
             }
         }
@@ -979,12 +982,13 @@ internal sealed partial class KeelHost : MonoBehaviour
             // The cards at the bottom left: What's new (its × closes it, a click elsewhere opens the full list) and the Keel card.
             try
             {
-                var (click, pos, _) = pointer();
-                if (click)
+                var (click, right, pos, _) = pointer();
+                if (click || right)
                 {
                     var at = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);
-                    if (!NewsClick(at))
-                        CardClick(at, 0);
+                    int button = click ? 0 : 1;
+                    if (!NewsClick(at, button))
+                        CardClick(at, button);
                 }
             }
             catch (Exception) { pointer = null; }
@@ -992,7 +996,7 @@ internal sealed partial class KeelHost : MonoBehaviour
         }
         try
         {
-            var (click, pos, esc) = pointer();
+            var (click, _, pos, esc) = pointer();
             if (esc) { showWindow = false; return; }
             if (!click) return;
             var gui = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);       // the pointer's y runs from the bottom

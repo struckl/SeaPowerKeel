@@ -4,6 +4,9 @@
 
 - **Keel card and What's new go away again**: a right click hides them, and they fade on their own after `SummarySeconds` (players asked)
 - **No SKIPPED row for a mod's backup entry**: a DLL with an Anchor Chain and a BepInEx entry is by design; the backup is left out quietly, dependencies on it still count (rgreat)
+- **Start early, earlier**: with a start-early mod on, Keel reads the mod list from `usersettings.ini` at once, so those mods start before the first load-screen picture (rgreat)
+- **Right click reaches the cards**: Keel listens for the right button itself, as the game often keeps it from the cards (found in the test run)
+- **Tested in the game on 0.9.1**: early start before the load screen ended, no SKIPPED rows (were 5), right click hides both cards, both fade after 60 s, the report opens and closes
 - Not yet run in the game
 
 ## 0.5.1 - 2026-11-12 - loading window at the top right

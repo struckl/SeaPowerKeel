@@ -55,3 +55,13 @@ Findings fixed after the runs (built, self-tests 205/205, **not yet run in the g
 reload (it was gone); the Anchor Chain note once in the report; the reload dialog says R.A.T.S. Keel in its top bar, not in the text;
 every game message box is logged (`Game message box:`); What's new's footer without "× closes". Fixed in the first fix run and seen
 in run 2: panel width and one-line text; the Keel card no longer fades. Driver and TESTING.md fixes: see the workspace repo (db54ab9).
+
+## Evening 2026-11-12: player reports (test plan `test-plan-0.5.2.md`)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Earlier start | **GREEN:** Pop-Out (marked StartEarly for the test) started 38 s before the load screen ended; menu fine |
+| 2 | Backup entry | **GREEN:** 0 `[SKIPPED]` rows (were 5: Alternative mods, Sinking Variety) |
+| 3/4 | Right click on What's new / Keel card | **RED, fixed, GREEN:** the game never handed the right click to the cards; Keel now polls the right button itself. Retest: What's new hides, the Keel card glides down, then hides |
+| 5 | Fade | **GREEN:** both cards gone 68 s after they showed |
+| 6 | Report window (Hussar) | **GREEN:** opens from the card, Close closes it, nothing stays |
