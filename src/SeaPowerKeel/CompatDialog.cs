@@ -35,6 +35,9 @@ internal static class CompatDialog
                 return "the game's message box is not in this build";
             var harmony = new Harmony("dev.sewerlabs.seapowerkeel.compatdialog");
             harmony.Patch(AccessTools.PropertySetter(boxType, "Message"), prefix: new HarmonyMethod(typeof(CompatDialog).GetMethod(nameof(MessagePrefix), Any)));
+            MethodInfo headerSetter = AccessTools.PropertySetter(boxType, "Header");
+            if (headerSetter != null)
+                harmony.Patch(headerSetter, prefix: new HarmonyMethod(typeof(CompatDialog).GetMethod(nameof(HeaderPrefix), Any)));
             foreach (string command in new[] { "AcknowledgeCommand", "CancelCommand" })
             {
                 MethodInfo setter = AccessTools.PropertySetter(boxType, command);
@@ -55,12 +58,26 @@ internal static class CompatDialog
         {
             header ??= Text("LoadScreen", "WarningMods");
             if (string.IsNullOrEmpty(header) || value == null || !value.StartsWith(header, StringComparison.Ordinal))
+            {
+                if (__instance == box && box != null)
+                {
+                    // The game shows another message in the same box: the brand goes.
+                    box = null;
+                    PropertyInfo old = __instance.GetType().GetProperty("Header", Any);
+                    if (old?.CanWrite == true && old.GetValue(__instance) is string was && was.EndsWith("  ·  " + Keel.Name))
+                        old.SetValue(__instance, was.Substring(0, was.Length - ("  ·  " + Keel.Name).Length));
+                }
                 return;
+            }
             string rewritten = Rewrite(header);
             if (rewritten == null)
                 return;
             value = rewritten;
             box = __instance;
+            // The top bar says where the list comes from (his wish 2026-11-12): "MESSAGE  ·  R.A.T.S. Keel".
+            PropertyInfo h = __instance.GetType().GetProperty("Header", Any);
+            if (h?.CanWrite == true)
+                h.SetValue(__instance, Branded(h.GetValue(__instance) as string));
             BepInEx.Logging.Logger.CreateLogSource(Keel.Name).LogInfo("The game's mod version dialog is shown with Keel's list.");
             Loading.LoadingWindow.WaitingFor = "the game asks about mods (in the game window)";
         }
@@ -68,6 +85,19 @@ internal static class CompatDialog
         {
             // the game's own text stays
         }
+    }
+
+    internal static string Branded(string header)
+    {
+        string h = string.IsNullOrEmpty(header) ? "MESSAGE" : header;
+        return h.Contains(Keel.Name) ? h : $"{h}  ·  {Keel.Name}";
+    }
+
+    // The header can be set after the text: it keeps the brand on Keel's dialog.
+    private static void HeaderPrefix(object __instance, ref string value)
+    {
+        if (__instance == box && box != null)
+            value = Branded(value);
     }
 
     // The dialog's buttons are set after its text: wrapped so the loading window stops waiting when one is clicked.
