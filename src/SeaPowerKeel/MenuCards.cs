@@ -110,7 +110,10 @@ internal sealed partial class KeelHost
             }
 
             if (card && newsUp && splitStart < 0f && now - cardSince > 0.35f)
+            {
                 splitStart = now;
+                log.LogInfo("Menu cards: What's new splits off the Keel card.");          // a signal for tests (frames of the split)
+            }
             float p = splitStart < 0f ? (newsUp && !card ? 1f : 0f) : Mathf.Clamp01((now - splitStart) / SplitSeconds);
             float alpha = card ? CardAlpha : 1f;
 
@@ -139,6 +142,7 @@ internal sealed partial class KeelHost
             {
                 cardConfirmed = true;
                 LoadingWindow.GameDrawsSummary = true;
+                log.LogInfo("Menu cards: the game draws the Keel card now; the loading window fades out.");
             }
             HandleCardEvents();
         }
