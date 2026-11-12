@@ -1,2 +1,3 @@
-- Loading window starts at the top right on a new install (was in the middle of the screen); your own setting stays
-- For mod authors: a mod can ask to start before the load screen ends ([Keel] StartEarly=true in _info.ini); all others still wait
+- Keel card and What's new go away again: right click hides them, and they fade after a minute
+- No SKIPPED warning for a mod's backup entry (a second entry in the same DLL is fine)
+- Mods that ask to start early now start before the first loading-screen picture
