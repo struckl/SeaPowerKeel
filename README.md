@@ -1,6 +1,6 @@
 # Sea Power: R.A.T.S. Keel
 
-> **Sea Power 0.9.0 (11 November 2026):** 0.4.0 declares the new game version in its `_info.ini` (0.8.7 up to every 0.9.x), so the game no longer lists it as "not declared to be compatible" and Steam passes its updates to 0.9.0 players. Run in the game on 0.9.0 (build 261111): start-up with 17 mods, the Mods menu's Reload and Restart.
+> **Status (12 November 2026, game 0.9.1):** the coming 0.5.0 (takeover, What's new, Euromod setup line) was run in the game on 0.9.1 (build 261112): Keel keeps Alpine's Mod Loader from starting and runs all 17 mods; with Keel switched off Alpine starts as before; the patcher updates itself while in use; Euromod with AC Pack and Extended Guidance starts 41 mods; the What's new card opens the full list on a click and closes with its ×. 0.4.0, on the Workshop now, declares every 0.9.x and was run on 0.9.0 (start-up with 17 mods, the Mods menu's Reload and Restart). Test notes: [docs/test-2026-11-12-takeover.md](docs/test-2026-11-12-takeover.md).
 
 *R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals*
 
@@ -50,8 +50,7 @@ folders, sort out dependencies and start order, start them), and on top of that:
   created before the first one starts, `TriggerEntryPoint` is called through the `IAnchorChainMod` interface (explicit
   implementations work), `[ACConfig]` config files are prepared, and `AnchorChainLoader.FindFile` works for mods that call it.
 
-Status: **0.1.4 (Anchor Chain compatibility run in the game with Euromod on globe beta 261107; the `_info.ini` check offline only). 0.1.0 was run in the game on 0.8.7 (flat map, 2026-11-07) and on the 3D globe public beta build 261107 (2026-11-08)**,
-a mission on each; 0.1.1 on that beta only; 0.1.2/0.1.3 (Harmony target and by-name lookup checks) were run offline against the installed game and mods, not yet in the game. Test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
+Status: run in the game on the 3D globe build since 0.1.0 (0.8.7 up to 0.1.0, no more 0.8.7 tests since 2026-11-08); every release since on the then current build, last 0.9.1 (2026-11-12). Older test notes: [docs/test-2026-11-07.md](docs/test-2026-11-07.md), [docs/test-2026-11-08-globe.md](docs/test-2026-11-08-globe.md).
 
 ## Install
 
@@ -119,8 +118,8 @@ It belongs to the game's window: it stays above the game but not above other pro
 started it shrinks and glides to the bottom left, above the game's version text, as a summary card ("Keel 0.1.5 started 19 mods in 40 s", the
 time until the game was ready, skipped mods, problems or the slowest mod); a click on the card opens Keel's report, a right click hides it, and
 it fades after a minute. It only reads log lines and never takes the keyboard focus. Keel also logs a
-`STARTING i/n: name` line before each mod now, so `Keel-log.txt` names the mod that was running when the game stood still. New in 0.1.5: drawn
-offline from a real log and its thread smoke-tested, **not yet run in the game**. Where the start-up time goes and how it works:
+`STARTING i/n: name` line before each mod now, so `Keel-log.txt` names the mod that was running when the game stood still. Run in the game at every start
+since 0.1.5. Where the start-up time goes and how it works:
 [docs/loading-window.md](docs/loading-window.md). `tools/loading-preview` draws the window from a log without the game.
 
 ## How it works
@@ -159,8 +158,9 @@ installed (Anchor Chain's preloader, Alpine's Mod Loader) are kept from starting
   report name the loader that was kept from starting.
 - If the game folder cannot be written to, Keel says so; run `KeelSetup.exe` then.
 
-Status: built and checked offline (the self-tests: the rules, the record, installing and updating the patcher, KeelSetup);
-**not yet run in the game.**
+Status: run in the game on 0.9.1 (2026-11-12): Alpine kept from starting with its file back in `BepInEx\plugins`, Keel switched
+off lets Alpine start, the patcher updated itself while in use. Patcher 1.0.0 (a Harmony hook) stopped BepInEx from starting
+and never shipped; 1.1.0 writes BepInEx's plugin cache itself. Notes: [docs/test-2026-11-12-takeover.md](docs/test-2026-11-12-takeover.md).
 
 ## Differences from Anchor Chain's loader
 
