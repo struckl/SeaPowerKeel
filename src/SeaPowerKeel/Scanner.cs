@@ -69,9 +69,18 @@ internal static class Scanner
                 // Some mods carry both entries in one DLL: the Anchor Chain one for the Workshop, the BepInEx one for players
                 // who copy the DLL into BepInEx\plugins. From a mod folder only the Anchor Chain entry is meant to run
                 // (the one Anchor Chain uses, the one the author tested); starting both would run the mod twice.
-                if (found.Any(p => p.Kind == PluginKind.AnchorChain && p.Exported))
-                    foreach (PluginEntry p in found.Where(p => p.Kind == PluginKind.BepInEx))
-                        p.Stop(PluginState.Skipped, "The same DLL's Anchor Chain entry is the one that runs from a mod folder.");
+                // A DLL with both is by design (the BepInEx entry is the author's backup): the backup is left out quietly, no row
+                // and no warning (rgreat 2026-11-12); its GUID still counts for dependencies, through the Anchor Chain entry.
+                PluginEntry acEntry = found.FirstOrDefault(p => p.Kind == PluginKind.AnchorChain && p.Exported);
+                if (acEntry != null)
+                {
+                    foreach (PluginEntry p in found.Where(p => p.Kind == PluginKind.BepInEx).ToList())
+                    {
+                        if (p.Guid != acEntry.Guid)
+                            acEntry.AlsoKnownAs.Add(p.Guid);
+                        found.Remove(p);
+                    }
+                }
                 string offBuild = manifest?.OtherBuildOnly(dll);
                 foreach (PluginEntry p in found)
                 {

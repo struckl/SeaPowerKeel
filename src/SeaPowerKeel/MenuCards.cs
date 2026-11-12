@@ -22,6 +22,21 @@ internal sealed partial class KeelHost
     private const float SplitSeconds = 1.15f, CardGap = 8f, StackWidth = 400f;
 
     private bool cardOn, cardConfirmed, cardHidden, cardFailed;
+    private float newsShownAt = -1f, newsFadeFrom = -1f;
+
+    /// <summary>What's new fades like the Keel card; at 0 it is closed (the Keel card then glides back down).</summary>
+    private float NewsAlpha
+    {
+        get
+        {
+            if (newsFadeFrom < 0f)
+                return 1f;
+            float a = 1f - (Time.realtimeSinceStartup - newsFadeFrom) / 0.8f;
+            if (a <= 0f)
+                newsClosed = true;
+            return Mathf.Clamp01(a);
+        }
+    }
     private float cardSince, cardFadeFrom = -1f;
     private long cardSceneTicks;
     private Rect cardHome;                    // GUI units: where the overlay left the card (or where it would be)
@@ -94,7 +109,18 @@ internal sealed partial class KeelHost
                 return;
             EnsureCardStyles();
             float now = Time.realtimeSinceStartup;
-            // The Keel card stays on the main menu's top page for good (his word 2026-11-12): no fading, no hiding by a click.
+            // Both cards go away again (his decision 2026-11-12 on a player's report: "right click + fade"): a right click hides
+            // one, and each fades on its own after SummarySeconds (0 = stays until clicked away).
+            float fadeAfter = (float)LoadingWindow.SummarySeconds;
+            if (cardOn && !cardHidden && fadeAfter > 0 && cardFadeFrom < 0f && now - cardSince > fadeAfter)
+                cardFadeFrom = now;
+            if (newsUp && fadeAfter > 0 && newsFadeFrom < 0f && newsShownAt > 0f && now - newsShownAt > fadeAfter)
+                newsFadeFrom = now;
+            if (newsUp && newsShownAt < 0f)
+                newsShownAt = now;
+            float newsAlpha = NewsAlpha;
+            if (newsAlpha <= 0f)
+                newsUp = false;
             Rect home = cardOn ? cardHome : DefaultHome(screenH);
             if (cardFailed && LoadingWindow.SummaryReady && !LoadingWindow.OverlayGone)
                 home.y -= home.height + CardGap;        // the overlay keeps its own card in the corner: What's new stands above it
@@ -135,8 +161,8 @@ internal sealed partial class KeelHost
                 if (newsUp)
                 {
                     newsRect = new Rect(x, bottom - newsH, width, newsH);
-                    DrawBody(newsRect, 1f);
-                    DrawNewsContent(newsRect, stackMods, 1f);
+                    DrawBody(newsRect, newsAlpha);
+                    DrawNewsContent(newsRect, stackMods, newsAlpha);
                 }
                 if (card)
                 {
@@ -430,7 +456,7 @@ internal sealed partial class KeelHost
         Event e = Event.current;
         if (e.type != EventType.MouseDown)
             return;
-        if (NewsClick(e.mousePosition))
+        if (NewsClick(e.mousePosition, e.button))
         {
             e.Use();
             return;
@@ -447,7 +473,10 @@ internal sealed partial class KeelHost
         if (!FreshClick())
             return true;
         if (button == 1)
-            return true;            // it always stays (his word 2026-11-12)
+        {
+            cardHidden = true;      // a right click hides it (his decision 2026-11-12)
+            return true;
+        }
         if (creditRect.Contains(gui))
         {
             try { Application.OpenURL(LoadingWindow.ProfileUrl); } catch (Exception) { /* no browser: nothing to do */ }

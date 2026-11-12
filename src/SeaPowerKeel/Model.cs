@@ -51,7 +51,10 @@ internal sealed class PluginEntry
     public bool UsesAcConfig;
     public bool AcConfigRequired = true;               // [ACConfig(required)]: a config file that cannot be made keeps the mod from starting
     public bool Exported = true;                        // Anchor Chain only sees public (exported) plugin classes
-    public bool StartEarly;                             // asked to start before the load screen ends (EarlyStart)
+    public bool StartEarly;
+    /// <summary>GUIDs of the same DLL's backup entries (a BepInEx entry next to the Anchor Chain one): a dependency on one of them
+    /// counts as met by this entry. The backup entry itself is not listed (rgreat 2026-11-12: a second entry is by design).</summary>
+    public readonly List<string> AlsoKnownAs = new();                             // asked to start before the load screen ends (EarlyStart)
 
     public PluginState State = PluginState.Pending;
     public string Reason = "";

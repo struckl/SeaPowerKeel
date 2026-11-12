@@ -63,7 +63,11 @@ internal static class Planner
         {
             changed = false;
             Dictionary<string, PluginEntry> starting = live().ToDictionary(p => p.Guid);
-            foreach (PluginEntry p in starting.Values)
+            foreach (PluginEntry s in starting.Values.ToList())
+                foreach (string alias in s.AlsoKnownAs)
+                    if (!starting.ContainsKey(alias))
+                        starting[alias] = s;
+            foreach (PluginEntry p in starting.Values.Distinct())
             {
                 string why = null;
                 foreach (Dependency d in p.Dependencies.Where(d => d.Hard))
@@ -117,6 +121,10 @@ internal static class Planner
     private static List<PluginEntry> Order(List<PluginEntry> plugins)
     {
         Dictionary<string, PluginEntry> byGuid = plugins.ToDictionary(p => p.Guid);
+        foreach (PluginEntry p in plugins)
+            foreach (string alias in p.AlsoKnownAs)
+                if (!byGuid.ContainsKey(alias))
+                    byGuid[alias] = p;
         var after = plugins.ToDictionary(p => p, _ => new HashSet<PluginEntry>());   // p -> must start before p
         foreach (PluginEntry p in plugins)
         {

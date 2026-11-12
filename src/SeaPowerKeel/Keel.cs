@@ -1277,13 +1277,13 @@ internal sealed partial class KeelHost : MonoBehaviour
     // A click at a GUI position: the X closes the card, anywhere else on it opens the report window at its What's new list
     // (every changed mod, old → new version, all of the author's lines). The card stays until its X is clicked. A click reaches
     // Keel through IMGUI and through the device check alike: it counts once.
-    private bool NewsClick(Vector2 gui)
+    private bool NewsClick(Vector2 gui, int button = 0)
     {
         if (!NewsVisible || !newsRect.Contains(gui))
             return false;
         if (!FreshClick())
             return true;
-        if (newsCloseRect.Contains(gui))
+        if (button == 1 || newsCloseRect.Contains(gui))      // × or a right click closes it
         {
             newsClosed = true;
             return true;

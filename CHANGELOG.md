@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Keel card and What's new go away again**: a right click hides them, and they fade on their own after `SummarySeconds` (players asked)
+- **No SKIPPED row for a mod's backup entry**: a DLL with an Anchor Chain and a BepInEx entry is by design; the backup is left out quietly, dependencies on it still count (rgreat)
+- Not yet run in the game
+
 ## 0.5.1 - 2026-11-12 - loading window at the top right
 
 - **Loading window starts top right** on a new install (was in the middle of the screen)
