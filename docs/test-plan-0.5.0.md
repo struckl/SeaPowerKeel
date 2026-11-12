@@ -9,7 +9,9 @@ Euromod items + AC Pack ticked, `game.ps1 start` (it clicks the version question
 |---|---|---|
 | 1 | Version question | Top bar *MESSAGE · R.A.T.S. KEEL*, no Keel sentence in the list; the driver clicked Ignore by itself |
 | 2 | Summary card | "Keel 0.5.0 started …" |
-| 3 | What's new card | One line per mod; Radio's line ends in "…"; below the AC Pack gear |
+| 3 | Hand-over and split | The loading window glides to the bottom left, the game-drawn Keel card takes over without a blink; the card lifts, a bud swells out, the neck tears, What's new grows from the bottom up (shots every ~0.15 s); one line per mod; top right corner empty |
+| 3a | EXIT limit | The stack never covers EXIT (with ALTERNATIVE MODS in the menu); log has no "Menu cards" warning |
+| 3b | Card behaviour | Right click hides the Keel card; × on What's new closes it and the Keel card glides back down; Scenarios hides both, Back shows them; the card fades after `SummarySeconds` |
 | 4 | Card click / × | Click opens the report at WHAT'S NEW; × closes the card |
 | 5 | Report rows | Two lines per mod; "click to read all" under Radio; a click opens all of Radio's notes, "click to close" closes them |
 | 6 | Report header | `Keel-report.txt` line 1 has `Sea Power 0.9.1-261112, 3D globe map` |
