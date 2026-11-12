@@ -376,7 +376,7 @@ internal sealed partial class KeelHost
         }
         int more = news.Count - count;
         string footText = count == 0 ? $"{news.Count} mod(s) changed  ·  click to see them"
-                        : (more > 0 ? $"+{more} more  ·  " : "") + "click for all  ·  × closes";
+                        : (more > 0 ? $"+{more} more  ·  " : "") + "click for all";
         var foot = new GUIContent(Fit(footText, oneFoot, inner));
         float fh = oneFoot.CalcHeight(foot, inner);
         if (draw)
