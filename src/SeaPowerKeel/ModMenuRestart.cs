@@ -14,7 +14,8 @@ namespace SeaPowerKeel;
 /// </summary>
 internal static class ModMenuRestart
 {
-    internal const string Note = "\n\nR.A.T.S. Keel: Reload also starts code mods you switched on and takes switched-off ones out as far as the running game allows. " +
+    // The box's top bar names Keel ("MESSAGE · R.A.T.S. Keel", his rule 2026-11-12), so the text does not say it again.
+    internal const string Note = "\n\nReload also starts code mods you switched on and takes switched-off ones out as far as the running game allows. " +
                                  "Restart is the clean way: it saves the mod list, closes the game and starts it again.";
 
     /// <summary>Set when the player clicks the game's Reload: Keel then follows the new mod list once the menu is back.</summary>
@@ -65,8 +66,9 @@ internal static class ModMenuRestart
                 t.Property("AcknowledgeCommand").SetValue(Activator.CreateInstance(commandType, then));
             }
             string message = t.Property("Message").GetValue() as string ?? "";
-            if (!message.Contains("R.A.T.S. Keel"))
+            if (!message.Contains(Note.Trim()))
                 t.Property("Message").SetValue(message + Note);
+            t.Property("Header").SetValue(CompatDialog.Branded(t.Property("Header").GetValue() as string));
         }
         catch (Exception ex)
         {

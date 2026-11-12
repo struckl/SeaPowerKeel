@@ -56,6 +56,13 @@ internal static class CompatDialog
     {
         try
         {
+            // Every message box the game shows, in one log line: tests (and the loading window) see a box that waits for a
+            // click, whoever opened it (the game's version question, a mod's error box). 2026-11-12: boxes went unclicked.
+            if (!string.IsNullOrEmpty(value))
+            {
+                string first = value.Replace("\r", "").Replace("\n", " / ");
+                BepInEx.Logging.Logger.CreateLogSource(Keel.Name).LogInfo("Game message box: " + (first.Length > 140 ? first.Substring(0, 140) + "..." : first));
+            }
             header ??= Text("LoadScreen", "WarningMods");
             if (string.IsNullOrEmpty(header) || value == null || !value.StartsWith(header, StringComparison.Ordinal))
             {
