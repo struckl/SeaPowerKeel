@@ -1,0 +1,13 @@
+a1	[it] Salve! + fellow Rats and Captains! This is Rats Keel, the mod loader for Sea Power.
+a2	Today we install it on a completely clean game. No BepInEx, no mods, nothing else.
+b1	Step one: subscribe to Rats Keel on the Steam Workshop.
+c1	Step two: open Keel's Workshop folder and run Keel Setup.
+c2	It finds your game, adds BepInEx because it is missing, and installs Keel. One click on Install, and it is done.
+d1	Step three: start Sea Power, open the Mod Manager, switch Rats Keel on, and accept.
+e1	Now restart the game once.
+e2	While the game starts, Keel's loading window shows every step.
+e3	When it slides into the corner, the game takes over, and the Keel card tells you: Keel is loaded.
+e4	One click on the card opens the full report. Every mod, and why one did not start.
+f1	That is all you need. Keel replaces Anchor Chain and Alpine's Mod Loader. No other loader required.
+f2	Anchor Chain mods, Euromod, and the A C Pack with its add-ons run as they are.
+f3	Fair winds, and good hunting, Captains.

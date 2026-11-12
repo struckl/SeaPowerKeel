@@ -15,3 +15,7 @@ __pycache__/
 .claude/
 
 docs/test-shots-takeover/
+
+# install videos: big files, kept locally (uploaded to YouTube)
+workshop/video/*.mp4
+workshop/video/*.mp3
