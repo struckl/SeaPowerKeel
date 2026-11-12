@@ -25,4 +25,6 @@ Keel keeps your modded game afloat. Biggest Keel update so far:
 Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459
 Feedback: <https://hub.sewerlabs.dev/s/keel>
 
+🧀 Like the mods? Buy the rats a slice of cheese: <https://ko-fi.com/kanalratte_sewerlabs>
+
 *R.A.T.S. – Ratte's Assorted Tactical Systems*

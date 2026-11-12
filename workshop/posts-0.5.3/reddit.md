@@ -48,4 +48,6 @@ Keel keeps your modded game afloat. 0.5 is the biggest Keel update so far.
 
 [R.A.T.S. Keel on the Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459) · [Feedback board](https://hub.sewerlabs.dev/s/keel) · [Source (MIT)](https://github.com/struckl/SeaPowerKeel)
 
+🧀 Like the mods? [Buy the rats a slice of cheese](https://ko-fi.com/kanalratte_sewerlabs)
+
 *R.A.T.S. – Ratte's Assorted Tactical Systems*
