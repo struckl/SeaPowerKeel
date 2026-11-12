@@ -343,6 +343,21 @@ internal static class SelfTest
             "an old AC Pack on 0.8.7 or an unknown game version: no warning");
         Check(ModSetups.Detect(new[] { fLocal }, null, oldTimes, "0.9.1").Warning() == null, "a local AC Pack copy (no Steam time): no warning");
 
+        // Start early (opt-in, rgreat 2026-11-12): _info.ini [Keel] StartEarly=true; a mod that needs a late one waits too.
+        Check(EarlyStart.InInfoIni("[Language_en]\nName=X\n\n[Keel]\nStartEarly=true\n") && !EarlyStart.InInfoIni("[Language_en]\nStartEarly=true\n")
+              && !EarlyStart.InInfoIni("[Keel]\nStartEarly=false\n") && EarlyStart.InInfoIni("[keel]\r\nstartearly = TRUE ; yes\r\n"),
+              "start early: only [Keel] StartEarly=true counts (any case, comments allowed)");
+        var eA = new PluginEntry { Guid = "a", Name = "A", StartEarly = true };
+        var eB = new PluginEntry { Guid = "b", Name = "B", StartEarly = true };
+        eB.Dependencies.Add(new Dependency { Guid = "c" });
+        var eC = new PluginEntry { Guid = "c", Name = "C" };
+        var eD = new PluginEntry { Guid = "d", Name = "D", StartEarly = true };
+        var eE = new PluginEntry { Guid = "e", Name = "E" };
+        eE.LoadBefore.Add("d");
+        var whyLate = new List<string>();
+        var earlySet = EarlyStart.Set(new List<PluginEntry> { eA, eB, eC, eD, eE }, (p, why) => whyLate.Add(p.Guid));
+        Check(earlySet.SetEquals(new[] { eA }) && whyLate.Count == 2,
+              "start early: A early; B waits (needs C, which waits); D waits (E must load before it)");
         // What a sent report says in one line (player reports 2026-11-12: game "?", every mail titled "Crash report").
         string rep = "R.A.T.S. Keel 0.5.0 (stub 1.0.0) – Sea Power 0.9.1-261112, 3D globe map – 2026-11-12 15:00\nEuromod setup: Euromod + AC Pack.\n41 running, 2 failed\n\n" +
                      "[FAILED] Taigei (x.taigei) – Workshop 1, T.dll\n[RUNNING] R.A.T.S. Radio 1.5.1 (dev.sewerlabs.seapowerradio) – SeaPowerRadio\n[ERRORS] Automatic SAR (x.sar) – Workshop 2\n";

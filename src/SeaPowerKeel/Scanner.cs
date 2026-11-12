@@ -45,6 +45,7 @@ internal static class Scanner
         foreach (ModFolder folder in folders)
         {
             Manifest manifest = Manifest.Read(folder.Path, warn);
+            bool folderEarly = EarlyStart.FolderAsks(folder.Path);
             List<string> dlls;
             try
             {
@@ -75,6 +76,7 @@ internal static class Scanner
                 foreach (PluginEntry p in found)
                 {
                     p.Order = order++;
+                    p.StartEarly |= folderEarly;
                     if (offBuild != null && p.State == PluginState.Pending)
                         p.Stop(PluginState.Skipped, $"{offBuild} build: this game has the {GameState.BuildName} (keel.ini)");
                     all.Add(p);
@@ -91,6 +93,7 @@ internal static class Scanner
         {
             using var stream = new MemoryStream(File.ReadAllBytes(dll));
             using ModuleDefinition module = ModuleDefinition.ReadModule(stream, new ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
+            bool dllEarly = EarlyStart.AssemblyAsks(module.Assembly);
             foreach (TypeDefinition type in module.GetTypes())
             {
                 if (!type.IsClass || type.IsAbstract || !type.HasCustomAttributes)
@@ -124,6 +127,7 @@ internal static class Scanner
                 entry.AssemblyName = module.Assembly.Name.Name;
                 entry.TypeName = type.FullName.Replace('/', '+');
                 entry.Folder = folder;
+                entry.StartEarly = dllEarly;
                 result.Add(entry);
             }
         }

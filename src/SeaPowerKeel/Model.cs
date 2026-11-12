@@ -51,6 +51,7 @@ internal sealed class PluginEntry
     public bool UsesAcConfig;
     public bool AcConfigRequired = true;               // [ACConfig(required)]: a config file that cannot be made keeps the mod from starting
     public bool Exported = true;                        // Anchor Chain only sees public (exported) plugin classes
+    public bool StartEarly;                             // asked to start before the load screen ends (EarlyStart)
 
     public PluginState State = PluginState.Pending;
     public string Reason = "";

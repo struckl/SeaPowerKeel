@@ -218,25 +218,24 @@ internal sealed partial class KeelHost : MonoBehaviour
             log.LogInfo($"The game's mod list is there (waited {watch.Elapsed.TotalSeconds:0.0} s).");
         }
 
-        // 2. On the globe build, after the start-up load screen: mods started during it can keep the unit data from loading.
-        if (GameState.Globe)
-        {
-            watch.Restart();
-            while (!GameState.StartupDone() && watch.Elapsed.TotalSeconds < 180)
-                yield return new WaitForSecondsRealtime(0.25f);
-            log.LogInfo($"Start-up load screen done (waited {watch.Elapsed.TotalSeconds:0.0} s).");
-        }
-
         List<ModFolder> enabled = folders.Where(f => f.Enabled).ToList();
-        log.LogInfo($"{enabled.Count} of {folders.Count} mod folders are on.");
-        DetectSetups(enabled);
 
-        // 3. Find the plugins (metadata only).
+        // 2. Find the plugins (metadata only, no mod code runs): before the wait, so mods that ask to start early are known.
         watch.Restart();
         Keel.Plugins.AddRange(Scanner.Scan(enabled, Warn, skippedDlls, Paths.ManagedPath, Paths.BepInExAssemblyDirectory));
         log.LogInfo($"Found {Keel.Plugins.Count} plugin(s) in {Keel.Plugins.Select(p => p.Dll).Distinct().Count()} DLL(s) ({watch.ElapsedMilliseconds} ms).");
         foreach (SkippedDll d in skippedDlls)
             log.LogInfo($"DLL left out: {d.Path} - {d.Reason}");
+
+        // 3. On the globe build, after the start-up load screen: mods started during it can keep the unit data from loading.
+        // A mod that asked to start early (EarlyStart) changes that: Keel then prepares everything now, starts the early mods,
+        // and waits for the load screen right before the others.
+        bool early = GameState.Globe && Keel.Plugins.Any(p => p.StartEarly && p.State == PluginState.Pending);
+        if (GameState.Globe && !early)
+            yield return WaitForLoadScreen();
+
+        log.LogInfo($"{enabled.Count} of {folders.Count} mod folders are on.");
+        DetectSetups(enabled);
         if (whatsNewOn.Value)
             StartWhatsNew(enabled);
         // Before any mod is touched: what the last session left, so a mod that took the game down cannot do it again.
@@ -328,10 +327,33 @@ internal sealed partial class KeelHost : MonoBehaviour
             Started = p => log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
                                    $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " - " + p.Reason : "")}"),
         };
+        int started = 0;
+        if (early)
+        {
+            HashSet<PluginEntry> earlySet = EarlyStart.Set(Keel.Plugins, (p, why) =>
+            {
+                p.Warnings.Add(why);
+                log.LogInfo($"{p.Display}: {why}");
+            });
+            string names = string.Join(", ", earlySet.Select(p => p.Display).Distinct());
+            log.LogInfo($"Starting {earlySet.Count} plugin(s) that asked to start before the load screen ends: {names}.");
+            if (earlySet.Count > 0)
+                notes.Add($"Started before the load screen ended (the mod asked for it): {names}.");
+            Func<List<PluginEntry>> replanAll = sequence.Replan;
+            sequence.Replan = () => replanAll().Where(earlySet.Contains).ToList();
+            foreach (PluginEntry _ in sequence.Run(order.Where(earlySet.Contains).ToList()))
+                yield return null;
+            started += sequence.StartedCount;
+            sequence.StartedCount = 0;
+            yield return WaitForLoadScreen();
+            sequence.Replan = () => replanAll().Where(p => !earlySet.Contains(p)).ToList();
+            order = sequence.Replan();
+        }
+        // Taken after the early mods: their load-screen hooks see the real end and are not called again.
         HashSet<string> loadScreenHooks = LoadScreenEnd.Owners();
         foreach (PluginEntry _ in sequence.Run(order))
             yield return null;
-        int started = sequence.StartedCount;
+        started += sequence.StartedCount;
         foreach (string line in LoadScreenEnd.Replay(loadScreenHooks))
             log.LogInfo(line);
         foreach (PluginEntry p in Keel.Plugins.Where(p => p.State is PluginState.NotStarted))
@@ -477,6 +499,15 @@ internal sealed partial class KeelHost : MonoBehaviour
         log.LogInfo(note);
         WriteReport();
         hotLoading = false;
+    }
+
+    /// <summary>Waits (up to 3 min) until the game's start-up load screen is done; logs how long.</summary>
+    private IEnumerator WaitForLoadScreen()
+    {
+        var wait = Stopwatch.StartNew();
+        while (!GameState.StartupDone() && wait.Elapsed.TotalSeconds < 180)
+            yield return new WaitForSecondsRealtime(0.25f);
+        log.LogInfo($"Start-up load screen done (waited {wait.Elapsed.TotalSeconds:0.0} s).");
     }
 
     // The window a player sees when the game dies has to come from outside the game.

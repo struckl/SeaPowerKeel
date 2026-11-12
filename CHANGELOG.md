@@ -4,6 +4,10 @@
 
 - **Loading window starts top right** on a new install (was in the middle of the screen)
 - **Your own setting stays** (`Loading window.Spot`)
+- **Start early, opt-in for mod authors** (asked for by rgreat): `[Keel] StartEarly=true` in `_info.ini`, or `[assembly: AssemblyMetadata("Keel.StartEarly", "true")]`
+- **Early mods start before the load screen ends**; all others still wait (unit data, Noesis)
+- **An early mod that needs a waiting mod waits too**; the report says why
+- How to: `docs/for-mod-authors.md`
 
 ## 0.5.0 - 2026-11-12 - takeover, What's new, Euromod stages, better reports
 

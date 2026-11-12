@@ -60,6 +60,26 @@ flat  = MyModFlat.dll
 
 DLLs not named there are scanned as usual. Without `keel.ini` every DLL is scanned and each mod has to decide itself.
 
+## Start early (opt-in)
+
+On the 3D globe build Keel starts mods after the game's start-up load screen (mods started during it can keep the unit data
+from loading or crash in Noesis). If your mod is safe there and needs to run while the game loads, ask for it. Either one:
+
+- **`_info.ini`** of your mod folder (every plugin in the folder):
+  ```ini
+  [Keel]
+  StartEarly=true
+  ```
+- **Your DLL** (every plugin in it), no reference to Keel needed:
+  ```csharp
+  [assembly: System.Reflection.AssemblyMetadata("Keel.StartEarly", "true")]
+  ```
+
+- **What happens:** your mod starts as soon as Keel has checked it; every other mod still waits for the load screen.
+- **Dependencies:** a mod that needs (or must load after) a mod that waits starts with the others; the report says why.
+- **Seen in the report and log:** "Started before the load screen ended (the mod asked for it): ...".
+- **Load-screen hooks:** an early mod sees the real end of the load screen (Keel does not call its postfix again).
+
 ## The game-version check
 
 Before a DLL is loaded, Keel checks every type, method and field it uses from the game's assemblies against the running

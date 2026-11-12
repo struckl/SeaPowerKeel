@@ -140,7 +140,7 @@ since 0.1.5. Where the start-up time goes and how it works:
 
 **For mod authors:** your mod loads as built, nothing to recompile or add. List R.A.T.S. Keel as your Workshop item's required
 item (3835527459): Keel brings Anchor Chain's library, so your players need no Anchor Chain item. When a game update breaks a
-mod, Keel's report names the missing method, field or type. Writing a mod for it: [docs/for-mod-authors.md](docs/for-mod-authors.md) (BepInEx plugins, Anchor Chain mods, `keel.ini`
+mod, Keel's report names the missing method, field or type. Writing a mod for it: [docs/for-mod-authors.md](docs/for-mod-authors.md) (BepInEx plugins, Anchor Chain mods, start early, `keel.ini`
 for mods with one DLL per game build).
 
 ## Takeover

@@ -1,2 +1,2 @@
-- Loading window starts at the top right on a new install (was in the middle of the screen)
-- Your own setting stays
+- Loading window starts at the top right on a new install (was in the middle of the screen); your own setting stays
+- For mod authors: a mod can ask to start before the load screen ends ([Keel] StartEarly=true in _info.ini); all others still wait
