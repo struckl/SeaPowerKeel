@@ -10,6 +10,11 @@ Run in the game by the Keel session on his go. Screenshots stay on the developer
 | What's new card | **Shows**: BetterTacMap and R.A.T.S. Keel UPDATED, a click closes it. Flaws: no author lines under either; Keel listed without a version jump (same 0.4.0); BetterTacMap listed as UPDATED again at the next start with nothing changed. Handed to the What's new session. |
 | Run 2: Alpine's preloader back in `BepInEx\plugins` | **GREEN:** "Not starting Alpine's Mod Loader", BepInEx loaded only Keel's stub, Keel ran all 17 mods, summary card "No problems". `Keel-takeover.txt` names it. |
 | Run 4: Keel switched off in Mods | **GREEN:** the patcher took nothing out ("Keel is switched off"), Alpine 0.2.1 started as usual. |
-| Run 3 (first start without the patcher), run 5 (patcher update while in use), Euromod stages | Not run yet. |
+| What's new after the fixes (994c40c) | **GREEN:** Keel UPDATED with 11 CHANGELOG lines; BetterTacMap no longer flagged; the four Euromod items NEW with their authors' Workshop notes. Small: Workshop notes show raw markup (`### Fixes ###`). |
+| Patcher update while in use (run 5) | **GREEN** in passing: "Takeover patcher updated" at a start where the old one was loaded. |
+| Euromod run A: Main + US Naval Aviation + Cost Tracker + AC Pack, EG off | **GREEN:** 41 mods running, "No problems", `Euromod setup: Euromod + AC Pack (updated 2026-11-11), Extended Guidance off.` Only warning: Alternative Weapons Control "Gun fixes failed: Value cannot be null" (also without Euromod). New subscriptions have to be ticked in the Mod Manager; an edit of usersettings.ini is not enough. |
+| Euromod run B: Extended Guidance on (`Mods\ACPack\submods.ini`, `ExtendedGuidance=true`, written by hand in the AC Pack's format) | **GREEN at start-up:** `+ Extended Guidance ON (experimental)`, ExtendedGuidance 0.10.33 RUNNING, 41 running. Not checked: that the AC Pack's own menu writes that file (only its strings say so). |
+| Mission with Euromod + EG | **Not run:** the driver's menu clicks miss once Euromod adds its EUROMOD category, and he took the PC back. |
+| Run 3 (first start without the patcher) | Not run. |
 
-Put back: Alpine's file as `.keel-off`, his usersettings.ini, Keel on; game left at the main menu with 17 mods.
+Left as: Euromod Main, US Naval Aviation, Cost Tracker and AC Pack ticked in his Mod Manager, `submods.ini` with EG on, game at the Scenarios screen. Alpine's file as `.keel-off`, Keel on.
