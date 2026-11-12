@@ -325,6 +325,14 @@ internal static class SelfTest
         Check(!ModSetups.Detect(new[] { fMain, fAc }, "[Other]\nExtendedGuidance=true\n", null).Eg, "only [Submods] counts");
         Check(ModSetups.Detect(new[] { fLocal }, null, null).Line().Contains("AC Pack without the Euromod Main Pack"), "a local AC Pack copy is recognized by ACPackSettings.dll, and a missing Main Pack is said");
         Check(ModSetups.SubmodsIni(@"C:\LocalLow\Triassic Games\Sea Power").EndsWith(@"Mods\ACPack\submods.ini"), "the AC Pack's switches are read from Mods\\ACPack\\submods.ini");
+
+        var oldTimes = new Dictionary<ulong, long> { [ModSetups.EuromodAcPack] = ModSetups.AcPackFix09 - 86400 };
+        var old = ModSetups.Detect(new[] { fMain, fAc }, null, oldTimes, "0.9.1-261112");
+        Check(old.AcPackOld && old.Warning() != null && old.Line().Contains(", OLD)"), "an AC Pack older than its 0.9 fix on game 0.9.1: warned, OLD in the line: " + old.Line());
+        Check(ModSetups.Detect(new[] { fMain, fAc }, null, times, "0.9.1-261112").Warning() == null, "the fixed AC Pack (2026-11-11 20:26 UTC and later): no warning");
+        Check(ModSetups.Detect(new[] { fMain, fAc }, null, oldTimes, "0.8.7").Warning() == null && ModSetups.Detect(new[] { fMain, fAc }, null, oldTimes, null).Warning() == null,
+            "an old AC Pack on 0.8.7 or an unknown game version: no warning");
+        Check(ModSetups.Detect(new[] { fLocal }, null, oldTimes, "0.9.1").Warning() == null, "a local AC Pack copy (no Steam time): no warning");
     }
 
     private static void TakeoverChecks(string tmp)

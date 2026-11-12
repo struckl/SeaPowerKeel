@@ -707,9 +707,17 @@ internal sealed class KeelHost : MonoBehaviour
         try
         {
             string submods = ModSetups.SubmodsIni(Application.persistentDataPath);
-            setupLine = ModSetups.Detect(enabled, File.Exists(submods) ? File.ReadAllText(submods) : null, WhatsNew.SteamTimes(ModFolders.WorkshopRoot)).Line();
+            ModSetups.Euromod euromod = ModSetups.Detect(enabled, File.Exists(submods) ? File.ReadAllText(submods) : null,
+                WhatsNew.SteamTimes(ModFolders.WorkshopRoot), Application.version);
+            setupLine = euromod.Line();
             if (setupLine != null)
                 log.LogInfo(setupLine);
+            string warning = euromod.Warning();
+            if (warning != null)
+            {
+                log.LogWarning(warning);
+                notes.Add(warning);
+            }
         }
         catch (Exception ex)
         {

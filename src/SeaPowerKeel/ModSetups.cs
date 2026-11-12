@@ -19,6 +19,8 @@ internal static class ModSetups
     public const ulong EuromodAcPack = 3784474738;
     public const string AcPackMarker = "ACPackSettings.dll";
     public const string EgId = "ExtendedGuidance";
+    /// <summary>Steam time of the AC Pack update "fixes two bugs caused by 0.9" (2026-11-11 20:11 UTC): older copies break on 0.9.x.</summary>
+    public const long AcPackFix09 = 1794427884;
 
     public static string SubmodsIni(string persistentDataPath) => Path.Combine(persistentDataPath, "Mods", "ACPack", "submods.ini");
 
@@ -26,6 +28,7 @@ internal static class ModSetups
     {
         public bool Main, AcPack, Eg;
         public string AcPackUpdated;               // "2026-11-11" from Steam's update time, or null
+        public bool AcPackOld;                     // older than its fix for game 0.9 while the game is 0.9 or later
         public readonly List<string> SubmodsOff = new();
 
         public string Line()
@@ -34,10 +37,16 @@ internal static class ModSetups
                 return null;
             string stage = !AcPack ? "Euromod (Main Pack)"
                          : (Main ? "Euromod + AC Pack" : "AC Pack without the Euromod Main Pack")
-                           + (AcPackUpdated != null ? $" (updated {AcPackUpdated})" : "")
+                           + (AcPackUpdated != null ? $" (updated {AcPackUpdated}{(AcPackOld ? ", OLD" : "")})" : "")
                            + (Eg ? " + Extended Guidance ON (experimental)" : ", Extended Guidance off");
             return "Euromod setup: " + stage + (SubmodsOff.Count > 0 ? $"; AC Pack submods off: {string.Join(", ", SubmodsOff)}" : "") + ".";
         }
+
+        /// <summary>What to tell the player about the AC Pack, or null.</summary>
+        public string Warning() => AcPackOld
+            ? $"Your AC Pack (Euromod - Anchorchain Expansion Pack) is from {AcPackUpdated}, older than its update of 2026-11-11 that fixes two bugs " +
+              "caused by game 0.9. Let Steam update it: Steam, Library, Downloads; if nothing comes, unsubscribe and subscribe again."
+            : null;
     }
 
     /// <summary>The <c>[Submods]</c> switches: id to on/off. Invalid lines are skipped.</summary>
@@ -69,7 +78,8 @@ internal static class ModSetups
     /// <param name="enabled">The mod folders switched on.</param>
     /// <param name="submodsText">The AC Pack's submods.ini, or null when there is none.</param>
     /// <param name="steamTimes">Steam's update time per Workshop item (unix seconds), may be null.</param>
-    public static Euromod Detect(IEnumerable<ModFolder> enabled, string submodsText, IDictionary<ulong, long> steamTimes)
+    /// <param name="gameVersion">The running game's version (Application.version), for the old AC Pack warning; may be null.</param>
+    public static Euromod Detect(IEnumerable<ModFolder> enabled, string submodsText, IDictionary<ulong, long> steamTimes, string gameVersion = null)
     {
         var e = new Euromod();
         foreach (ModFolder f in enabled)
@@ -82,7 +92,10 @@ internal static class ModSetups
             {
                 e.AcPack = true;
                 if (f.SteamId != 0 && steamTimes != null && steamTimes.TryGetValue(f.SteamId, out long t) && t > 0)
+                {
                     e.AcPackUpdated = DateTimeOffset.FromUnixTimeSeconds(t).ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    e.AcPackOld = t < AcPackFix09 && IsAtLeast09(gameVersion);
+                }
             }
         }
         if (e.AcPack)
@@ -92,5 +105,12 @@ internal static class ModSetups
             e.SubmodsOff.AddRange(sw.Where(kv => !kv.Value && !kv.Key.Equals(EgId, StringComparison.OrdinalIgnoreCase)).Select(kv => kv.Key).OrderBy(k => k, StringComparer.OrdinalIgnoreCase));
         }
         return e;
+    }
+
+    /// <summary>"0.9.1-261112" and later: true; 0.8.x or unknown: false.</summary>
+    internal static bool IsAtLeast09(string gameVersion)
+    {
+        Version v = Scanner.ParseVersion((gameVersion ?? "").Split('-')[0]);
+        return v != null && v >= new Version(0, 9);
     }
 }
