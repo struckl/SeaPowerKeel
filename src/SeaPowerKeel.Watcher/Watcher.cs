@@ -147,7 +147,7 @@ internal static class Watcher
         };
         row.Controls.Add(logs);
         var report = new Button { Text = "Send report", AutoSize = true, Padding = new Padding(P(10), P(2), P(10), P(2)), Margin = new Padding(0, 0, P(8), 0) };
-        report.Click += (s, e) => Sender.Run(dir, null, form);
+        report.Click += (s, e) => Sender.Run(dir, null, form, crashed: true);
         row.Controls.Add(report);
         column.Controls.Add(row);
         form.Controls.Add(column);

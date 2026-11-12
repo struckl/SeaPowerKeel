@@ -446,13 +446,24 @@ internal sealed class KeelHost : MonoBehaviour
                     crash?.Mark("start", p.Guid);
                     liveRunner.Start(p);
                 },
-                Starting = (p, index, total) => log.LogInfo($"STARTING (after reload) {index}/{total}: {p.Display} {p.Version} ({p.Folder.Label})"),
+                Starting = (p, index, total) =>
+                {
+                    log.LogInfo($"STARTING (after reload) {index}/{total}: {p.Display} {p.Version} ({p.Folder.Label})");
+                    reloadProgress = $"Mods menu reload in progress: starting {index} of {total} ({p.Display}).";
+                },
                 Replan = () => Planner.Replan(Keel.Plugins, elsewhere),
-                Started = p => log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
-                                       $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " - " + p.Reason : "")}"),
+                Started = p =>
+                {
+                    log.Log(p.State == PluginState.Running ? LogLevel.Info : LogLevel.Error,
+                            $"{Report.Tag(p.State)}: {p.Display} {p.Version} ({p.Folder.Label}){(p.Reason.Length > 0 ? " - " + p.Reason : "")}");
+                    // Written after every mod: a report sent (or a crash) in the middle of a reload shows how far it got
+                    // (a player's report 2026-11-12 showed 3 mods while the log had started 27 of 30).
+                    WriteReport();
+                },
             };
             foreach (PluginEntry _ in sequence.Run(order))
                 yield return null;
+            reloadProgress = null;
             started = sequence.StartedCount;
             crash?.Mark("done", "");
             crash?.WriteModsFile(Keel.Plugins);
@@ -707,9 +718,12 @@ internal sealed class KeelHost : MonoBehaviour
     private bool? egNext;                   // Extended Guidance as switched in the report window, for the next start; null = not touched
     private Rect egRect;
 
+    private volatile string reloadProgress;     // set while a Mods menu reload starts mods
+
     private string Header() =>
-        $"{Keel.Name} {Keel.Version} (stub {StubVersion}) – Sea Power, {GameState.BuildName} – {DateTime.Now:yyyy-MM-dd HH:mm}" +
-        (setupLine != null ? Environment.NewLine + setupLine : "");
+        $"{Keel.Name} {Keel.Version} (stub {StubVersion}) – Sea Power {Application.version}, {GameState.BuildName} – {DateTime.Now:yyyy-MM-dd HH:mm}" +
+        (setupLine != null ? Environment.NewLine + setupLine : "") +
+        (reloadProgress != null ? Environment.NewLine + reloadProgress : "");
 
     private void DetectSetups(List<ModFolder> enabled)
     {
@@ -1409,7 +1423,7 @@ internal sealed class KeelHost : MonoBehaviour
         try
         {
             string exe = Path.Combine(Path.GetDirectoryName(OwnPath) ?? "", "KeelWatcher.exe");
-            Process.Start(new ProcessStartInfo(exe, $"--send \"{Paths.BepInExRootPath}\" \"{GameState.BuildName}\"") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
+            Process.Start(new ProcessStartInfo(exe, $"--send \"{Paths.BepInExRootPath}\" \"{Application.version}\"") { UseShellExecute = false, CreateNoWindow = true })?.Dispose();
             notes.Add("A Keel window opens over the game: it shows what gets sent, and sends only when you click Send.");
         }
         catch (Exception ex)

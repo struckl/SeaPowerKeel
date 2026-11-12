@@ -25,9 +25,16 @@ internal static class Sender
     private static string KeelVersion =>
         typeof(Sender).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "";
 
-    /// <summary>Shows the send window. <paramref name="game"/> is the game build if the caller knows it.</summary>
-    public static void Run(string bepInEx, string game = null, IWin32Window owner = null)
+    /// <summary>
+    /// Shows the send window. <paramref name="game"/> is the game build if the caller knows it; <paramref name="crashed"/> says
+    /// whether the game crashed (the crash window) or the player sends from the report window: the board titles its mail by it.
+    /// </summary>
+    public static void Run(string bepInEx, string game = null, IWin32Window owner = null, bool crashed = false)
     {
+        (string build, string summary) = ReportFacts.Read(bepInEx, game);
+        game = build;
+        kind = crashed ? "crash" : "report";
+        Sender.summary = summary;
         string folder = Path.Combine(Path.GetTempPath(), "RATS-Keel-report-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         string zip = null;
         try
@@ -157,6 +164,8 @@ internal static class Sender
     }
 
     /// <summary>"#id" when the board took the report, else a sentence for the player.</summary>
+    private static string kind = "report", summary = "";
+
     private static string Upload(string zip, string note, string game)
     {
         try
@@ -178,6 +187,8 @@ internal static class Sender
             form.Add(new StringContent(note ?? ""), "note");
             form.Add(new StringContent(KeelVersion), "keel");
             form.Add(new StringContent(game ?? ""), "game");
+            form.Add(new StringContent(kind), "kind");          // crash | report: the board's mail says "Crash report" only for a crash
+            form.Add(new StringContent(summary ?? ""), "summary");
             using HttpResponseMessage response = http.PostAsync(Endpoint, form).GetAwaiter().GetResult();
             string body = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
             Match id = Regex.Match(body, "\"id\"\\s*:\\s*(\\d+)");

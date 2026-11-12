@@ -343,6 +343,13 @@ internal static class SelfTest
             "an old AC Pack on 0.8.7 or an unknown game version: no warning");
         Check(ModSetups.Detect(new[] { fLocal }, null, oldTimes, "0.9.1").Warning() == null, "a local AC Pack copy (no Steam time): no warning");
 
+        // What a sent report says in one line (player reports 2026-11-12: game "?", every mail titled "Crash report").
+        string rep = "R.A.T.S. Keel 0.5.0 (stub 1.0.0) – Sea Power 0.9.1-261112, 3D globe map – 2026-11-12 15:00\nEuromod setup: Euromod + AC Pack.\n41 running, 2 failed\n\n" +
+                     "[FAILED] Taigei (x.taigei) – Workshop 1, T.dll\n[RUNNING] R.A.T.S. Radio 1.5.1 (dev.sewerlabs.seapowerradio) – SeaPowerRadio\n[ERRORS] Automatic SAR (x.sar) – Workshop 2\n";
+        Check(ReportFacts.Game("3D globe map", rep, "") == "0.9.1-261112", "game build from the report's first line, not the map name");
+        Check(ReportFacts.Game("", "R.A.T.S. Keel 0.4.0 – Sea Power, 3D globe map – x\n17 running\n", "x Version 0.9.0-261111 y") == "0.9.0-261111", "an old report: the build from Keel's log");
+        Check(ReportFacts.Summary(rep) == "41 running, 2 failed: Taigei, Automatic SAR", "summary: the counts line after a multi-line header, then the problem mods: " + ReportFacts.Summary(rep));
+
         // The report window's EG button writes the AC Pack's own switch, leaving every other line as it was.
         Check(ModSetups.SetSubmod(null, "euromod.extended-guidance", true) == "[Submods]\neuromod.extended-guidance=true\n", "EG on with no file: the section is made");
         string withEg = ModSetups.SetSubmod(ini, "euromod.extended-guidance", false);
