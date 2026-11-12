@@ -697,6 +697,9 @@ internal sealed class KeelHost : MonoBehaviour
     }
 
     private string setupLine;   // e.g. "Euromod setup: Euromod + AC Pack + Extended Guidance ON (experimental)." or null
+    private ModSetups.Euromod euromod;      // what DetectSetups found, for the Extended Guidance button
+    private bool? egNext;                   // Extended Guidance as switched in the report window, for the next start; null = not touched
+    private Rect egRect;
 
     private string Header() =>
         $"{Keel.Name} {Keel.Version} (stub {StubVersion}) – Sea Power, {GameState.BuildName} – {DateTime.Now:yyyy-MM-dd HH:mm}" +
@@ -707,7 +710,7 @@ internal sealed class KeelHost : MonoBehaviour
         try
         {
             string submods = ModSetups.SubmodsIni(Application.persistentDataPath);
-            ModSetups.Euromod euromod = ModSetups.Detect(enabled, File.Exists(submods) ? File.ReadAllText(submods) : null,
+            euromod = ModSetups.Detect(enabled, File.Exists(submods) ? File.ReadAllText(submods) : null,
                 WhatsNew.SteamTimes(ModFolders.WorkshopRoot), Application.version);
             setupLine = euromod.Line();
             if (setupLine != null)
@@ -724,6 +727,33 @@ internal sealed class KeelHost : MonoBehaviour
             log.LogWarning($"Could not tell the Euromod setup: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// The report window's Extended Guidance button: writes the AC Pack's own switch (Mods\ACPack\submods.ini, the file its menu
+    /// writes) for the next start. The running game keeps what it started with; Restart the game makes it count.
+    /// </summary>
+    private void EgButton()
+    {
+        if (!FreshClick() || euromod is not { AcPack: true })
+            return;
+        bool on = !(egNext ?? euromod.Eg);
+        try
+        {
+            string path = ModSetups.SubmodsIni(Application.persistentDataPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, ModSetups.SetSubmod(File.Exists(path) ? File.ReadAllText(path) : null, ModSetups.EgId, on));
+            egNext = on;
+            log.LogInfo($"Extended Guidance switched {(on ? "ON" : "off")} for the next start ({path}).");
+        }
+        catch (Exception ex)
+        {
+            notes.Add($"Could not switch Extended Guidance: {ex.Message}");
+        }
+    }
+
+    private string EgLabel() => egNext is bool next && next != euromod.Eg
+        ? $"EG {(next ? "on" : "off")} after restart"
+        : euromod.Eg ? "Turn EG off" : "Turn EG on";
 
     private void WriteReport()
     {
@@ -902,6 +932,7 @@ internal sealed class KeelHost : MonoBehaviour
             else if (HeldOffered && heldRect.Contains(gui)) HeldButton();
             else if (!HeldOffered && restartRect.Contains(gui)) RestartButton();
             else if (copyRect.Contains(gui)) GUIUtility.systemCopyBuffer = Report.Text(Keel.Plugins, Header(), notes, skippedDlls);
+            else if (euromod is { AcPack: true } && egRect.Contains(gui)) EgButton();
         }
         catch (Exception) { pointer = null; }
     }
@@ -1535,6 +1566,9 @@ internal sealed class KeelHost : MonoBehaviour
 
         foreach (string n in notes)
             GUILayout.Label(n, crashNotice != null && crashNotice.Contains(n) ? alertStyle : noteStyle);
+        if (setupLine != null)
+            GUILayout.Label(setupLine + (egNext is bool next && next != euromod.Eg
+                ? $" Next start: Extended Guidance {(next ? "ON" : "off")} (Restart the game to switch now)." : ""), noteStyle);
 
         // The skin is shared with other mods: its scroll bar is restyled only while this window draws.
         GUIStyle bar = GUI.skin.verticalScrollbar, knob = GUI.skin.verticalScrollbarThumb;
@@ -1593,6 +1627,8 @@ internal sealed class KeelHost : MonoBehaviour
             HeldButton();
         if (!HeldOffered && Button(restartArmed ? "Click again to restart" : "Restart the game", 180, ref restartRect))
             RestartButton();
+        if (euromod is { AcPack: true } && Button(EgLabel(), 170, ref egRect))
+            EgButton();
         GUILayout.FlexibleSpace();
         if (Button("Close", 100, ref closeRect))
             showWindow = false;

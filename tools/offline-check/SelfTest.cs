@@ -333,6 +333,14 @@ internal static class SelfTest
         Check(ModSetups.Detect(new[] { fMain, fAc }, null, oldTimes, "0.8.7").Warning() == null && ModSetups.Detect(new[] { fMain, fAc }, null, oldTimes, null).Warning() == null,
             "an old AC Pack on 0.8.7 or an unknown game version: no warning");
         Check(ModSetups.Detect(new[] { fLocal }, null, oldTimes, "0.9.1").Warning() == null, "a local AC Pack copy (no Steam time): no warning");
+
+        // The report window's EG button writes the AC Pack's own switch, leaving every other line as it was.
+        Check(ModSetups.SetSubmod(null, "ExtendedGuidance", true) == "[Submods]\nExtendedGuidance=true\n", "EG on with no file: the section is made");
+        string withEg = ModSetups.SetSubmod(ini, "ExtendedGuidance", false);
+        Check(withEg == ini.Replace("ExtendedGuidance=true", "ExtendedGuidance=false"), "EG off: only that line changes");
+        string other = "[Other]\nX=1\n[Submods]\nTestRange=false\n\n[More]\nY=2\n";
+        Check(ModSetups.SetSubmod(other, "ExtendedGuidance", true) == "[Other]\nX=1\n[Submods]\nTestRange=false\nExtendedGuidance=true\n\n[More]\nY=2\n", "EG added at the end of [Submods], other sections kept");
+        Check(ModSetups.ReadSubmods(ModSetups.SetSubmod("; note\n", "ExtendedGuidance", true))["ExtendedGuidance"], "what the button writes reads back as on");
     }
 
     private static void TakeoverChecks(string tmp)

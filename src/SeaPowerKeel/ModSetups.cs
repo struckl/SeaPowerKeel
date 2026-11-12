@@ -75,6 +75,49 @@ internal static class ModSetups
         return map;
     }
 
+    /// <summary>
+    /// <paramref name="text"/> (the AC Pack's submods.ini, may be null) with <c>id=true|false</c> in <c>[Submods]</c>: the line is
+    /// replaced where it is, else added at the end of the section, else the section is added. Every other line stays as it was.
+    /// </summary>
+    public static string SetSubmod(string text, string id, bool on)
+    {
+        var lines = (text ?? "").Replace("\r\n", "\n").Split('\n').ToList();
+        if (lines.Count > 0 && lines[lines.Count - 1].Length == 0)
+            lines.RemoveAt(lines.Count - 1);
+        string entry = $"{id}={(on ? "true" : "false")}";
+        int section = -1, end = lines.Count;
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string l = lines[i].Trim();
+            if (l.StartsWith("["))
+            {
+                if (section >= 0) { end = i; break; }
+                if (l.Equals("[Submods]", StringComparison.OrdinalIgnoreCase)) section = i;
+                continue;
+            }
+            int eq = l.IndexOf('=');
+            if (section >= 0 && eq > 0 && l.Substring(0, eq).Trim().Equals(id, StringComparison.OrdinalIgnoreCase))
+            {
+                lines[i] = entry;
+                return string.Join("\n", lines) + "\n";
+            }
+        }
+        if (section < 0)
+        {
+            if (lines.Count > 0 && lines[lines.Count - 1].Trim().Length > 0)
+                lines.Add("");
+            lines.Add("[Submods]");
+            lines.Add(entry);
+        }
+        else
+        {
+            while (end > section + 1 && lines[end - 1].Trim().Length == 0)
+                end--;
+            lines.Insert(end, entry);
+        }
+        return string.Join("\n", lines) + "\n";
+    }
+
     /// <param name="enabled">The mod folders switched on.</param>
     /// <param name="submodsText">The AC Pack's submods.ini, or null when there is none.</param>
     /// <param name="steamTimes">Steam's update time per Workshop item (unix seconds), may be null.</param>
