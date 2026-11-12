@@ -56,7 +56,7 @@ internal static class LoadingWindow
         {
             ConfigEntry<bool> show = config.Bind("Loading window", "Show", true,
                 "Show a small window with the start-up steps and the mods as they start. When every mod has started it shrinks into a summary in the bottom left corner.");
-            ConfigEntry<string> spot = config.Bind("Loading window", "Spot", "Marker",
+            ConfigEntry<string> spot = config.Bind("Loading window", "Spot", "TopRight",
                 new ConfigDescription("Where the window sits while the game starts. Marker = the blank band under the main menu's news box; or a corner of the game's window.",
                     new AcceptableValueList<string>("Marker", "TopLeft", "TopRight", "BottomLeft", "BottomRight")));
             ConfigEntry<float> scale = config.Bind("Loading window", "Scale", 0f,
@@ -84,7 +84,7 @@ internal static class LoadingWindow
             SummarySeconds = summary.Value;
             ClickHides = click.Value;
             BepInEx.Logging.Logger.Listeners.Add(new Feed(progress));
-            if (!Enum.TryParse(spot.Value, out Spot s)) s = Spot.Marker;
+            if (!Enum.TryParse(spot.Value, out Spot s)) s = Spot.TopRight;
             new Overlay(progress, new OverlayOptions
             {
                 Spot = s, Scale = scale.Value, Opacity = opacity.Value, LingerSeconds = linger.Value, SummarySeconds = summary.Value,

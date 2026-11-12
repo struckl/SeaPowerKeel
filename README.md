@@ -103,7 +103,7 @@ See [docs/code-signing-policy.md](docs/code-signing-policy.md): who may approve 
 | `WhatsNew.WorkshopNotes` | `true` | Read updated Workshop mods' change notes from their public Steam changelog page (only for mods that changed); off: `CHANGELOG.md` or just the version |
 | `WhatsNew.Seconds` | `0` | How long the card stays; 0 = until clicked or a mission starts |
 | `Loading window.Show` | `true` | The loading window ([docs/loading-window.md](docs/loading-window.md)) |
-| `Loading window.Spot` | `Marker` | `Marker` (the blank band under the main menu's news box), `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight` of the game's window |
+| `Loading window.Spot` | `TopRight` | `Marker` (the blank band under the main menu's news box), `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight` of the game's window |
 | `Loading window.Scale` | `0` | Size; 0 = by the game window's height (1.5 on a 4K screen) |
 | `Loading window.Opacity` | `0.92` | 0.4 to 1 |
 | `Loading window.SecondsAfterLastMod` | `2` | The full window stays this long after every mod has started, then glides to the corner |

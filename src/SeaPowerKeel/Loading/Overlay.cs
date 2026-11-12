@@ -11,7 +11,7 @@ internal enum Spot { Marker, TopLeft, TopRight, BottomLeft, BottomRight }
 
 internal sealed class OverlayOptions
 {
-    public Spot Spot = Spot.Marker;
+    public Spot Spot = Spot.TopRight;
     public float Opacity = 0.92f;
     public float Scale;                    // 0 = by the game window's height
     public double MaxSeconds = 300;        // the loading window is gone (or a summary) this long after the game process started, whatever happens

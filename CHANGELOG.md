@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 - 2026-11-12 - loading window at the top right
+
+- **The loading window starts at the top right** of the game window on a new install (it was in the middle, under the main menu's news box). An existing setting (`Loading window.Spot`) stays as you set it.
+
 ## 0.5.0 - 2026-11-12 - takeover, What's new, Euromod stages, better reports
 
 - **Keel is the loader while it is on.** Keel no longer steps aside for another mod loader. Anchor Chain's preloader and Alpine's Mod Loader, when still installed, are kept from starting while R.A.T.S. Keel is switched on in the Mods menu, so Keel runs every mod and nothing starts twice. A small BepInEx patcher (`BepInEx\patchers\SeaPowerKeel.Patcher.dll`) does it before BepInEx starts any plugin: it takes those loaders out of BepInEx's plugin list by their plugin id. Their files are not renamed, moved or read; switch Keel off (or `Loading.TakeOver = false`) and they start again.
