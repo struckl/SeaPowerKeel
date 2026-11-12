@@ -136,6 +136,14 @@ internal static class SelfTest
         Check(w.SequenceEqual(new[] { "1.1.0: new radar", "fix \"x\"", "1.0.5 beta" }), "Workshop notes: every update since the last start, newest first, HTML made plain");
         Check(WhatsNew.WorkshopNotes(page, 0, 1794002000).SequenceEqual(new[] { "1.1.0: new radar", "fix \"x\"" }), "a new mod: only its newest note");
         Check(WhatsNew.WorkshopNotes(page, 1794003000, 1794004000).Count == 0, "no note after the last start: none");
+        // Real notes (Euromod Main, 2026-11): Markdown headings pasted into Steam's box show raw there.
+        string euro = "<p id=\"1794246861\">### Fixes ### fixed RAM launch angles</p> <p id=\"1793322763\">### Minor additions ###<br><br>- Added 152mm Bofors<br><br>### Fixes ###<br><br>- Added missing name entry</p>";
+        Check(WhatsNew.WorkshopNotes(euro, 1793000000, 1794246861).SequenceEqual(new[] { "Fixes: fixed RAM launch angles", "Minor additions:", "Added 152mm Bofors", "Fixes:", "Added missing name entry" }),
+            "Workshop notes: '### X ###' headings become 'X:', bullets out: " + string.Join(" | ", WhatsNew.WorkshopNotes(euro, 1793000000, 1794246861)));
+        Check(WhatsNew.CleanNoteLine("[b]New[/b] [url=https://x.y]page[/url] **bold** `code`") == "New page bold code", "BBCode and Markdown marks out");
+        Check(WhatsNew.CleanNoteLine("[*] item") == "item" && WhatsNew.CleanNoteLine("1. first") == "first" && WhatsNew.CleanNoteLine("== Changes ==") == "Changes:", "list items and = headings");
+        Check(WhatsNew.CleanNoteLine("-----") == "" && WhatsNew.CleanNoteLine("[hr][/hr]") == "" && WhatsNew.CleanNoteLine("###") == "", "rules and empty headings dropped");
+        Check(WhatsNew.CleanNoteLine("v.117: Assigned CVW-8") == "v.117: Assigned CVW-8" && WhatsNew.CleanNoteLine("C# fix") == "C# fix", "plain lines stay");
         var log = WhatsNew.ChangelogNotes(local, "1.0.0");
         Check(log.SequenceEqual(new[] { "Bold new thing", "code link", "older" }), "CHANGELOG: the sections above the old version, Markdown removed");
         Check(WhatsNew.ChangelogNotes(local, "").SequenceEqual(new[] { "Bold new thing", "code link" }), "CHANGELOG with no old version: the top section");

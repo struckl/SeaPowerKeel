@@ -394,7 +394,7 @@ internal static class WhatsNew
             string plain = Regex.Replace(text, "<br\\s*/?>", "\n", RegexOptions.IgnoreCase);
             plain = Regex.Replace(plain, "<[^>]+>", "");
             plain = WebUtility.HtmlDecode(plain);
-            lines.AddRange(plain.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0));
+            lines.AddRange(plain.Split('\n').Select(CleanNoteLine).Where(l => l.Length > 0));
         }
         return lines;
     }
@@ -455,13 +455,40 @@ internal static class WhatsNew
             }
             if (!inside || line.Trim().Length == 0 || line.StartsWith("#"))
                 continue;
-            string plain = Regex.Replace(line.Trim(), @"^[-*+]\s+", "");
-            plain = plain.Replace("**", "").Replace("`", "");
-            plain = Regex.Replace(plain, @"\[([^\]]+)\]\([^)]+\)", "$1");
+            string plain = CleanNoteLine(line);
             if (plain.Length > 0)
                 lines.Add(plain);
         }
         return lines;
+    }
+
+    /// <summary>
+    /// One line of an author's note as plain text for the card. Authors paste Markdown and BBCode into Steam's change note box,
+    /// which shows them raw: the marks go, bullets go, a heading such as <c>### Fixes ###</c> becomes <c>Fixes:</c> (and
+    /// <c>### Fixes ### fixed x</c> becomes <c>Fixes: fixed x</c>), a line of only dashes, stars or equals signs is dropped.
+    /// </summary>
+    public static string CleanNoteLine(string line)
+    {
+        string s = (line ?? "").Trim();
+        s = Regex.Replace(s, @"\[url=[^\]]*\](.*?)\[/url\]", "$1", RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, @"\[/?(b|i|u|s|strike|h[1-6]|list|olist|quote|code|spoiler|noparse|url|img|table|tr|td|th|hr)(=[^\]]*)?\]", "", RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, @"^\[\*\]\s*", "").Trim();
+        Match inline = Regex.Match(s, @"^(#{1,6}(?!#)|={2,}(?!=))\s*([^#=].*?)\s*(#{1,6}(?!#)|={2,}(?!=))\s+(.+)$");
+        Match heading = Regex.Match(s, @"^(#{1,6}(?!#)|={2,}(?!=))\s*(.*?)\s*(#{1,6}|={2,})?$");
+        if (inline.Success)
+            s = Heading(inline.Groups[2].Value) + " " + inline.Groups[4].Value.Trim();
+        else if (heading.Success)
+            s = Heading(heading.Groups[2].Value);
+        s = Regex.Replace(s, @"^([-*+•]|\d+[.)])\s+", "");
+        s = s.Replace("**", "").Replace("__", "").Replace("`", "");
+        s = Regex.Replace(s, @"\[([^\]]+)\]\([^)]+\)", "$1").Trim();
+        return Regex.IsMatch(s, @"^[-=*_#~.:\s]*$") ? "" : s;
+    }
+
+    private static string Heading(string text)
+    {
+        text = text.Trim().TrimEnd(':').Trim();
+        return text.Length == 0 ? "" : text + ":";
     }
 
     /// <summary>Why pages could not be read (for the log): in the game the request runs on Unity's Mono, not .NET.</summary>
