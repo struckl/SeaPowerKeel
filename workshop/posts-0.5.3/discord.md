@@ -19,7 +19,7 @@ Keel keeps your modded game afloat. Biggest Keel update so far:
 **Also**
 • The game's "not compatible" question: short names, code vs data mods, made-for version
 • Euromod: report names your stage, Extended Guidance on/off with one button
-• Loading window top right, cards fade on their own, works with Alternative Game Interface
+• Loading window top right, right click hides the cards, works with Alternative Game Interface
 
 ▶ Videos: <https://youtu.be/m66tiCyWSNw> · <https://youtu.be/JrRR7d8NbhU> · <https://youtu.be/vc_UddZHn0g>
 Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3835527459

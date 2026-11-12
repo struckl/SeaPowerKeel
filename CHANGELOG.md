@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Cards stay until you click them away**: no more fading on their own; a right click hides the Keel card and What's new, the × closes What's new (his word; 0.5.2 faded them after 60 s)
+- **`Loading window.SummarySeconds` is gone**: the setting only timed that fade
+
 ## 0.5.3 - 2026-11-12 - menu takes clicks after the report (Alternative Game Interface)
 
 - **The menu takes clicks again after the report is closed** with Alternative Game Interface on: Keel closed its window on the mouse press, so its button kept the mouse; AGI then held back every click from the game's menu (board post #3). Keel now lets go of the mouse when its window closes

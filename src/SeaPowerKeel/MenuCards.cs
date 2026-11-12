@@ -109,13 +109,8 @@ internal sealed partial class KeelHost
                 return;
             EnsureCardStyles();
             float now = Time.realtimeSinceStartup;
-            // Both cards go away again (his decision 2026-11-12 on a player's report: "right click + fade"): a right click hides
-            // one, and each fades on its own after SummarySeconds (0 = stays until clicked away).
-            float fadeAfter = (float)LoadingWindow.SummarySeconds;
-            if (cardOn && !cardHidden && fadeAfter > 0 && cardFadeFrom < 0f && now - cardSince > fadeAfter)
-                cardFadeFrom = now;
-            if (newsUp && fadeAfter > 0 && newsFadeFrom < 0f && newsShownAt > 0f && now - newsShownAt > fadeAfter)
-                newsFadeFrom = now;
+            // Both cards stay until the player clicks them away (his word 2026-11-12: "no fading on their own"): a right click
+            // hides one, the x closes What's new. Nothing times out.
             if (newsUp && newsShownAt < 0f)
                 newsShownAt = now;
             float newsAlpha = NewsAlpha;

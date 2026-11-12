@@ -35,7 +35,7 @@ Keel keeps your modded game afloat. 0.5 is the biggest Keel update so far.
 ## Smaller stuff
 
 - Loading window sits top right and counts your mods while the game starts
-- Cards fade on their own after a minute
+- Right click hides the cards; they stay until then
 - ALTERNATIVE MODS menu entry back on every start
 - Works with Alternative Game Interface (menu clicks after the report)
 - Mod makers: opt in to start early, before the load screen ends

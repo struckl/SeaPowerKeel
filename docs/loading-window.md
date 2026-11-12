@@ -35,8 +35,8 @@ Unity redraws**, IMGUI included (Keel's own report window and notice are IMGUI f
 - **A summary instead of vanishing.** After Keel's "Done:" plus `SecondsAfterLastMod` the full window shrinks and glides to the bottom left, above
   the game's version text (0.9 s, ease out; the full window is squeezed along with StretchBlt, then the card's own content takes over). The card
   says "Keel 0.1.5 started 19 mods in 40 s", "Game ready after 1:00" (+ skipped), and either the number of mods with problems or the slowest mod;
-  a click on it opens Keel's report (Keel's host reads a flag on the main thread and opens the IMGUI window), a right click hides it, and it
-  fades after `SummarySeconds` (60; 0 = stay).
+  a click on it opens Keel's report (Keel's host reads a flag on the main thread and opens the IMGUI window), a right click hides it; it stays until then
+  (no fading on its own since 0.5.4).
 - **Opens early.** `KeelHost.Awake` starts it, which runs when the stub does. BepInEx starts plugins in GUID order
   (`dev.sewerlabs.seapowerkeel.stub` < `io.github.seapower_modders.anchorchain_preloader`, as the log shows), so it is there before the
   12.7 s preloader.

@@ -46,7 +46,6 @@ internal static class LoadingWindow
     /// <summary>Keel's GUI draws the summary card now: the overlay fades out.</summary>
     internal static volatile bool GameDrawsSummary;
     /// <summary>The overlay's settings the game-drawn card follows.</summary>
-    internal static double SummarySeconds = 60;
     internal static bool ClickHides = true;
     internal const string ProfileUrl = "https://steamcommunity.com/profiles/76561198169349193";
 
@@ -65,8 +64,6 @@ internal static class LoadingWindow
                 new ConfigDescription("0.4 = see-through, 1 = solid.", new AcceptableValueRange<float>(0.4f, 1f)));
             ConfigEntry<float> linger = config.Bind("Loading window", "SecondsAfterLastMod", 2f,
                 new ConfigDescription("The full window stays this long after Keel reports that every mod has started, then glides to the corner.", new AcceptableValueRange<float>(0f, 60f)));
-            ConfigEntry<float> summary = config.Bind("Loading window", "SummarySeconds", 60f,
-                new ConfigDescription("How long the summary stays in the corner before it fades away. 0 = until you click it away (right click).", new AcceptableValueRange<float>(0f, 3600f)));
             ConfigEntry<float> max = config.Bind("Loading window", "LongestSeconds", 300f,
                 new ConfigDescription("Whatever happens, the full window is done this many seconds after the game process started.", new AcceptableValueRange<float>(30f, 1800f)));
             ConfigEntry<bool> click = config.Bind("Loading window", "ClickHides", true,
@@ -81,13 +78,12 @@ internal static class LoadingWindow
             catch (Exception) { started = DateTime.Now; }
             var progress = new Progress(() => (DateTime.Now - started).TotalSeconds);
             Progress = progress;
-            SummarySeconds = summary.Value;
             ClickHides = click.Value;
             BepInEx.Logging.Logger.Listeners.Add(new Feed(progress));
             if (!Enum.TryParse(spot.Value, out Spot s)) s = Spot.TopRight;
             new Overlay(progress, new OverlayOptions
             {
-                Spot = s, Scale = scale.Value, Opacity = opacity.Value, LingerSeconds = linger.Value, SummarySeconds = summary.Value,
+                Spot = s, Scale = scale.Value, Opacity = opacity.Value, LingerSeconds = linger.Value, SummarySeconds = 0,
                 MaxSeconds = max.Value, ClickToHide = click.Value, OnSummaryClick = () => ReportRequested = true,
             }).Start(m => log.LogWarning(m));
             Shown = true;

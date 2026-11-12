@@ -16,7 +16,7 @@ internal sealed class OverlayOptions
     public float Scale;                    // 0 = by the game window's height
     public double MaxSeconds = 300;        // the loading window is gone (or a summary) this long after the game process started, whatever happens
     public double LingerSeconds = 2.0;     // how long the full window stays once the mods are all started, before it moves to the corner
-    public double SummarySeconds = 60;     // how long the summary stays in the corner before it fades (0 = until clicked)
+    public double SummarySeconds = 0;      // 0 = the summary stays until clicked away (Keel always; >0 only for the preview tool)
     public bool ClickToHide = true;
     public bool Offscreen;                 // tests: the window is made far off every monitor
     public Action OnSummaryClick;          // a click on the summary (Keel opens its report)
@@ -26,7 +26,7 @@ internal sealed class OverlayOptions
 /// The loading window: a never-activated Win32 popup on its own thread. The game's main thread (and with it Unity's GUI) stands still while
 /// a slow mod starts, so only a window of our own can keep counting. It is OWNED by the game's window: it stays above the game but not
 /// above other programs, and goes when the game is minimized. Phases: the full window on the marker; when every mod has started it shrinks
-/// and glides to the bottom left, above the game's version text, as a summary; after a while it fades.
+/// and glides to the bottom left, above the game's version text, as a summary that stays until clicked away.
 /// </summary>
 internal sealed class Overlay
 {
