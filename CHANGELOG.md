@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- **Cards stay until you click them away**: no more fading on their own; a right click hides the Keel card and What's new, the × closes What's new (his word; 0.5.2 faded them after 60 s)
+- **An × on both cards**: the Keel card has one now, like What's new; it closes the card
+- **No right click any more**: the × is easier to find than a hidden right click
+- **Cards stay until you close them**: no more fading on their own (0.5.2 faded them after 60 s)
 - **`Loading window.SummarySeconds` is gone**: the setting only timed that fade
 
 ## 0.5.3 - 2026-11-12 - menu takes clicks after the report (Alternative Game Interface)

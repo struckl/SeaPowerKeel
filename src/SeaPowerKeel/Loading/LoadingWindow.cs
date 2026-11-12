@@ -67,7 +67,7 @@ internal static class LoadingWindow
             ConfigEntry<float> max = config.Bind("Loading window", "LongestSeconds", 300f,
                 new ConfigDescription("Whatever happens, the full window is done this many seconds after the game process started.", new AcceptableValueRange<float>(30f, 1800f)));
             ConfigEntry<bool> click = config.Bind("Loading window", "ClickHides", true,
-                "A click on the full window hides it; a right click hides the summary. A click on the summary opens Keel's report. (The window never takes the keyboard focus from the game.)");
+                "A click on the full window hides it. A click on the summary opens Keel's report; the cards on the main menu close with their x. (The window never takes the keyboard focus from the game.)");
             if (!show.Value)
                 return;
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)

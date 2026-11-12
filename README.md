@@ -108,7 +108,7 @@ See [docs/code-signing-policy.md](docs/code-signing-policy.md): who may approve 
 | `Loading window.Opacity` | `0.92` | 0.4 to 1 |
 | `Loading window.SecondsAfterLastMod` | `2` | The full window stays this long after every mod has started, then glides to the corner |
 | `Loading window.LongestSeconds` | `300` | The full window is done this long after the game process started, whatever happens |
-| `Loading window.ClickHides` | `true` | A click hides the full window, a right click the summary; a click on the summary opens Keel's report |
+| `Loading window.ClickHides` | `true` | A click hides the full window; a click on the summary opens Keel's report, its × closes it |
 
 ## Loading window
 
@@ -118,7 +118,7 @@ it was started, "Waiting 19 s after Dynamic Campaign Mod"). It is a Windows wind
 game's main thread, and it opens before the slow steps (Anchor Chain's preloader, the mods). It sits on the main menu's blank band by default.
 It belongs to the game's window: it stays above the game but not above other programs, and goes when the game is minimized. When every mod has
 started it shrinks and glides to the bottom left, above the game's version text, as a summary card ("Keel 0.1.5 started 19 mods in 40 s", the
-time until the game was ready, skipped mods, problems or the slowest mod); a click on the card opens Keel's report, a right click hides it; it
+time until the game was ready, skipped mods, problems or the slowest mod); a click on the card opens Keel's report, its × closes it; it
 stays until then. It only reads log lines and never takes the keyboard focus. Keel also logs a
 `STARTING i/n: name` line before each mod now, so `Keel-log.txt` names the mod that was running when the game stood still. Run in the game at every start
 since 0.1.5. Where the start-up time goes and how it works:

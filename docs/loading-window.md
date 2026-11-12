@@ -35,7 +35,7 @@ Unity redraws**, IMGUI included (Keel's own report window and notice are IMGUI f
 - **A summary instead of vanishing.** After Keel's "Done:" plus `SecondsAfterLastMod` the full window shrinks and glides to the bottom left, above
   the game's version text (0.9 s, ease out; the full window is squeezed along with StretchBlt, then the card's own content takes over). The card
   says "Keel 0.1.5 started 19 mods in 40 s", "Game ready after 1:00" (+ skipped), and either the number of mods with problems or the slowest mod;
-  a click on it opens Keel's report (Keel's host reads a flag on the main thread and opens the IMGUI window), a right click hides it; it stays until then
+  a click on it opens Keel's report (Keel's host reads a flag on the main thread and opens the IMGUI window), its × closes it (the game-drawn card); it stays until then
   (no fading on its own since 0.5.4).
 - **Opens early.** `KeelHost.Awake` starts it, which runs when the stub does. BepInEx starts plugins in GUID order
   (`dev.sewerlabs.seapowerkeel.stub` < `io.github.seapower_modders.anchorchain_preloader`, as the log shows), so it is there before the
@@ -46,7 +46,7 @@ Unity redraws**, IMGUI included (Keel's own report window and notice are IMGUI f
   `i/n` counts the mods still waiting when the start phase began. The window shows "Starting 17/19: VopSound 1.96.29  8 s" and the bar
   fills exactly. The line is in `Keel-log.txt` too, so a log shows which mod was running when the game stood still. (A mod that goes on
   working after its start returns, like Dynamic Campaign Mod's patching, delays the *next* step: the window then names the next mod.)
-- **Ends by itself.** After the summary's time, or on a right click; the full window also ends after the longest time (300 s from the process start).
+- **Ends by itself.** When the game draws the card (hand-over), or on its × there; the full window also ends after the longest time (300 s from the process start).
 
 Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIPPED: name version (folder)`, `STARTING i/n: name`,
 `Found N plugin(s)`, `N of M mod folders are on`, `The game's mod list is there`, `Start-up load screen done`, `Done:`; Anchor Chain's preloader's

@@ -40,7 +40,7 @@ internal sealed partial class KeelHost
     private float cardSince, cardFadeFrom = -1f;
     private long cardSceneTicks;
     private Rect cardHome;                    // GUI units: where the overlay left the card (or where it would be)
-    private Rect cardRect, creditRect;        // where it is drawn now
+    private Rect cardRect, creditRect, cardCloseRect;        // where it is drawn now
     private float cardTop = float.NaN;        // its top, following the stack after the split
     private float splitStart = -1f;
     private int stackMods = NewsMods;
@@ -109,8 +109,8 @@ internal sealed partial class KeelHost
                 return;
             EnsureCardStyles();
             float now = Time.realtimeSinceStartup;
-            // Both cards stay until the player clicks them away (his word 2026-11-12: "no fading on their own"): a right click
-            // hides one, the x closes What's new. Nothing times out.
+            // Both cards stay until the player clicks them away (his word 2026-11-12: "no fading on their own"): each has an × that closes
+            // it. Nothing times out, no right click.
             if (newsUp && newsShownAt < 0f)
                 newsShownAt = now;
             float newsAlpha = NewsAlpha;
@@ -321,8 +321,13 @@ internal sealed partial class KeelHost
         GUI.color = new UnityEngine.Color(1, 1, 1, alpha * textAlpha);
         float pad = 14 * u, y = r.y + 8 * u, lineH = 20 * u, tw = r.width - 2 * pad;
         string ver = string.IsNullOrEmpty(s.KeelVersion) ? "" : " " + s.KeelVersion;
-        GUI.Label(new Rect(r.x + pad, y, tw, 24 * u),
-            Fit("Keel" + ver + " started " + s.Running + (s.Running == 1 ? " mod" : " mods") + (s.KeelSeconds >= 1 ? " in " + s.KeelSeconds.ToString("0") + " s" : ""), cardHead, tw), cardHead);
+        // An × top right closes it, like What's new (his word 2026-11-12: "just add a x to both, no right click").
+        EnsureNewsStyles();
+        var close = new Rect(r.xMax - pad - 16 * u, y + 2 * u, 18 * u, 18 * u);
+        GUI.Label(close, "×", newsClose);
+        cardCloseRect = new Rect(close.x - 6 * u, close.y - 6 * u, close.width + 12 * u, close.height + 12 * u);
+        GUI.Label(new Rect(r.x + pad, y, tw - 22 * u, 24 * u),
+            Fit("Keel" + ver + " started " + s.Running + (s.Running == 1 ? " mod" : " mods") + (s.KeelSeconds >= 1 ? " in " + s.KeelSeconds.ToString("0") + " s" : ""), cardHead, tw - 22 * u), cardHead);
         y += 24 * u;
         string line2 = "Game ready after " + Clock(s.DoneElapsed > 0 ? s.DoneElapsed : s.Elapsed) + (s.Skipped > 0 ? "  -  " + s.Skipped + " skipped" : "");
         GUI.Label(new Rect(r.x + pad, y, tw, lineH), Fit(line2, cardText, tw), cardText);
@@ -460,16 +465,19 @@ internal sealed partial class KeelHost
             e.Use();
     }
 
-    /// <summary>A click on the Keel card: left opens the report (the credit opens his Steam profile), right hides the card.</summary>
+    /// <summary>A click on the Keel card: its × closes it, the credit opens his Steam profile, anywhere else opens the report.
+    /// Only the left button counts (no right click, his word 2026-11-12).</summary>
     private bool CardClick(Vector2 gui, int button)
     {
         if (!CardVisible || !cardRect.Contains(gui))
             return false;
+        if (button != 0)
+            return false;
         if (!FreshClick())
             return true;
-        if (button == 1)
+        if (cardCloseRect.Contains(gui))
         {
-            cardHidden = true;      // a right click hides it (his decision 2026-11-12)
+            cardHidden = true;
             return true;
         }
         if (creditRect.Contains(gui))

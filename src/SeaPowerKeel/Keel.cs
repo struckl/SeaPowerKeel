@@ -910,7 +910,7 @@ internal sealed partial class KeelHost : MonoBehaviour
 
     private Rect closeRect, copyRect;      // in the report's GUI units (screen pixels / scale), set while the report draws
     private float guiScale = 1f;
-    // click = left button pressed this frame, right = right button (a right click hides a card: the game's IMGUI often never sees it)
+    // click = left button pressed this frame, right = right button (unused for the cards since 0.5.4: they close with their ×)
     private Func<(bool click, bool right, Vector2 pos, bool esc)> pointer;
     private bool pointerProbed;
 
@@ -982,13 +982,12 @@ internal sealed partial class KeelHost : MonoBehaviour
             // The cards at the bottom left: What's new (its × closes it, a click elsewhere opens the full list) and the Keel card.
             try
             {
-                var (click, right, pos, _) = pointer();
-                if (click || right)
+                var (click, _, pos, _) = pointer();
+                if (click)
                 {
                     var at = new Vector2(pos.x / guiScale, (Screen.height - pos.y) / guiScale);
-                    int button = click ? 0 : 1;
-                    if (!NewsClick(at, button))
-                        CardClick(at, button);
+                    if (!NewsClick(at))
+                        CardClick(at, 0);
                 }
             }
             catch (Exception) { pointer = null; }
@@ -1307,11 +1306,11 @@ internal sealed partial class KeelHost : MonoBehaviour
     // Keel through IMGUI and through the device check alike: it counts once.
     private bool NewsClick(Vector2 gui, int button = 0)
     {
-        if (!NewsVisible || !newsRect.Contains(gui))
+        if (!NewsVisible || !newsRect.Contains(gui) || button != 0)
             return false;
         if (!FreshClick())
             return true;
-        if (button == 1 || newsCloseRect.Contains(gui))      // × or a right click closes it
+        if (newsCloseRect.Contains(gui))      // the × closes it
         {
             newsClosed = true;
             return true;
