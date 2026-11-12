@@ -1,6 +1,6 @@
 # Sea Power: R.A.T.S. Keel
 
-> **Status (12 November 2026, game 0.9.1):** the coming 0.5.0 (takeover, What's new, Euromod setup line) was run in the game on 0.9.1 (build 261112): Keel keeps Alpine's Mod Loader from starting and runs all 17 mods; with Keel switched off Alpine starts as before; the patcher updates itself while in use; Euromod with AC Pack and Extended Guidance starts 41 mods; the What's new card opens the full list on a click and closes with its ×. 0.4.0, on the Workshop now, declares every 0.9.x and was run on 0.9.0 (start-up with 17 mods, the Mods menu's Reload and Restart). Test notes: [docs/test-2026-11-12-takeover.md](docs/test-2026-11-12-takeover.md).
+> **Status (12 November 2026, game 0.9.1):** the coming 0.5.0 (takeover, What's new, Euromod setup line) was run in the game on 0.9.1 (build 261112): Keel keeps Alpine's Mod Loader from starting and runs all 17 mods; with Keel switched off Alpine starts as before; the patcher updates itself while in use; Euromod with AC Pack and Extended Guidance starts 41 mods and runs a mission; the first start after the update leaves Alpine's mods to it once and says *restart once*, the next start runs all 43 under Keel; Mod Manager+ and Boost Loader start under Keel; the What's new card opens the full list on a click and closes with its ×. 0.4.0, on the Workshop now, declares every 0.9.x and was run on 0.9.0 (start-up with 17 mods, the Mods menu's Reload and Restart). Test notes: [docs/test-2026-11-12-takeover.md](docs/test-2026-11-12-takeover.md).
 
 *R.A.T.S. – Reconnaissance, Acoustics, Terrain & Signals*
 
@@ -34,7 +34,10 @@ folders, sort out dependencies and start order, start them), and on top of that:
 - **Always works on the beta branch.** Keel uses nothing of the game that changes between builds; on the 3D globe beta, where
   Anchor Chain's preloader does not start, Keel runs the Anchor Chain mods.
 - **Says which Euromod stage ran.** Euromod, + AC Pack, + Extended Guidance: the report's first lines name it (also in *Save logs*
-  and *Send report*), so a bug report says which stage it came from.
+  and *Send report*), so a bug report says which stage it came from. With the AC Pack on, the report window has a *Turn EG on/off*
+  button (writes the AC Pack's own switch, counts from the next start), and an AC Pack older than its 0.9 fix is named.
+- **Mods that wait for the end of the start-up load screen** (to add menu entries, like the Alternative mods) get it once after Keel
+  started them, since Keel starts mods after that screen.
 - **What's new since your last game.** Keel remembers the mods it loaded (`BepInEx\Keel-seen.txt`). When something changed, a card at the top right of the main menu names the mods that are new, updated (with the version jump), gone, or ran last time and fail now, with the first lines of what the author wrote about the update: for Workshop mods the change notes written since your last start (read from the item's public Steam changelog page, only for mods that changed; `WhatsNew.WorkshopNotes = false` switches that off), else the mod's `CHANGELOG.md` (the sections above the version you had). Its × closes it; a click anywhere else on it opens the full list (every changed mod, old → new version, all of the author's lines) in Keel's report window, which Ctrl+Shift+K shows too; the card goes when a mission starts. The first start with it says nothing (nothing to compare with yet).
 - **A log with times.** `BepInEx\Keel-log.txt` has every log line of the game, BepInEx and all mods with the time of day and
   the seconds since the game started; an exception gets a line saying which mod it came from, with its stack trace (also in
