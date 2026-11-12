@@ -29,7 +29,7 @@ internal sealed partial class KeelHost
     private float cardTop = float.NaN;        // its top, following the stack after the split
     private float splitStart = -1f;
     private int stackMods = NewsMods;
-    private float exitBottom = -1f, exitCheckedAt = -10f;
+    private float exitBottom = -1f, exitCheckedAt = -10f, panelRight = -1f;
     private int cardErrors;
 
     private Texture2D roundTex, circleTex;
@@ -89,24 +89,27 @@ internal sealed partial class KeelHost
                 return;
             EnsureCardStyles();
             float now = Time.realtimeSinceStartup;
-            if (cardOn && !cardHidden && LoadingWindow.SummarySeconds > 0 && cardFadeFrom < 0f && now - cardSince > LoadingWindow.SummarySeconds)
-                cardFadeFrom = now;
+            // The Keel card stays on the main menu's top page for good (his word 2026-11-12): no fading, no hiding by a click.
             Rect home = cardOn ? cardHome : DefaultHome(screenH);
             if (cardFailed && LoadingWindow.SummaryReady && !LoadingWindow.OverlayGone)
                 home.y -= home.height + CardGap;        // the overlay keeps its own card in the corner: What's new stands above it
-            float bottom = home.yMax, x = home.x, h = home.height;
-            float width = Mathf.Max(home.width, StackWidth);
+            // His hard rule (2026-11-12): both cards always inside the grey menu panel, between EXIT and the version text, at any
+            // resolution and any length. Width = the panel's minus a margin each side; height = as many mods as fit, else a
+            // one-line What's new; the text is cut to what fits.
             float limit = ExitBottom(screenH) + 10f;
-
-            // How many mods fit between EXIT and the corner.
+            float x = home.x, h = home.height;
+            float bottom = Mathf.Min(home.yMax, screenH * 0.975f - 6f);        // the version text starts near 0.98 of the height
+            float width = Mathf.Max(120f, PanelRight(screenW) - 2f * x);
             float newsH = 0f;
             if (newsUp)
             {
                 float room = bottom - limit - (card ? CardGap + h : 0f);
                 stackMods = Mathf.Min(NewsMods, news.Count);
                 newsH = NewsHeight(width, stackMods);
-                while (stackMods > 1 && newsH > room)
-                    newsH = NewsHeight(width, --stackMods);
+                while (stackMods > 0 && newsH > room)
+                    newsH = NewsHeight(width, --stackMods);       // 0 = the one-line card: title and "N changed - click"
+                if (newsH > room)
+                    newsUp = false;                                // no room at all: the report still has the list
             }
 
             if (card && newsUp && splitStart < 0f && now - cardSince > 0.35f)
@@ -119,7 +122,7 @@ internal sealed partial class KeelHost
 
             if (card && newsUp && p < 1f)
             {
-                DrawSplit(p, home, width, bottom, newsH, alpha);
+                DrawSplit(p, new Rect(x, bottom - h, width, h), width, bottom, newsH, alpha);
             }
             else
             {
@@ -132,9 +135,9 @@ internal sealed partial class KeelHost
                 }
                 if (card)
                 {
-                    float target = newsUp ? newsRect.y - CardGap - h : home.y;
+                    float target = newsUp ? newsRect.y - CardGap - h : bottom - h;
                     cardTop = float.IsNaN(cardTop) ? target : Mathf.Lerp(cardTop, target, 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime));
-                    DrawSummaryCard(new Rect(x, cardTop, newsUp || splitStart >= 0f ? width : home.width, h), alpha, 1f);
+                    DrawSummaryCard(new Rect(x, cardTop, width, h), alpha, 1f);
                 }
             }
             // The overlay fades out once the game has drawn the card (until then it covers the spot, so nothing blinks).
@@ -293,16 +296,16 @@ internal sealed partial class KeelHost
         float pad = 14 * u, y = r.y + 8 * u, lineH = 20 * u, tw = r.width - 2 * pad;
         string ver = string.IsNullOrEmpty(s.KeelVersion) ? "" : " " + s.KeelVersion;
         GUI.Label(new Rect(r.x + pad, y, tw, 24 * u),
-            "Keel" + ver + " started " + s.Running + (s.Running == 1 ? " mod" : " mods") + (s.KeelSeconds >= 1 ? " in " + s.KeelSeconds.ToString("0") + " s" : ""), cardHead);
+            Fit("Keel" + ver + " started " + s.Running + (s.Running == 1 ? " mod" : " mods") + (s.KeelSeconds >= 1 ? " in " + s.KeelSeconds.ToString("0") + " s" : ""), cardHead, tw), cardHead);
         y += 24 * u;
         string line2 = "Game ready after " + Clock(s.DoneElapsed > 0 ? s.DoneElapsed : s.Elapsed) + (s.Skipped > 0 ? "  -  " + s.Skipped + " skipped" : "");
-        GUI.Label(new Rect(r.x + pad, y, tw, lineH), line2, cardText);
+        GUI.Label(new Rect(r.x + pad, y, tw, lineH), Fit(line2, cardText, tw), cardText);
         y += lineH;
         string line3 = alert != null ? alert + " - click for details"
                      : s.WithErrors + s.NotStarted > 0 ? (s.WithErrors + s.NotStarted) + (s.WithErrors + s.NotStarted == 1 ? " mod has" : " mods have") + " problems - click for the report"
                      : "No problems  -  click for the report";
         cardSmall.normal.textColor = amber ? CardAmber : CardDim;
-        GUI.Label(new Rect(r.x + pad, y, tw, lineH), line3, cardSmall);
+        GUI.Label(new Rect(r.x + pad, y, tw, lineH), Fit(line3, cardSmall, tw), cardSmall);
         y += lineH;
         creditRect = new Rect(r.x + pad, y, 130 * u, lineH);
         GUI.Label(creditRect, "Made by Kanalratte", cardCredit);      // quiet; a click opens his Steam profile
@@ -333,11 +336,12 @@ internal sealed partial class KeelHost
         UnityEngine.Color was = GUI.color;
         if (draw)
             GUI.color = new UnityEngine.Color(1, 1, 1, alpha);
-        var title = new GUIContent($"WHAT'S NEW SINCE YOUR LAST GAME  ·  {Keel.Name}");
-        float th = Mathf.Max(18f, newsTitle.CalcHeight(title, inner - 26));
+        EnsureOneLineStyles();
+        var title = new GUIContent(Fit($"WHAT'S NEW  ·  {Keel.Name}", oneTitle, inner - 26));
+        float th = Mathf.Max(18f, oneTitle.CalcHeight(title, inner - 26));
         if (draw)
         {
-            GUI.Label(new Rect(r.x + padX, y, inner - 26, th), title, newsTitle);
+            GUI.Label(new Rect(r.x + padX, y, inner - 26, th), title, oneTitle);
             var close = new Rect(r.xMax - padX - 22, y, 22, 18);
             GUI.Label(close, "×", newsClose);
             newsCloseRect = new Rect(close.x - 6, close.y - 6, close.width + 12, close.height + 12);
@@ -346,33 +350,72 @@ internal sealed partial class KeelHost
         foreach (NewsItem n in news.Take(count))
         {
             float tx = r.x + padX + 84, tw = inner - 84;
-            string head = n.Kind == NewsKind.Updated && n.From.Length > 0 && n.To.Length > 0 && n.From != n.To
-                ? $"<b>{n.Name}</b>  <color=#8b95a3>{n.From} → {n.To}</color>"
-                : $"<b>{n.Name}</b>{(n.To.Length > 0 ? $"  <color=#8b95a3>{n.To}</color>" : "")}";
+            string ver = n.Kind == NewsKind.Updated && n.From.Length > 0 && n.To.Length > 0 && n.From != n.To ? $"{n.From} → {n.To}" : n.To;
+            // name and version on one line: the version goes first when it does not fit, then the name is cut
+            string head = ver.Length > 0 && oneName.CalcSize(new GUIContent($"<b>{n.Name}</b>  {ver}")).x <= tw
+                ? $"<b>{n.Name}</b>  <color=#8b95a3>{ver}</color>"
+                : $"<b>{Fit(n.Name, oneNameBold, tw)}</b>";
             var headC = new GUIContent(head);
-            float hh = newsName.CalcHeight(headC, tw);
-            string line = n.Lines.FirstOrDefault() ?? "";
-            if (line.Length > 64)
-                line = line.Substring(0, 61) + "…";
+            float hh = oneName.CalcHeight(headC, tw);
+            string line = Fit(n.Lines.FirstOrDefault() ?? "", oneLine, tw);
             var lineC = new GUIContent(line);
-            float lh = line.Length > 0 ? newsLine.CalcHeight(lineC, tw) : 0f;
+            float lh = line.Length > 0 ? oneLine.CalcHeight(lineC, tw) : 0f;
             if (draw)
             {
                 GUI.Label(new Rect(r.x + padX, y + 2, 74, 18), n.Tag, newsPills[n.Kind]);
-                GUI.Label(new Rect(tx, y, tw, hh), headC, newsName);
+                GUI.Label(new Rect(tx, y, tw, hh), headC, oneName);
                 if (lh > 0)
-                    GUI.Label(new Rect(tx, y + hh, tw, lh), lineC, newsLine);
+                    GUI.Label(new Rect(tx, y + hh, tw, lh), lineC, oneLine);
             }
             y += Mathf.Max(22f, hh + lh) + 6;
         }
         int more = news.Count - count;
-        var foot = new GUIContent((more > 0 ? $"+{more} more  ·  " : "") + "click for every mod and every line  ·  × closes");
-        float fh = newsFoot.CalcHeight(foot, inner);
+        string footText = count == 0 ? $"{news.Count} mod(s) changed  ·  click to see them"
+                        : (more > 0 ? $"+{more} more  ·  " : "") + "click for all  ·  × closes";
+        var foot = new GUIContent(Fit(footText, oneFoot, inner));
+        float fh = oneFoot.CalcHeight(foot, inner);
         if (draw)
-            GUI.Label(new Rect(r.x + padX, y, inner, fh), foot, newsFoot);
+            GUI.Label(new Rect(r.x + padX, y, inner, fh), foot, oneFoot);
         y += fh + padY;
         GUI.color = was;
         return y - r.y;
+    }
+
+    private GUIStyle oneTitle, oneName, oneNameBold, oneLine, oneFoot;
+
+    /// <summary>Copies of the card's text styles that never wrap: every line is one line, cut to fit.</summary>
+    private void EnsureOneLineStyles()
+    {
+        if (oneTitle != null)
+            return;
+        GUIStyle One(GUIStyle s) => new GUIStyle(s) { wordWrap = false, clipping = TextClipping.Clip };
+        oneTitle = One(newsTitle);
+        oneName = One(newsName);
+        oneNameBold = One(newsName);
+        oneNameBold.fontStyle = FontStyle.Bold;
+        oneLine = One(newsLine);
+        oneFoot = One(newsFoot);
+    }
+
+    /// <summary><paramref name="text"/> cut (with …) to what fits <paramref name="width"/> in <paramref name="style"/> on one line.</summary>
+    private static string Fit(string text, GUIStyle style, float width)
+    {
+        if (string.IsNullOrEmpty(text) || style.CalcSize(new GUIContent(text)).x <= width)
+            return text;
+        int lo = 0, hi = text.Length;
+        while (lo < hi)
+        {
+            int mid = (lo + hi + 1) / 2;
+            if (style.CalcSize(new GUIContent(text.Substring(0, mid).TrimEnd() + "…")).x <= width) lo = mid; else hi = mid - 1;
+        }
+        return text.Substring(0, lo).TrimEnd() + "…";
+    }
+
+    /// <summary>The right edge of the grey menu panel in GUI units: the game's MainMenuView, else 0.1875 of the width (360 of 1920).</summary>
+    private float PanelRight(float screenW)
+    {
+        // measured together with EXIT (ExitBottom runs first each frame)
+        return panelRight > 0f ? panelRight * screenW : screenW * 0.1875f;
     }
 
     // ---- clicks ------------------------------------------------------------------------------------------------------------------
@@ -399,11 +442,7 @@ internal sealed partial class KeelHost
         if (!FreshClick())
             return true;
         if (button == 1)
-        {
-            if (LoadingWindow.ClickHides)
-                cardHidden = true;
-            return true;
-        }
+            return true;            // it always stays (his word 2026-11-12)
         if (creditRect.Contains(gui))
         {
             try { Application.OpenURL(LoadingWindow.ProfileUrl); } catch (Exception) { /* no browser: nothing to do */ }
@@ -442,6 +481,9 @@ internal sealed partial class KeelHost
                 (float x1, float y1) = ToScreen(top, point, Prop(top, "ActualWidth"), Prop(top, "ActualHeight"));
                 if (y1 > y0 && x1 > x0)
                 {
+                    (float vx, float _) = ToScreen(view, point, Prop(view, "ActualWidth"), 0);
+                    float pr = (vx - x0) / (x1 - x0);
+                    panelRight = pr > 0.1f && pr < 0.4f ? pr : -1f;          // the menu panel; anything else is not it
                     float best = -1f;
                     var stack = new Stack<object>();
                     stack.Push(view);
