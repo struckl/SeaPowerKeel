@@ -1,2 +1,2 @@
-- An × on both cards (Keel card and What's new), at the same spot; it closes the card
-- No right click any more, and the cards no longer fade on their own: they stay until you close them
+- KeelSetup.exe carries the official BepInEx 5.4.23.2 download, checked against its hash at every build (only used on a game without BepInEx)
+- Mod list text corrected: no more "delete Anchor Chain's preloader"

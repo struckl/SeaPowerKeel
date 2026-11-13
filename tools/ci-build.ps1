@@ -9,7 +9,6 @@
 #>
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$bepInExVersion = '5.4.23.2'
 $unityVersion = '6000.0.84'
 
 $work = Join-Path $root 'obj\ci'
@@ -17,10 +16,8 @@ if (Test-Path $work) { Remove-Item -Recurse -Force $work }
 New-Item -ItemType Directory -Force $work | Out-Null
 $ProgressPreference = 'SilentlyContinue'
 
-$zip = Join-Path $work 'bepinex.zip'
-Invoke-WebRequest "https://github.com/BepInEx/BepInEx/releases/download/v$bepInExVersion/BepInEx_win_x64_$bepInExVersion.zip" -OutFile $zip
-$bepInEx = Join-Path $work 'bepinex'
-Expand-Archive $zip $bepInEx
+. (Join-Path $PSScriptRoot 'bepinex.ps1')
+$bepInEx = Get-OfficialBepInEx $root      # the official release, checked against its pinned hash
 
 $nupkg = Join-Path $work 'unity.zip'
 Invoke-WebRequest "https://nuget.bepinex.dev/v3/package/unityengine.modules/$unityVersion/unityengine.modules.$unityVersion.nupkg" -OutFile $nupkg
@@ -42,13 +39,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Build failed: patcher' }
 dotnet build (Join-Path $root 'src\SeaPowerKeel.Watcher\SeaPowerKeel.Watcher.csproj') -c Release @refs
 if ($LASTEXITCODE -ne 0) { throw 'Build failed: KeelWatcher' }
 
-Add-Type -AssemblyName System.IO.Compression.FileSystem
 $payload = Join-Path $work 'payload'
-$tree = Join-Path $payload 'tree'
-New-Item -ItemType Directory -Force (Join-Path $tree 'BepInEx\core') | Out-Null
-foreach ($f in 'winhttp.dll', 'doorstop_config.ini', '.doorstop_version') { Copy-Item -LiteralPath (Join-Path $bepInEx $f) $tree }
-Copy-Item (Join-Path $bepInEx 'BepInEx\core\*') (Join-Path $tree 'BepInEx\core')
-[System.IO.Compression.ZipFile]::CreateFromDirectory($tree, (Join-Path $payload 'bepinex.bin'))
+New-BepInExPayload $bepInEx $payload
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $payload 'stub.bin')
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Patcher\bin\Release\netstandard2.1\SeaPowerKeel.Patcher.dll') (Join-Path $payload 'patcher.bin')
 dotnet build (Join-Path $root 'src\SeaPowerKeel.Setup\SeaPowerKeel.Setup.csproj') -c Release "-p:PayloadDir=$payload" @refs

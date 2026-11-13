@@ -33,15 +33,12 @@ Copy-Item (Join-Path $root 'src\SeaPowerKeel.Watcher\bin\Release\net48\KeelWatch
 # The takeover patcher: Keel copies it into BepInEx\patchers itself and keeps it current (players never handle it).
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Patcher\bin\Release\netstandard2.1\SeaPowerKeel.Patcher.dll') $dist
 
-# KeelSetup.exe: one file holding the starter DLL and BepInEx (from this game folder; players may have none).
-Add-Type -AssemblyName System.IO.Compression.FileSystem
+# KeelSetup.exe: one file holding the starter DLL and BepInEx (players may have none). BepInEx is the official release,
+# checked against its pinned hash (tools\bepinex.ps1): never the copy in a game folder.
+. (Join-Path $PSScriptRoot 'bepinex.ps1')
 $payload = Join-Path $root 'obj\setup-payload'
 if (Test-Path $payload) { Remove-Item -Recurse -Force $payload }
-$tree = Join-Path $payload 'tree'
-New-Item -ItemType Directory -Force (Join-Path $tree 'BepInEx\core') | Out-Null
-foreach ($f in 'winhttp.dll', 'doorstop_config.ini', '.doorstop_version') { Copy-Item -LiteralPath (Join-Path $GameDir $f) $tree }
-Copy-Item (Join-Path $GameDir 'BepInEx\core\*') (Join-Path $tree 'BepInEx\core')
-[System.IO.Compression.ZipFile]::CreateFromDirectory($tree, (Join-Path $payload 'bepinex.bin'))
+New-BepInExPayload (Get-OfficialBepInEx $root) $payload
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Stub\bin\Release\netstandard2.1\SeaPowerKeel.Stub.dll') (Join-Path $payload 'stub.bin')
 Copy-Item (Join-Path $root 'src\SeaPowerKeel.Patcher\bin\Release\netstandard2.1\SeaPowerKeel.Patcher.dll') (Join-Path $payload 'patcher.bin')
 dotnet build (Join-Path $root 'src\SeaPowerKeel.Setup\SeaPowerKeel.Setup.csproj') -c Release -p:PayloadDir="$payload"

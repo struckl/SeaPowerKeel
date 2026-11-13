@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.5 - 2026-11-13 - the setup carries the official BepInEx
+
+- **KeelSetup.exe carries the official BepInEx 5.4.23.2 download**, checked against its hash at every build: up to 0.5.4 it carried the copy from the developer's game folder, a different build of the same version
+- **Only matters on a game without BepInEx**: the setup never replaces a BepInEx that is already there
+- **Mod list text corrected**: it no longer says to delete Anchor Chain's preloader or to keep Anchor Chain subscribed
+
 ## 0.5.4 - 2026-11-12 - an × on both cards
 
 - **An × on both cards**: the Keel card has one now, at the same spot as What's new's; it closes the card
