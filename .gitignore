@@ -22,3 +22,6 @@ workshop/video/*.mp3
 workshop/gallery-0.5/
 workshop/video/salve-takes/
 workshop/video/signoff/
+
+# Post drafts never go into this public repo: they live in the private workspace repo (posts/<mod>/)
+workshop/posts-*/
