@@ -25,3 +25,6 @@ workshop/video/signoff/
 
 # Post drafts never go into this public repo: they live in the private workspace repo (posts/<mod>/)
 workshop/posts-*/
+workshop/reddit/
+workshop/discord/
+workshop/promotion.md
