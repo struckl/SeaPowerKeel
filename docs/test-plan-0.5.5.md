@@ -9,7 +9,7 @@ from the developer's game folder; the mod list text (`_info.ini`) was corrected.
 |---|---|---|
 | O1 | The files in the setup's payload equal the official zip, file by file (SHA-256) | GREEN |
 | O2 | `offline-check --selftest` | GREEN, 207 of 207 |
-| O3 | `modtool compat keel` | GREEN against the 0.9.1 refs; the game is 0.9.2 since 2026-11-13 21:45, refs not renewed yet |
+| O3 | `modtool compat keel` | GREEN against the 0.9.2 refs (Steam build 26651831, renewed 2026-11-13) |
 | O4 | `modtool check keel` | GREEN (lint clean, CHANGELOG 0.5.5 / plugin 0.5.5) |
 
 ## Before
