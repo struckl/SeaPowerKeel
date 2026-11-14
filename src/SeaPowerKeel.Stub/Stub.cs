@@ -52,24 +52,19 @@ public class Stub : BaseUnityPlugin
                 candidates.OrderByDescending(c => c.version).ThenBy(c => c.folder.Order).First();
             Logger.LogInfo($"Starting R.A.T.S. Keel {pick.version} from {pick.folder.Label} ({pick.path})");
             Assembly loader = Assembly.LoadFrom(pick.path);
-            var entry = loader.GetType(LoaderType, throwOnError: true);
-            string version = Info.Metadata.Version.ToString();
-            var withPreparation = entry.GetMethod("BootWithPreloader", BindingFlags.Public | BindingFlags.Static, null,
-                new[] { typeof(string), typeof(string), typeof(Action<Action<string>>) }, null);
-            if (withPreparation != null)
-            {
-                void Prepare(Action<string> report) => StartupPreparation.Queue(Application.version,
-                    Application.streamingAssetsPath, ModFolders.WorkshopRoot, ModFolders.UserSettings, report, Logger);
-                withPreparation.Invoke(null, new object[] { version, pick.path, (Action<Action<string>>)Prepare });
-                return;
-            }
-            MethodInfo boot = entry.GetMethod("Boot", BindingFlags.Public | BindingFlags.Static);
+            MethodInfo boot = loader.GetType(LoaderType, throwOnError: true)
+                                    .GetMethod("Boot", BindingFlags.Public | BindingFlags.Static);
             if (boot == null)
             {
                 Logger.LogError($"{pick.path} has no {LoaderType}.Boot: not a Keel loader this stub can start.");
                 return;
             }
-            boot.Invoke(null, new object[] { version, pick.path });
+            void Prepare(Action<string> report) => StartupPreparation.Queue(Application.version,
+                Application.streamingAssetsPath, ModFolders.WorkshopRoot, ModFolders.UserSettings, report, Logger);
+            var domain = AppDomain.CurrentDomain;
+            domain.SetData(PreparationDll.BootCallbackKey, (Action<Action<string>>)Prepare);
+            try { boot.Invoke(null, new object[] { Info.Metadata.Version.ToString(), pick.path }); }
+            finally { domain.SetData(PreparationDll.BootCallbackKey, null); }
         }
         catch (Exception ex)
         {

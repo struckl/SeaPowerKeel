@@ -84,6 +84,9 @@ internal static class SelfTest
 
     private static void StartupPreparationChecks(string tmp)
     {
+        var boot = typeof(Keel).GetMethod("Boot", BindingFlags.Public | BindingFlags.Static);
+        Check(boot?.GetParameters().Select(parameter => parameter.ParameterType)
+            .SequenceEqual(new[] { typeof(string), typeof(string) }) == true, "the original stub can resolve the two-argument Boot method");
         string folder = Path.Combine(tmp, "preparation");
         string nested = Path.Combine(folder, "nested");
         Directory.CreateDirectory(nested);

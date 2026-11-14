@@ -45,10 +45,7 @@ public static class Keel
         Plugins.Any(p => p.Guid == guid && p.State is PluginState.Running or PluginState.RunningWithErrors);
 
     /// <summary>Called by the stub (any version) with its own version and the path of this DLL.</summary>
-    public static void Boot(string stubVersion, string path) => BootWithPreloader(stubVersion, path, null);
-
-    /// <summary>Boots Keel with a stub that can start preparation DLLs once the loading window is ready.</summary>
-    public static void BootWithPreloader(string stubVersion, string path, Action<Action<string>> prepare)
+    public static void Boot(string stubVersion, string path)
     {
         const string marker = Guid + ".booted";
         if (AppDomain.CurrentDomain.GetData(marker) != null)
@@ -57,7 +54,6 @@ public static class Keel
         // Awake runs inside AddComponent, so what it needs is handed over first.
         KeelHost.PendingStubVersion = stubVersion;
         KeelHost.PendingPath = path;
-        KeelHost.PendingPreparation = prepare;
         var go = new GameObject(Name);
         UnityEngine.Object.DontDestroyOnLoad(go);
         go.AddComponent<KeelHost>();
@@ -67,7 +63,6 @@ public static class Keel
 internal sealed partial class KeelHost : MonoBehaviour
 {
     internal static string PendingStubVersion, PendingPath;
-    internal static Action<Action<string>> PendingPreparation;
     public string StubVersion = PendingStubVersion;
     public string OwnPath = PendingPath;
     private bool noticeArmed;
@@ -106,8 +101,6 @@ internal sealed partial class KeelHost : MonoBehaviour
 
     private void Awake()
     {
-        var prepare = PendingPreparation;
-        PendingPreparation = null;
         log = BepInEx.Logging.Logger.CreateLogSource(Keel.Name);
         var config = new ConfigFile(Path.Combine(Paths.ConfigPath, Keel.Guid + ".cfg"), true);
         loadAcMods = config.Bind("Loading", "AnchorChainMods", true,
@@ -214,8 +207,9 @@ internal sealed partial class KeelHost : MonoBehaviour
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
         Keel.StartupWindowOpened = Keel.StartupElapsed;
-        if (disabled.Value.Length == 0 && crash is { Previous.Unclean: false, HasHeldPlugins: false })
-            prepare?.Invoke(Loading.LoadingWindow.ReportPreparation);
+        if (disabled.Value.Length == 0 && crash is { Previous.Unclean: false, HasHeldPlugins: false } &&
+            AppDomain.CurrentDomain.GetData(PreparationDll.BootCallbackKey) is Action<Action<string>> prepare)
+            prepare(Loading.LoadingWindow.ReportPreparation);
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
         StartCoroutine(Run());
     }
