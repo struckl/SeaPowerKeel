@@ -27,6 +27,18 @@ public static class Keel
     public static readonly string Version = typeof(Keel).Assembly.GetName().Version.ToString(3);
 
     internal static readonly List<PluginEntry> Plugins = new();
+    private static readonly DateTime processStart = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+    internal static double StartupWindowOpened { get; set; }
+    internal static double FirstStartupFrame { get; set; }
+    internal static double EarlyPluginsStarting { get; set; }
+
+    internal static double StartupElapsed => (DateTime.UtcNow - processStart).TotalSeconds;
+
+    /// <summary>Seconds since process launch at startup window setup, the first coroutine frame, and early plugin dispatch.</summary>
+    public static double[] GetStartupTimings() => new[] { StartupWindowOpened, FirstStartupFrame, EarlyPluginsStarting };
+
+    /// <summary>Call after a mod has drawn its replacement startup progress. The in-game Keel summary still appears.</summary>
+    public static void HandOffStartupWindow() => Loading.LoadingWindow.ExternalProgress = true;
 
     /// <summary>For other mods: is this plugin id running under Keel?</summary>
     public static bool IsRunning(string guid) =>
@@ -194,6 +206,10 @@ internal sealed partial class KeelHost : MonoBehaviour
         };
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
+        Keel.StartupWindowOpened = Keel.StartupElapsed;
+        if (disabled.Value.Length == 0 && crash is { Previous.Unclean: false, HasHeldPlugins: false })
+            StartupPreparation.Queue(Application.version, Application.streamingAssetsPath, ModFolders.WorkshopRoot,
+                ModFolders.UserSettings, log);
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
         StartCoroutine(Run());
     }
@@ -202,6 +218,7 @@ internal sealed partial class KeelHost : MonoBehaviour
     {
         // One frame first: every plugin in BepInEx\plugins (Anchor Chain's preloader too) has had its Awake by then.
         yield return null;
+        Keel.FirstStartupFrame = Keel.StartupElapsed;
 
         // 1. The game's mod list. 0.8.7 has it straight away, the globe build after a while; failing that, the same list from disk.
         var watch = Stopwatch.StartNew();
@@ -354,6 +371,7 @@ internal sealed partial class KeelHost : MonoBehaviour
                 notes.Add($"Started before the load screen ended (the mod asked for it): {names}.");
             Func<List<PluginEntry>> replanAll = sequence.Replan;
             sequence.Replan = () => replanAll().Where(earlySet.Contains).ToList();
+            Keel.EarlyPluginsStarting = Keel.StartupElapsed;
             foreach (PluginEntry _ in sequence.Run(order.Where(earlySet.Contains).ToList()))
                 yield return null;
             started += sequence.StartedCount;

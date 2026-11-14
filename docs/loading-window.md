@@ -52,6 +52,24 @@ Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIP
 `Found N plugin(s)`, `N of M mod folders are on`, `The game's mod list is there`, `Start-up load screen done`, `Done:`; Anchor Chain's preloader's
 "started" line; the game's `FileManager.OnStart`, `FileManager.CheckFileValidity`, `(C) Triassic Games` and `3D WebView` lines for the early steps.
 
+## Startup preparation for mods
+
+A mod with `[Keel] StartEarly=true` and a matching `[Compatibility] ExactVersion`
+can also declare `PrepareStartup=MyMod.dll|MyMod.Startup` in its `[Keel]` section.
+The DLL must be in the mod folder and independent of Unity, Sea Power and
+the mod loaders. Keel calls the named type's public static
+`void Prepare(string streamingAssets, string[] enabledMods, Action<string> report)`
+on a worker when it sets up the loading window. Use this for read-only file work
+that can run during the splash. The paths come from the saved mod list. Check
+them against the live game before using the results. Keep Unity and game API
+calls in the normal plugin entry point. The callback can report short status
+text for the loading window.
+
+`Keel.GetStartupTimings()` gives the timestamps of window setup, the first
+coroutine frame and early plugin dispatch in seconds since launch. A mod drawing replacement progress
+inside the game can call `Keel.HandOffStartupWindow()` once its display is
+visible. Keel still draws its own summary on the menu.
+
 ## Testing without the game
 
 `tools/loading-preview` (net8, no game): `dotnet run --project tools/loading-preview -c Release -- <Keel-log.txt> <out folder> [scale]`

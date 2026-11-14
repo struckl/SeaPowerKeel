@@ -29,6 +29,11 @@ internal static class LoadingWindow
     internal static volatile string WaitingFor;
     /// <summary>The window and its summary card are up, so nothing else has to announce problems.</summary>
     internal static volatile bool Shown;
+    internal static volatile bool ExternalProgress;
+    private static volatile string preparationStatus;
+
+    internal static void ReportPreparation(string text) => preparationStatus = text;
+    internal static string PreparationStatus => preparationStatus;
 
     // ---- hand-over to the game (rule 2026-11-12: every window is drawn by the game) ---------------------------------------
     // The own window exists only because the game's main thread can stand still while a mod starts. Once it has glided to its
