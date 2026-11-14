@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SeaPowerKeel\SeaPowerKeel.csproj" />
     <Compile Include="..\..\src\SeaPowerKeel.Setup\SetupCore.cs" Link="SetupCore.cs" />
+    <Compile Include="..\..\src\SeaPowerKeel.Stub\StartupPreparation.cs" Link="StartupPreparation.cs" />
     <Reference Include="Mono.Cecil"><HintPath>$(BepInExCore)\Mono.Cecil.dll</HintPath></Reference>
     <Reference Include="BepInEx"><HintPath>$(BepInExCore)\BepInEx.dll</HintPath></Reference>
     <Reference Include="0Harmony"><HintPath>$(BepInExCore)\0Harmony.dll</HintPath></Reference>

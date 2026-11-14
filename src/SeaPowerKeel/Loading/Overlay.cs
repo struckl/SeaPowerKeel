@@ -177,6 +177,7 @@ internal sealed class Overlay
     }
 
     private long summaryStartTicks;
+    private bool handedOffFull;
 
     private void OnTick()
     {
@@ -191,6 +192,23 @@ internal sealed class Overlay
         {
             case Stage.Full:
                 if (s.Dismissed) { Begin(Stage.Fading); break; }
+                if (LoadingWindow.ExternalProgress && !handedOffFull)
+                {
+                    handedOffFull = true;
+                    Native.ShowWindow(hwnd, Native.SW_HIDE);
+                }
+                if (handedOffFull && s.Done)
+                {
+                    stage = Stage.Summary;
+                    summaryStartTicks = DateTime.UtcNow.Ticks;
+                    summary = s;
+                    now = SummaryRect();
+                    Native.SetWindowPos(hwnd, IntPtr.Zero, now.Left, now.Top, now.Right - now.Left, now.Bottom - now.Top,
+                        Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
+                    PublishSummary();
+                    // The in-game summary will take over before this is shown again.
+                    return;
+                }
                 if (s.Done && s.SinceDone > options.LingerSeconds) { Begin(Stage.Moving); break; }
                 if (s.Elapsed > options.MaxSeconds) { Begin(s.Done ? Stage.Moving : Stage.Fading); break; }
                 break;
@@ -202,11 +220,7 @@ internal sealed class Overlay
                 if (k >= 1.0)
                 {
                     stage = Stage.Summary; stageStart = Now;
-                    // Where the card is, in pixels of the game window: the game-drawn card takes over right there.
-                    LoadingWindow.SummaryX = now.Left - game.Left; LoadingWindow.SummaryY = now.Top - game.Top;
-                    LoadingWindow.SummaryW = now.Right - now.Left; LoadingWindow.SummaryH = now.Bottom - now.Top;
-                    LoadingWindow.SummaryScale = scale;
-                    LoadingWindow.SummaryReady = true;
+                    PublishSummary();
                 }
                 break;
             }
@@ -241,6 +255,16 @@ internal sealed class Overlay
             }
         }
         Paint();
+    }
+
+    private void PublishSummary()
+    {
+        LoadingWindow.SummaryX = now.Left - game.Left;
+        LoadingWindow.SummaryY = now.Top - game.Top;
+        LoadingWindow.SummaryW = now.Right - now.Left;
+        LoadingWindow.SummaryH = now.Bottom - now.Top;
+        LoadingWindow.SummaryScale = scale;
+        LoadingWindow.SummaryReady = true;
     }
 
     // ---- where it goes ---------------------------------------------------------------------------------------------------
@@ -447,6 +471,8 @@ internal sealed class Overlay
         y += S(22);
 
         int rowH = S(19);
+        if (!string.IsNullOrEmpty(LoadingWindow.PreparationStatus) && s.Recent.Count < Rows)
+            Put(dc, fontText, Dim, LoadingWindow.PreparationStatus, pad, y, w - 2 * pad, rowH, Native.DT_END_ELLIPSIS);
         for (int i = 0; i < Rows; i++)
         {
             int idx = i - (Rows - s.Recent.Count);
