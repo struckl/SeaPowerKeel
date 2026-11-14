@@ -21,6 +21,8 @@ internal static class Report
     public static bool IsProblem(PluginEntry p) =>
         p.State is PluginState.Failed or PluginState.NotStarted or PluginState.RunningWithErrors;
 
+    public static int CountOrderWarnings(IEnumerable<PluginEntry> all) => all.Count(p => p.LoadOrderWarning != null);
+
     public static string Summary(IReadOnlyCollection<PluginEntry> all)
     {
         int running = all.Count(p => p.State is PluginState.Running or PluginState.RunningWithErrors);
@@ -28,11 +30,13 @@ internal static class Report
         int failed = all.Count(p => p.State == PluginState.Failed);
         int notStarted = all.Count(p => p.State == PluginState.NotStarted);
         int ac = all.Count(p => p.State == PluginState.LeftToAnchorChain);
+        int orderWarnings = CountOrderWarnings(all);
         var parts = new List<string> { $"{running} running" };
         if (errors > 0) parts.Add($"{errors} with errors");
         if (failed > 0) parts.Add($"{failed} failed");
         if (notStarted > 0) parts.Add($"{notStarted} not started");
         if (ac > 0) parts.Add($"{ac} left to another loader");
+        if (orderWarnings > 0) parts.Add($"{orderWarnings} with load order warnings");
         return string.Join(", ", parts);
     }
 
@@ -52,6 +56,8 @@ internal static class Report
                 sb.AppendLine("    " + p.Reason);
             foreach (string w in p.Warnings)
                 sb.AppendLine("    warning: " + w);
+            if (p.LoadOrderWarning != null)
+                sb.AppendLine("    warning: " + p.LoadOrderWarning);
             if (p.MissingUses.Count > 2)
                 sb.AppendLine("    all missing in this build: " + string.Join("; ", p.MissingUses.Take(60)) + (p.MissingUses.Count > 60 ? $" (and {p.MissingUses.Count - 60} more)" : ""));
             if (p.LaterErrors > 0)

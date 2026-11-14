@@ -59,6 +59,7 @@ internal sealed class PluginEntry
     public PluginState State = PluginState.Pending;
     public string Reason = "";
     public readonly List<string> Warnings = new();
+    public string LoadOrderWarning;
     /// <summary>Every game method/field/type the DLL uses that this build lacks, as <c>Namespace.Type::Member(args)</c> (the preflight check).</summary>
     public readonly List<string> MissingUses = new();
     public int LaterErrors;
