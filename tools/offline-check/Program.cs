@@ -74,6 +74,7 @@ internal static class Program
         List<PluginEntry> order = Planner.Plan(all, new HashSet<string>(), new HashSet<string>(), "Sea Power");
         foreach (PluginEntry p in order)
             p.State = PluginState.Running;   // would start; nothing is run here
+        Planner.UpdateLoadOrderWarnings(all, folders);
         Console.WriteLine("Start order: " + string.Join(" > ", order.Select(p => p.Display)));
         Console.WriteLine();
         Console.WriteLine(Report.Text(all, "Offline check (nothing started; RUNNING = would start)", notes, skipped));

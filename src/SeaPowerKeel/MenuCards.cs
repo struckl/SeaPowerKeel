@@ -315,7 +315,7 @@ internal sealed partial class KeelHost
         UnityEngine.Color was = GUI.color;
         DrawBody(r, alpha);
         string alert = LoadingWindow.Alert;
-        bool amber = alert != null || s.WithErrors + s.NotStarted > 0;
+        bool amber = alert != null || s.HasProblems;
         if (Event.current.type == EventType.Repaint)
         {
             GUI.color = new UnityEngine.Color(1, 1, 1, alpha);
@@ -335,9 +335,7 @@ internal sealed partial class KeelHost
         string line2 = "Game ready after " + Clock(s.DoneElapsed > 0 ? s.DoneElapsed : s.Elapsed) + (s.Skipped > 0 ? "  -  " + s.Skipped + " skipped" : "");
         GUI.Label(new Rect(r.x + pad, y, tw, lineH), Fit(line2, cardText, tw), cardText);
         y += lineH;
-        string line3 = alert != null ? alert + " - click for details"
-                     : s.WithErrors + s.NotStarted > 0 ? (s.WithErrors + s.NotStarted) + (s.WithErrors + s.NotStarted == 1 ? " mod has" : " mods have") + " problems - click for the report"
-                     : "No problems  -  click for the report";
+        string line3 = s.SummaryLine(alert);
         cardSmall.normal.textColor = amber ? CardAmber : CardDim;
         GUI.Label(new Rect(r.x + pad, y, tw, lineH), Fit(line3, cardSmall, tw), cardSmall);
         y += lineH;

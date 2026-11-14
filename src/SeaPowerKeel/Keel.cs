@@ -374,6 +374,7 @@ internal sealed partial class KeelHost : MonoBehaviour
 
         crash?.Mark("done", "");
         done = true;
+        UpdateLoadOrderWarnings();
         log.LogInfo($"Started {started} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();
@@ -437,6 +438,7 @@ internal sealed partial class KeelHost : MonoBehaviour
             }
         }
         liveFolders = now;
+        UpdateLoadOrderWarnings();
 
         // Switched on: the same steps as at start-up, for the new folders only.
         int started = 0;
@@ -504,6 +506,7 @@ internal sealed partial class KeelHost : MonoBehaviour
             crash?.WriteModsFile(Keel.Plugins);
         }
 
+        UpdateLoadOrderWarnings();
         string missed = string.Join(", ", fresh.Where(Report.IsProblem).Select(p => p.Display).Distinct());
         string note = $"Mods menu reload: started {started} code mod(s), switched {turnedOff} off." +
                       (missed.Length > 0 ? $" Did not start: {missed} (see below)." : "") +
@@ -512,6 +515,12 @@ internal sealed partial class KeelHost : MonoBehaviour
         log.LogInfo(note);
         WriteReport();
         hotLoading = false;
+    }
+
+    private void UpdateLoadOrderWarnings()
+    {
+        Planner.UpdateLoadOrderWarnings(Keel.Plugins, liveFolders);
+        Loading.LoadingWindow.Progress?.SetOrderWarnings(Report.CountOrderWarnings(Keel.Plugins));
     }
 
     /// <summary>Waits (up to 3 min) until the game's start-up load screen is done; logs how long.</summary>
@@ -1628,6 +1637,8 @@ internal sealed partial class KeelHost : MonoBehaviour
             GUILayout.Label(p.Reason, bodyStyle);
         foreach (string w in p.Warnings)
             GUILayout.Label(w, warnStyle);
+        if (p.LoadOrderWarning != null)
+            GUILayout.Label(p.LoadOrderWarning, warnStyle);
         if (p.LaterErrors > 0)
             GUILayout.Label($"{p.LaterErrors} error(s) since it started; first: {p.FirstLaterError}", warnStyle);
         GUILayout.EndVertical();
