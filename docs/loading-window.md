@@ -54,12 +54,13 @@ Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIP
 
 ## Startup preparation for mods
 
-A mod with `[Keel] StartEarly=true` and a matching `[Compatibility] ExactVersion`
-can also declare `PrepareStartup=MyMod.dll|MyMod.Startup` in its `[Keel]` section.
-The DLL must be in the mod folder and independent of Unity, Sea Power and
-the mod loaders. Keel calls the named type's public static
+A mod can include one or more DLLs ending in `.Preloader.dll` anywhere in
+its mod folder. Keel finds them in enabled folders that fit the game version.
+Each DLL needs one public type with a public static
 `void Prepare(string streamingAssets, string[] enabledMods, Action<string> report)`
-on a worker when it sets up the loading window. Use this for read-only file work
+method and must be independent of Unity, Sea Power and the mod loaders. Keel
+calls each DLL on a worker when it sets up the loading window. A failed callback
+is logged and Keel continues with the next DLL. Use this for read-only file work
 that can run during the splash. The paths come from the saved mod list. Check
 them against the live game before using the results. Keep Unity and game API
 calls in the normal plugin entry point. The callback can report short status

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -10,69 +11,70 @@ namespace SeaPowerKeel;
 
 internal static class StartupPreparation
 {
+    internal static bool IsPreparationDll(string file)
+    {
+        string name = Path.GetFileName(file);
+        return name.EndsWith(".Preloader.dll", StringComparison.OrdinalIgnoreCase)
+            && !name.Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase)
+            && !name.StartsWith("SeaPowerKeel", StringComparison.OrdinalIgnoreCase);
+    }
+
     internal static void Queue(string version, string streamingAssets, string workshop, string settings, ManualLogSource log) =>
         _ = Task.Run(() =>
         {
             string[] enabled = ModFolders.FromDisk(streamingAssets, workshop, settings)
-                .Where(folder => folder.Enabled).Select(folder => folder.Path).Distinct().ToArray();
+                .Where(folder => folder.Enabled).Select(folder => folder.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             foreach (string folder in enabled)
             {
                 try
                 {
-                    string ini = Path.Combine(folder, "_info.ini");
-                    if (!File.Exists(ini)) continue;
-                    string[] lines = File.ReadAllLines(ini);
-                    if (Hook(lines, version) is not { } hook) continue;
-                    string dll = Path.Combine(folder, hook.Dll);
-                    using (var metadata = AssemblyDefinition.ReadAssembly(dll))
-                    {
-                        if (metadata.MainModule.AssemblyReferences.Any(reference =>
-                            reference.Name.StartsWith("Unity", StringComparison.OrdinalIgnoreCase) ||
-                            reference.Name.StartsWith("AnchorChain", StringComparison.OrdinalIgnoreCase) ||
-                            reference.Name is "Seapower-Scripts" or "Noesis.NoesisGUI" or "BepInEx" or "0Harmony"))
-                            throw new InvalidOperationException("The preparation assembly must be independent of the game and mod loaders.");
-                    }
-                    var type = Assembly.LoadFrom(dll).GetType(hook.Type, throwOnError: true);
-                    var method = type.GetMethod("Prepare", BindingFlags.Public | BindingFlags.Static, null,
-                        new[] { typeof(string), typeof(string[]), typeof(Action<string>) }, null);
-                    if (method == null || method.ReturnType != typeof(void))
-                        throw new MissingMethodException(type.FullName, "Prepare");
-                    log.LogInfo($"Preparing startup data for {Path.GetFileName(folder)}.");
-                    method.Invoke(null, new object[] { streamingAssets, (string[])enabled.Clone(),
-                        (Action<string>)Loading.LoadingWindow.ReportPreparation });
+                    if (InfoVersion.MismatchInFolder(folder, version) != null) continue;
+                    foreach (string dll in Candidates(folder))
+                        RunFile(dll, streamingAssets, enabled, Loading.LoadingWindow.ReportPreparation, log);
                 }
                 catch (Exception error)
                 {
-                    log.LogWarning($"Startup preparation failed for {Path.GetFileName(folder)}: {error.GetBaseException().Message}");
+                    log.LogWarning($"Cannot find startup preparation DLLs in {folder}: {error.Message}");
                 }
-                finally { Loading.LoadingWindow.ReportPreparation(null); }
             }
         });
 
-    internal static (string Dll, string Type)? Hook(string[] lines, string version)
+    internal static IEnumerable<string> Candidates(string folder) =>
+        Directory.EnumerateFiles(folder, "*.Preloader.dll", SearchOption.AllDirectories)
+            .Where(IsPreparationDll).OrderBy(file => file, StringComparer.OrdinalIgnoreCase);
+
+    internal static void RunFile(string dll, string streamingAssets, string[] enabled, Action<string> report, ManualLogSource log)
     {
-        string section = "", exact = "", prepare = "";
-        foreach (string raw in lines)
+        try
         {
-            string line = raw.Split(';', '#')[0].Trim();
-            if (line.StartsWith("[", StringComparison.Ordinal))
+            string[] types;
+            using (var metadata = AssemblyDefinition.ReadAssembly(dll))
             {
-                section = line;
-                continue;
+                if (metadata.MainModule.AssemblyReferences.Any(reference =>
+                    reference.Name.StartsWith("Unity", StringComparison.OrdinalIgnoreCase) ||
+                    reference.Name.StartsWith("AnchorChain", StringComparison.OrdinalIgnoreCase) ||
+                    reference.Name is "Seapower-Scripts" or "Noesis.NoesisGUI" or "BepInEx" or "0Harmony" or "SeaPowerKeel"))
+                    throw new InvalidOperationException("The preparation assembly must be independent of the game and mod loaders.");
+                types = metadata.MainModule.Types.Where(type => type.IsPublic && !type.HasGenericParameters
+                    && type.Methods.Any(method => method.Name == "Prepare" && method.IsPublic && method.IsStatic && !method.HasGenericParameters
+                        && method.ReturnType.FullName == "System.Void" && method.Parameters.Select(parameter => parameter.ParameterType.FullName)
+                            .SequenceEqual(new[] { "System.String", "System.String[]", "System.Action`1<System.String>" })))
+                    .Select(type => type.FullName).ToArray();
             }
-            int eq = line.IndexOf('=');
-            if (eq < 1) continue;
-            string name = line.Substring(0, eq).Trim();
-            string value = line.Substring(eq + 1).Trim();
-            if (section.Equals("[Compatibility]", StringComparison.OrdinalIgnoreCase) &&
-                name.Equals("ExactVersion", StringComparison.OrdinalIgnoreCase)) exact = value;
-            if (section.Equals("[Keel]", StringComparison.OrdinalIgnoreCase) &&
-                name.Equals("PrepareStartup", StringComparison.OrdinalIgnoreCase)) prepare = value;
+            if (types.Length != 1) throw new InvalidOperationException("Expected one public static Prepare callback.");
+            var assembly = Assembly.LoadFrom(dll);
+            if (!Path.GetFullPath(assembly.Location).Equals(Path.GetFullPath(dll), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Assembly name already in use by {assembly.Location}.");
+            var type = assembly.GetType(types[0], throwOnError: true);
+            var method = type.GetMethod("Prepare", BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly, null,
+                new[] { typeof(string), typeof(string[]), typeof(Action<string>) }, null);
+            log.LogInfo($"Preparing startup data with {Path.GetFileName(dll)}.");
+            method.Invoke(null, new object[] { streamingAssets, (string[])enabled.Clone(), report });
         }
-        if (!exact.Equals(version, StringComparison.Ordinal) || !EarlyStart.InInfoIni(string.Join("\n", lines))) return null;
-        string[] parts = prepare.Split('|').Select(part => part.Trim()).ToArray();
-        if (parts.Length != 2 || parts[1].Length == 0 || !parts[0].EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
-            parts[0].IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || parts[0].IndexOfAny(new[] { '/', '\\', ':' }) >= 0) return null;
-        return (parts[0], parts[1]);
+        catch (Exception error)
+        {
+            log.LogWarning($"Startup preparation failed for {dll}: {error.GetBaseException().Message}");
+        }
+        finally { report(null); }
     }
 }

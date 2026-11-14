@@ -47,6 +47,7 @@ internal static class SelfTest
             Console.WriteLine("0. _info.ini [Compatibility], by the game's rules");
             InfoIni();
             ScannerExclusions(tmp, managed, core);
+            StartupPreparationChecks(tmp);
             Console.WriteLine("3. Scanner: Anchor Chain plugin classes must be public (exported)");
             ExportedTypes(tmp, managed, core);
             Console.WriteLine("2. Entry point through the interface");
@@ -77,6 +78,48 @@ internal static class SelfTest
         Console.WriteLine();
         Console.WriteLine($"{checks - failures} of {checks} checks passed" + (failures > 0 ? $", {failures} FAILED" : ""));
         return failures > 0 ? 1 : 0;
+    }
+
+    private static void StartupPreparationChecks(string tmp)
+    {
+        string folder = Path.Combine(tmp, "preparation");
+        string nested = Path.Combine(folder, "nested");
+        Directory.CreateDirectory(nested);
+        string first = Path.Combine(folder, "a.Preloader.dll");
+        string second = Path.Combine(nested, "b.PRELOADER.DLL");
+        string broken = Path.Combine(folder, "bad.Preloader.dll");
+        File.WriteAllText(broken, "not a managed DLL");
+        File.WriteAllText(Path.Combine(folder, "AnchorChain.Preloader.dll"), "");
+        File.WriteAllText(Path.Combine(folder, "regular.dll"), "");
+        Build(first, "First", "first");
+        Build(second, "Second", "second");
+        var found = StartupPreparation.Candidates(folder).ToArray();
+        Check(found.SequenceEqual(new[] { first, broken, second }), "startup preparation finds every matching DLL, including nested files");
+        var reports = new List<string>();
+        var log = new BepInEx.Logging.ManualLogSource("Startup preparation self-test");
+        foreach (string dll in found)
+            StartupPreparation.RunFile(dll, folder, new[] { folder }, text => { if (text != null) reports.Add(text); }, log);
+        Check(reports.SequenceEqual(new[] { "first", "second" }), "both startup callbacks run even when an earlier DLL is invalid");
+
+        static void Build(string path, string name, string result)
+        {
+            using var assembly = Mono.Cecil.AssemblyDefinition.CreateAssembly(
+                new Mono.Cecil.AssemblyNameDefinition(name, new Version(1, 0)), name, Mono.Cecil.ModuleKind.Dll);
+            var module = assembly.MainModule;
+            var type = new Mono.Cecil.TypeDefinition("Fixture", "Startup", Mono.Cecil.TypeAttributes.Public, module.TypeSystem.Object);
+            module.Types.Add(type);
+            var method = new Mono.Cecil.MethodDefinition("Prepare", Mono.Cecil.MethodAttributes.Public | Mono.Cecil.MethodAttributes.Static, module.TypeSystem.Void);
+            type.Methods.Add(method);
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition(module.TypeSystem.String));
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition(new Mono.Cecil.ArrayType(module.TypeSystem.String)));
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition(module.ImportReference(typeof(Action<string>))));
+            var il = method.Body.GetILProcessor();
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldarg_2);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldstr, result);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Callvirt, module.ImportReference(typeof(Action<string>).GetMethod("Invoke")));
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+            assembly.Write(path);
+        }
     }
 
     private static void WhatsNewChecks(string tmp)
