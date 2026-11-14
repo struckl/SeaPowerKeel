@@ -21,7 +21,7 @@ internal static class Report
     public static bool IsProblem(PluginEntry p) =>
         p.State is PluginState.Failed or PluginState.NotStarted or PluginState.RunningWithErrors;
 
-    public static int CountOrderWarnings(IEnumerable<PluginEntry> all) => all.Count(p => p.HasOrderWarning);
+    public static int CountOrderWarnings(IEnumerable<PluginEntry> all) => all.Count(p => p.LoadOrderWarning != null);
 
     public static string Summary(IReadOnlyCollection<PluginEntry> all)
     {
@@ -56,6 +56,8 @@ internal static class Report
                 sb.AppendLine("    " + p.Reason);
             foreach (string w in p.Warnings)
                 sb.AppendLine("    warning: " + w);
+            if (p.LoadOrderWarning != null)
+                sb.AppendLine("    warning: " + p.LoadOrderWarning);
             if (p.MissingUses.Count > 2)
                 sb.AppendLine("    all missing in this build: " + string.Join("; ", p.MissingUses.Take(60)) + (p.MissingUses.Count > 60 ? $" (and {p.MissingUses.Count - 60} more)" : ""));
             if (p.LaterErrors > 0)

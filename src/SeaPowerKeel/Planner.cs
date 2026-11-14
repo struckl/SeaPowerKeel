@@ -117,8 +117,7 @@ internal static class Planner
                            "Anchor Chain's loader would not: it drops every mod with an [ACIncompatibility], named mod present or not (an upstream bug).");
     }
 
-    /// <summary>Dependencies (hard and soft) and "load before" first, ties in mod-list order; a cycle is broken in mod-list order.</summary>
-    private static List<PluginEntry> Order(List<PluginEntry> plugins)
+    private static Dictionary<PluginEntry, HashSet<PluginEntry>> Prerequisites(List<PluginEntry> plugins)
     {
         Dictionary<string, PluginEntry> byGuid = plugins.ToDictionary(p => p.Guid);
         foreach (PluginEntry p in plugins)
@@ -135,14 +134,36 @@ internal static class Planner
                 if (byGuid.TryGetValue(g, out PluginEntry later) && later != p)
                     after[later].Add(p);
         }
-        foreach (PluginEntry p in plugins)
+        return after;
+    }
+
+    internal static void UpdateLoadOrderWarnings(IEnumerable<PluginEntry> all, IEnumerable<ModFolder> folders)
+    {
+        var enabled = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (ModFolder folder in folders.Where(f => f.Enabled))
+            enabled[folder.Path] = folder.Order;
+        var active = new List<PluginEntry>();
+        foreach (PluginEntry p in all)
         {
-            var below = after[p].Where(dep => dep.Order > p.Order && dep.Folder != p.Folder).OrderBy(dep => dep.Order).ToList();
-            if (below.Count == 0) continue;
-            p.HasOrderWarning = true;
-            string warning = $"Load order: {p.Display} is above {string.Join(", ", below.Select(dep => dep.Display))} in the mod list, but must start after them.";
-            if (!p.Warnings.Contains(warning)) p.Warnings.Add(warning);
+            p.LoadOrderWarning = null;
+            if (p.State is (PluginState.Running or PluginState.RunningWithErrors) && p.Folder != null && enabled.ContainsKey(p.Folder.Path))
+                active.Add(p);
         }
+
+        foreach (var (plugin, dependencies) in Prerequisites(active))
+        {
+            int position = enabled[plugin.Folder.Path];
+            var below = dependencies.Where(dep => enabled[dep.Folder.Path] > position)
+                .OrderBy(dep => enabled[dep.Folder.Path]).Select(dep => dep.Display).ToArray();
+            if (below.Length > 0)
+                plugin.LoadOrderWarning = $"Load order: {plugin.Display} is above {string.Join(", ", below)} in the Mods menu. Move it below {(below.Length == 1 ? "that mod" : "those mods")}.";
+        }
+    }
+
+    /// <summary>Dependencies (hard and soft) and "load before" first, ties in mod-list order; a cycle is broken in mod-list order.</summary>
+    private static List<PluginEntry> Order(List<PluginEntry> plugins)
+    {
+        var after = Prerequisites(plugins);
         var result = new List<PluginEntry>();
         var done = new HashSet<PluginEntry>();
         var rest = plugins.OrderBy(p => p.Order).ToList();
@@ -152,7 +173,6 @@ internal static class Planner
             if (next == null)
             {
                 next = rest[0];
-                next.HasOrderWarning = true;
                 string circular = "Its start order is circular with: " +
                                   string.Join(", ", after[next].Where(x => !done.Contains(x)).Select(x => x.Display)) + ". Started in mod-list order.";
                 if (!next.Warnings.Contains(circular))

@@ -82,22 +82,47 @@ internal static class SelfTest
 
     private static void LoadOrderWarnings()
     {
-        var a = new PluginEntry { Guid = "a", Order = 0, Folder = Folder("a") };
-        var b = new PluginEntry { Guid = "b", Order = 1, Folder = Folder("b") };
-        var c = new PluginEntry { Guid = "c", Order = 2, Folder = Folder("c") };
+        var a = new PluginEntry { Guid = "a", Order = 0, Folder = Folder("a", 0) };
+        var b = new PluginEntry { Guid = "b", Order = 1, Folder = Folder("b", 1) };
+        var c = new PluginEntry { Guid = "c", Order = 2, Folder = Folder("c", 2) };
         var all = new List<PluginEntry> { a, b, c };
+        var folders = all.Select(p => p.Folder).ToArray();
         a.Dependencies.Add(new Dependency { Guid = b.Guid });
         b.LoadBefore.Add(c.Guid);
         var ordered = Planner.Plan(all, new HashSet<string>(), new HashSet<string>(), "Sea Power");
         Check(ordered.SequenceEqual(new[] { b, a, c }), "Keel puts the dependency first and preserves the valid load-before rule");
-        Check(a.HasOrderWarning && a.Warnings.Single().Contains("above b") && !b.HasOrderWarning && !c.HasOrderWarning,
-            "The report names the misplaced mod and its dependency");
         all.ForEach(p => p.State = PluginState.Running);
+        Planner.UpdateLoadOrderWarnings(all, folders);
+        Check(a.LoadOrderWarning?.Contains("above b") == true && b.LoadOrderWarning == null && c.LoadOrderWarning == null,
+            "The report names the misplaced mod and its dependency");
         var progress = new SeaPowerKeel.Loading.Progress(() => 0);
         progress.SetOrderWarnings(Report.CountOrderWarnings(all));
         var summary = progress.Take(0);
         Check(Report.Summary(all).Contains("1 with load order warnings") && summary.HasProblems && summary.SummaryLine(null).Contains("Load order warnings"),
             "Both the report and startup card warn even when all mods started successfully");
+
+        foreach (PluginEntry disabled in new[] { a, b })
+        {
+            disabled.Folder.Enabled = false;
+            Planner.UpdateLoadOrderWarnings(all, folders);
+            Check(Report.CountOrderWarnings(all) == 0 && a.LoadOrderWarning == null,
+                $"A reload clears the warning when {disabled.Display} is switched off");
+            disabled.Folder.Enabled = true;
+            Planner.UpdateLoadOrderWarnings(all, folders);
+        }
+
+        a.Folder.Order = 2;
+        c.Folder.Order = 3;
+        Planner.UpdateLoadOrderWarnings(all, folders);
+        Check(Report.CountOrderWarnings(all) == 0, "Correcting enabled folder order clears the warning without restarting");
+        a.Folder = b.Folder;
+        b.Dependencies.Add(new Dependency { Guid = a.Guid });
+        Planner.UpdateLoadOrderWarnings(all, folders);
+        Check(Report.CountOrderWarnings(all) == 0, "A cycle within a single folder is not a mod list order warning");
+        c.Folder.Order = 0;
+        Planner.UpdateLoadOrderWarnings(all, folders);
+        Check(c.LoadOrderWarning?.Contains("above b") == true && Report.CountOrderWarnings(all) == 1,
+            "A load-before rule warns only when its enabled folders are reversed");
     }
 
     private static void WhatsNewChecks(string tmp)
