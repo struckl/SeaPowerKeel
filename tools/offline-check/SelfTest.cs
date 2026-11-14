@@ -53,6 +53,7 @@ internal static class SelfTest
             EntryPoints();
             Console.WriteLine("4+6. Sequence: load all first, start in plan order, drop dependants of a failed load, hand over to a running Anchor Chain");
             Sequence();
+            LoadOrderWarnings();
             Console.WriteLine("6. Is Anchor Chain running: Keel's own load of its DLL does not count");
             AnchorChainRunning();
             Console.WriteLine("5. [ACConfig]");
@@ -77,6 +78,26 @@ internal static class SelfTest
         Console.WriteLine();
         Console.WriteLine($"{checks - failures} of {checks} checks passed" + (failures > 0 ? $", {failures} FAILED" : ""));
         return failures > 0 ? 1 : 0;
+    }
+
+    private static void LoadOrderWarnings()
+    {
+        var a = new PluginEntry { Guid = "a", Order = 0, Folder = Folder("a") };
+        var b = new PluginEntry { Guid = "b", Order = 1, Folder = Folder("b") };
+        var c = new PluginEntry { Guid = "c", Order = 2, Folder = Folder("c") };
+        var all = new List<PluginEntry> { a, b, c };
+        a.Dependencies.Add(new Dependency { Guid = b.Guid });
+        b.LoadBefore.Add(c.Guid);
+        var ordered = Planner.Plan(all, new HashSet<string>(), new HashSet<string>(), "Sea Power");
+        Check(ordered.SequenceEqual(new[] { b, a, c }), "Keel puts the dependency first and preserves the valid load-before rule");
+        Check(a.HasOrderWarning && a.Warnings.Single().Contains("above b") && !b.HasOrderWarning && !c.HasOrderWarning,
+            "The report names the misplaced mod and its dependency");
+        all.ForEach(p => p.State = PluginState.Running);
+        var progress = new SeaPowerKeel.Loading.Progress(() => 0);
+        progress.SetOrderWarnings(Report.CountOrderWarnings(all));
+        var summary = progress.Take(0);
+        Check(Report.Summary(all).Contains("1 with load order warnings") && summary.HasProblems && summary.SummaryLine(null).Contains("Load order warnings"),
+            "Both the report and startup card warn even when all mods started successfully");
     }
 
     private static void WhatsNewChecks(string tmp)

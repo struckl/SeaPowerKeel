@@ -493,7 +493,8 @@ internal sealed class Overlay
         Fill(dc, 0, 0, w, h, Edge);
         Fill(dc, 1, 1, w - 2, h - 2, Back);
         string alert = LoadingWindow.Alert;
-        Fill(dc, 1, 1, S(4), h - 2, alert != null || s.WithErrors + s.NotStarted > 0 ? Amber : Green);      // a colour bar down the left edge: green = clean start
+        bool amber = alert != null || s.HasProblems;
+        Fill(dc, 1, 1, S(4), h - 2, amber ? Amber : Green);
         Native.SetBkMode(dc, Native.TRANSPARENT);
         int pad = S(14), y = S(8), lineH = S(20);
 
@@ -508,20 +509,7 @@ internal sealed class Overlay
         Put(dc, fontText, Dim, sb.ToString(), pad, y, w - 2 * pad, lineH, Native.DT_END_ELLIPSIS);
         y += lineH;
 
-        string line3;
-        uint c3;
-        if (alert != null)
-        {
-            line3 = alert + " - click for details";
-            c3 = Amber;
-        }
-        else if (s.WithErrors + s.NotStarted > 0)
-        {
-            line3 = (s.WithErrors + s.NotStarted) + (s.WithErrors + s.NotStarted == 1 ? " mod has" : " mods have") + " problems - click for the report";
-            c3 = Amber;
-        }
-        else { line3 = "No problems  -  click for the report"; c3 = Dim; }
-        Put(dc, fontSmall, c3, line3, pad, y, w - 2 * pad, lineH, Native.DT_END_ELLIPSIS);
+        Put(dc, fontSmall, amber ? Amber : Dim, s.SummaryLine(alert), pad, y, w - 2 * pad, lineH, Native.DT_END_ELLIPSIS);
         y += lineH;
         Put(dc, fontSmall, Edge, "Made by Kanalratte", pad, y, S(CreditWidth), lineH, Native.DT_END_ELLIPSIS);      // quiet; a click opens his Steam profile
     }

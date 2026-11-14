@@ -31,7 +31,7 @@ internal sealed class Progress
     private string lastEventText = "";
     private bool done;
     private string keelVersion = "";
-    private int running, withErrors, skipped, notStarted;
+    private int running, withErrors, skipped, notStarted, orderWarnings;
     private double keelMs, doneElapsed, slowestSeconds;
     private string slowestName = "";
     private int startIndex;                      // "STARTING i/n" seen: the step Keel is in
@@ -55,7 +55,18 @@ internal sealed class Progress
         public bool Done;
         // what the summary shows once every mod has started
         public string KeelVersion, SlowestName;
-        public int Running, WithErrors, Skipped, NotStarted;
+        public int Running, WithErrors, Skipped, NotStarted, OrderWarnings;
+        public bool HasProblems => WithErrors + NotStarted + OrderWarnings > 0;
+
+        public string SummaryLine(string alert)
+        {
+            if (alert != null) return alert + " - click for details";
+            int errors = WithErrors + NotStarted;
+            if (errors > 0 && OrderWarnings > 0) return $"{errors} mod problems, {OrderWarnings} load order warnings";
+            if (errors > 0) return $"{errors} {(errors == 1 ? "mod has" : "mods have")} problems - click for the report";
+            if (OrderWarnings > 0) return $"Load order warnings ({OrderWarnings}) - click for the report";
+            return "No problems  -  click for the report";
+        }
         public double KeelSeconds, DoneElapsed, SlowestSeconds;
         public string Current;                  // the mod being started now
         public double CurrentFor;                 // for how long
@@ -74,7 +85,7 @@ internal sealed class Progress
             {
                 Phase = phase, Total = total, Handled = handled, Elapsed = now, Idle = now - lastEvent,
                 LastEvent = lastEventText, Done = done, KeelVersion = keelVersion, SlowestName = slowestName,
-                Running = running, WithErrors = withErrors, Skipped = skipped, NotStarted = notStarted,
+                Running = running, WithErrors = withErrors, Skipped = skipped, NotStarted = notStarted, OrderWarnings = orderWarnings,
                 KeelSeconds = keelMs / 1000.0, DoneElapsed = doneElapsed, SlowestSeconds = slowestSeconds, Current = current, CurrentFor = current != null ? now - currentSince : 0, CurrentIndex = startIndex, SinceDone = done ? now - doneAt : 0, Dismissed = dismissed,
             };
             for (int i = Math.Max(0, mods.Count - lines); i < mods.Count; i++)
@@ -84,6 +95,8 @@ internal sealed class Progress
     }
 
     public void Dismiss() { lock (gate) dismissed = true; }
+
+    public void SetOrderWarnings(int count) { lock (gate) orderWarnings = count; }
 
     // ---- log lines ----------------------------------------------------------------------------------------------------
 

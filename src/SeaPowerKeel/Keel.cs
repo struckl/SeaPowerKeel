@@ -374,6 +374,7 @@ internal sealed partial class KeelHost : MonoBehaviour
 
         crash?.Mark("done", "");
         done = true;
+        Loading.LoadingWindow.Progress?.SetOrderWarnings(Report.CountOrderWarnings(Keel.Plugins));
         log.LogInfo($"Started {started} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();

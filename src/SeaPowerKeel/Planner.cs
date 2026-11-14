@@ -135,6 +135,14 @@ internal static class Planner
                 if (byGuid.TryGetValue(g, out PluginEntry later) && later != p)
                     after[later].Add(p);
         }
+        foreach (PluginEntry p in plugins)
+        {
+            var below = after[p].Where(dep => dep.Order > p.Order && dep.Folder != p.Folder).OrderBy(dep => dep.Order).ToList();
+            if (below.Count == 0) continue;
+            p.HasOrderWarning = true;
+            string warning = $"Load order: {p.Display} is above {string.Join(", ", below.Select(dep => dep.Display))} in the mod list, but must start after them.";
+            if (!p.Warnings.Contains(warning)) p.Warnings.Add(warning);
+        }
         var result = new List<PluginEntry>();
         var done = new HashSet<PluginEntry>();
         var rest = plugins.OrderBy(p => p.Order).ToList();
@@ -144,6 +152,7 @@ internal static class Planner
             if (next == null)
             {
                 next = rest[0];
+                next.HasOrderWarning = true;
                 string circular = "Its start order is circular with: " +
                                   string.Join(", ", after[next].Where(x => !done.Contains(x)).Select(x => x.Display)) + ". Started in mod-list order.";
                 if (!next.Warnings.Contains(circular))
