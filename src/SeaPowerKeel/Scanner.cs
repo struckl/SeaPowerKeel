@@ -25,8 +25,8 @@ internal static class Scanner
             return "Anchor Chain's own library: Keel uses it as a library for Anchor Chain mods and never as a plugin.";
         if (name.Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase))
             return "Anchor Chain's preloader (the BepInEx stub that starts Anchor Chain): not a mod.";
-        if (StartupPreparation.IsPreparationDll(name))
-            return "Startup preparation DLL, run during the splash.";
+        if (PreparationDll.Matches(name))
+            return "Startup preparation DLL, handled by the Keel stub.";
         return null;
     }
 

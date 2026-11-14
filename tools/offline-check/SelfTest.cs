@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using AnchorChain;
 using SeaPowerKeel;
+using SeaPowerKeel.Stub;
 
 // Keel's own tests, run outside the game: dotnet run -c Release --project tools/offline-check -- --selftest <Managed> <BepInEx core>
 // The mods tested are classes of this very assembly (see the AnchorChain namespace below): the scanner reads DLLs through

@@ -4,15 +4,15 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using BepInEx;
+using UnityEngine;
 
 namespace SeaPowerKeel.Stub;
 
 /// <summary>
 /// The only part of R.A.T.S. Keel that goes into <c>BepInEx\plugins</c>. It finds <c>SeaPowerKeel.dll</c> in the game's
-/// enabled mod folders (newest version wins) and starts it. It knows nothing about the game, so it is the same file for
-/// every game build and should never need replacing: the loader itself comes and updates through the Workshop.
+/// enabled mod folders (newest version wins) and starts it. It also finds startup preparation DLLs during the splash.
 /// </summary>
-[BepInPlugin(Guid, "R.A.T.S. Keel stub", "1.0.0")]
+[BepInPlugin(Guid, "R.A.T.S. Keel stub", "1.1.0")]
 public class Stub : BaseUnityPlugin
 {
     public const string Guid = "dev.sewerlabs.seapowerkeel.stub";
@@ -52,14 +52,24 @@ public class Stub : BaseUnityPlugin
                 candidates.OrderByDescending(c => c.version).ThenBy(c => c.folder.Order).First();
             Logger.LogInfo($"Starting R.A.T.S. Keel {pick.version} from {pick.folder.Label} ({pick.path})");
             Assembly loader = Assembly.LoadFrom(pick.path);
-            MethodInfo boot = loader.GetType(LoaderType, throwOnError: true)
-                                    .GetMethod("Boot", BindingFlags.Public | BindingFlags.Static);
+            var entry = loader.GetType(LoaderType, throwOnError: true);
+            string version = Info.Metadata.Version.ToString();
+            var withPreparation = entry.GetMethod("BootWithPreloader", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(string), typeof(string), typeof(Action<Action<string>>) }, null);
+            if (withPreparation != null)
+            {
+                void Prepare(Action<string> report) => StartupPreparation.Queue(Application.version,
+                    Application.streamingAssetsPath, ModFolders.WorkshopRoot, ModFolders.UserSettings, report, Logger);
+                withPreparation.Invoke(null, new object[] { version, pick.path, (Action<Action<string>>)Prepare });
+                return;
+            }
+            MethodInfo boot = entry.GetMethod("Boot", BindingFlags.Public | BindingFlags.Static);
             if (boot == null)
             {
                 Logger.LogError($"{pick.path} has no {LoaderType}.Boot: not a Keel loader this stub can start.");
                 return;
             }
-            boot.Invoke(null, new object[] { Info.Metadata.Version.ToString(), pick.path });
+            boot.Invoke(null, new object[] { version, pick.path });
         }
         catch (Exception ex)
         {

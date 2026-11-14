@@ -55,7 +55,8 @@ Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIP
 ## Startup preparation for mods
 
 A mod can include one or more DLLs ending in `.Preloader.dll` anywhere in
-its mod folder. Keel finds them in enabled folders that fit the game version.
+its mod folder. Keel's BepInEx stub (1.1.0 or later) finds them in enabled
+folders that fit the game version.
 Each DLL needs one public type with a public static
 `void Prepare(string streamingAssets, string[] enabledMods, Action<string> report)`
 method and must be independent of Unity, Sea Power and the mod loaders. Keel

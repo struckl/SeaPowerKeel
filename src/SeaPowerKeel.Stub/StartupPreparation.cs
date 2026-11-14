@@ -7,19 +7,12 @@ using System.Threading.Tasks;
 using BepInEx.Logging;
 using Mono.Cecil;
 
-namespace SeaPowerKeel;
+namespace SeaPowerKeel.Stub;
 
 internal static class StartupPreparation
 {
-    internal static bool IsPreparationDll(string file)
-    {
-        string name = Path.GetFileName(file);
-        return name.EndsWith(".Preloader.dll", StringComparison.OrdinalIgnoreCase)
-            && !name.Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase)
-            && !name.StartsWith("SeaPowerKeel", StringComparison.OrdinalIgnoreCase);
-    }
-
-    internal static void Queue(string version, string streamingAssets, string workshop, string settings, ManualLogSource log) =>
+    internal static void Queue(string version, string streamingAssets, string workshop, string settings,
+        Action<string> report, ManualLogSource log) =>
         _ = Task.Run(() =>
         {
             string[] enabled = ModFolders.FromDisk(streamingAssets, workshop, settings)
@@ -30,7 +23,7 @@ internal static class StartupPreparation
                 {
                     if (InfoVersion.MismatchInFolder(folder, version) != null) continue;
                     foreach (string dll in Candidates(folder))
-                        RunFile(dll, streamingAssets, enabled, Loading.LoadingWindow.ReportPreparation, log);
+                        RunFile(dll, streamingAssets, enabled, report, log);
                 }
                 catch (Exception error)
                 {
@@ -41,7 +34,7 @@ internal static class StartupPreparation
 
     internal static IEnumerable<string> Candidates(string folder) =>
         Directory.EnumerateFiles(folder, "*.Preloader.dll", SearchOption.AllDirectories)
-            .Where(IsPreparationDll).OrderBy(file => file, StringComparer.OrdinalIgnoreCase);
+            .Where(PreparationDll.Matches).OrderBy(file => file, StringComparer.OrdinalIgnoreCase);
 
     internal static void RunFile(string dll, string streamingAssets, string[] enabled, Action<string> report, ManualLogSource log)
     {
