@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using AnchorChain;
 using SeaPowerKeel;
+using SeaPowerKeel.Stub;
 
 // Keel's own tests, run outside the game: dotnet run -c Release --project tools/offline-check -- --selftest <Managed> <BepInEx core>
 // The mods tested are classes of this very assembly (see the AnchorChain namespace below): the scanner reads DLLs through
@@ -47,6 +48,8 @@ internal static class SelfTest
             Console.WriteLine("0. _info.ini [Compatibility], by the game's rules");
             InfoIni();
             ScannerExclusions(tmp, managed, core);
+            KeelBootCompatibility();
+            StartupPreparationChecks(tmp);
             Console.WriteLine("3. Scanner: Anchor Chain plugin classes must be public (exported)");
             ExportedTypes(tmp, managed, core);
             Console.WriteLine("2. Entry point through the interface");
@@ -78,6 +81,82 @@ internal static class SelfTest
         Console.WriteLine();
         Console.WriteLine($"{checks - failures} of {checks} checks passed" + (failures > 0 ? $", {failures} FAILED" : ""));
         return failures > 0 ? 1 : 0;
+    }
+
+    private static void KeelBootCompatibility()
+    {
+        var boot = typeof(Keel).GetMethod("Boot", BindingFlags.Public | BindingFlags.Static);
+        Check(boot?.ReturnType == typeof(void) && boot.GetParameters().Select(parameter => parameter.ParameterType)
+            .SequenceEqual(new[] { typeof(string), typeof(string) }), "the original stub can resolve public static void Boot(string, string)");
+
+        int starts = 0;
+        var reports = new List<string>();
+        void Prepare(Action<string> report) => report("prepared");
+        void OldLoader() => starts++;
+        void NewLoader()
+        {
+            starts++;
+            PreparationDll.RunIfAvailable(reports.Add);
+        }
+
+        OldLoader();
+        NewLoader();
+        Check(starts == 2 && reports.Count == 0, "the old stub can boot both loaders without a preparation callback");
+        PreparationDll.DuringBoot(OldLoader, Prepare);
+        Check(starts == 3 && reports.Count == 0, "the new stub can boot the old loader without requiring it to prepare");
+        PreparationDll.DuringBoot(NewLoader, Prepare);
+        Check(starts == 4 && reports.SequenceEqual(new[] { "prepared" }), "the new loader can use the new stub's callback during Boot");
+        PreparationDll.RunIfAvailable(reports.Add);
+        Check(reports.Count == 1, "the callback is cleared after Boot returns");
+        var failure = new InvalidOperationException("test boot failure");
+        bool propagated = false;
+        try { PreparationDll.DuringBoot(() => throw failure, Prepare); }
+        catch (InvalidOperationException error) when (ReferenceEquals(error, failure)) { propagated = true; }
+        Check(propagated, "a failed loader still reports the boot error to the stub");
+        NewLoader();
+        Check(starts == 5 && reports.Count == 1, "a failed boot clears the callback before the next loader starts");
+    }
+
+    private static void StartupPreparationChecks(string tmp)
+    {
+        string folder = Path.Combine(tmp, "preparation");
+        string nested = Path.Combine(folder, "nested");
+        Directory.CreateDirectory(nested);
+        string first = Path.Combine(folder, "a.Preloader.dll");
+        string second = Path.Combine(nested, "b.PRELOADER.DLL");
+        string broken = Path.Combine(folder, "bad.Preloader.dll");
+        File.WriteAllText(broken, "not a managed DLL");
+        File.WriteAllText(Path.Combine(folder, "AnchorChain.Preloader.dll"), "");
+        File.WriteAllText(Path.Combine(folder, "regular.dll"), "");
+        Build(first, "First", "first");
+        Build(second, "Second", "second");
+        var found = StartupPreparation.Candidates(folder).ToArray();
+        Check(found.SequenceEqual(new[] { first, broken, second }), "startup preparation finds every matching DLL, including nested files");
+        var reports = new List<string>();
+        var log = new BepInEx.Logging.ManualLogSource("Startup preparation self-test");
+        foreach (string dll in found)
+            StartupPreparation.RunFile(dll, folder, new[] { folder }, text => { if (text != null) reports.Add(text); }, log);
+        Check(reports.SequenceEqual(new[] { "first", "second" }), "both startup callbacks run even when an earlier DLL is invalid");
+
+        static void Build(string path, string name, string result)
+        {
+            using var assembly = Mono.Cecil.AssemblyDefinition.CreateAssembly(
+                new Mono.Cecil.AssemblyNameDefinition(name, new Version(1, 0)), name, Mono.Cecil.ModuleKind.Dll);
+            var module = assembly.MainModule;
+            var type = new Mono.Cecil.TypeDefinition("Fixture", "Startup", Mono.Cecil.TypeAttributes.Public, module.TypeSystem.Object);
+            module.Types.Add(type);
+            var method = new Mono.Cecil.MethodDefinition("Prepare", Mono.Cecil.MethodAttributes.Public | Mono.Cecil.MethodAttributes.Static, module.TypeSystem.Void);
+            type.Methods.Add(method);
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition(module.TypeSystem.String));
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition(new Mono.Cecil.ArrayType(module.TypeSystem.String)));
+            method.Parameters.Add(new Mono.Cecil.ParameterDefinition(module.ImportReference(typeof(Action<string>))));
+            var il = method.Body.GetILProcessor();
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldarg_2);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ldstr, result);
+            il.Emit(Mono.Cecil.Cil.OpCodes.Callvirt, module.ImportReference(typeof(Action<string>).GetMethod("Invoke")));
+            il.Emit(Mono.Cecil.Cil.OpCodes.Ret);
+            assembly.Write(path);
+        }
     }
 
     private static void LoadOrderWarnings()
@@ -389,10 +468,14 @@ internal static class SelfTest
             "an old AC Pack on 0.8.7 or an unknown game version: no warning");
         Check(ModSetups.Detect(new[] { fLocal }, null, oldTimes, "0.9.1").Warning() == null, "a local AC Pack copy (no Steam time): no warning");
 
-        // Start early (opt-in, rgreat 2026-11-12): _info.ini [Keel] StartEarly=true; a mod that needs a late one waits too.
-        Check(EarlyStart.InInfoIni("[Language_en]\nName=X\n\n[Keel]\nStartEarly=true\n") && !EarlyStart.InInfoIni("[Language_en]\nStartEarly=true\n")
-              && !EarlyStart.InInfoIni("[Keel]\nStartEarly=false\n") && EarlyStart.InInfoIni("[keel]\r\nstartearly = TRUE ; yes\r\n"),
-              "start early: only [Keel] StartEarly=true counts (any case, comments allowed)");
+        Check(EarlyStart.InInfoIni("[Language_en]\nStartEarly=true\n") == null &&
+              EarlyStart.InInfoIni("[Keel]\nStartEarly=false\n") == false &&
+              EarlyStart.InInfoIni("[keel]\r\nstartearly = TRUE ; yes\r\n") == true,
+              "the legacy start-early flag still works in the Keel section");
+        Check(EarlyStart.InInfoIni("[Keel]\nLoadTiming=Early\n") == true &&
+              EarlyStart.InInfoIni("[Keel]\nLoadTiming=AnchorChain\nStartEarly=true\n") == false &&
+              EarlyStart.InInfoIni("[Keel]\nLoadTiming=unknown\n") != true,
+              "explicit timing overrides the legacy flag and invalid timing keeps the default");
         var eA = new PluginEntry { Guid = "a", Name = "A", StartEarly = true };
         var eB = new PluginEntry { Guid = "b", Name = "B", StartEarly = true };
         eB.Dependencies.Add(new Dependency { Guid = "c" });
@@ -418,6 +501,16 @@ internal static class SelfTest
         string other = "[Other]\nX=1\n[Submods]\nTestRange=false\n\n[More]\nY=2\n";
         Check(ModSetups.SetSubmod(other, "euromod.extended-guidance", true) == "[Other]\nX=1\n[Submods]\nTestRange=false\neuromod.extended-guidance=true\n\n[More]\nY=2\n", "EG added at the end of [Submods], other sections kept");
         Check(ModSetups.ReadSubmods(ModSetups.SetSubmod("; note\n", "euromod.extended-guidance", true))["euromod.extended-guidance"], "what the button writes reads back as on");
+        var earlyAlias = new PluginEntry { Guid = "early", StartEarly = true };
+        earlyAlias.AlsoKnownAs.Add("legacy");
+        var normal = new PluginEntry { Guid = "normal" };
+        normal.Dependencies.Add(new Dependency { Guid = "legacy", Hard = true });
+        var phases = new List<PluginEntry> { earlyAlias, normal };
+        Check(EarlyStart.Set(phases, null).SetEquals(new[] { earlyAlias }),
+            "normal timing is the default and an early plugin can satisfy a later dependency");
+        earlyAlias.State = PluginState.Running;
+        Check(Planner.Replan(phases, new HashSet<string>()).SequenceEqual(new[] { normal }),
+            "the normal phase retains an early dependency that started under an alternate GUID");
     }
 
     private static void TakeoverChecks(string tmp)

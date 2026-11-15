@@ -25,6 +25,8 @@ internal static class Scanner
             return "Anchor Chain's own library: Keel uses it as a library for Anchor Chain mods and never as a plugin.";
         if (name.Equals("AnchorChain.Preloader.dll", StringComparison.OrdinalIgnoreCase))
             return "Anchor Chain's preloader (the BepInEx stub that starts Anchor Chain): not a mod.";
+        if (PreparationDll.Matches(name))
+            return "Startup preparation DLL, handled by the Keel stub.";
         return null;
     }
 
@@ -45,7 +47,7 @@ internal static class Scanner
         foreach (ModFolder folder in folders)
         {
             Manifest manifest = Manifest.Read(folder.Path, warn);
-            bool folderEarly = EarlyStart.FolderAsks(folder.Path);
+            bool folderEarly = EarlyStart.FolderTiming(folder.Path) == true;
             List<string> dlls;
             try
             {
@@ -65,7 +67,7 @@ internal static class Scanner
                     skipped?.Add(new SkippedDll { Path = dll, Folder = folder, Reason = why });
                     continue;
                 }
-                List<PluginEntry> found = ScanDll(dll, folder, warn, resolver);
+                List<PluginEntry> found = ScanDll(dll, folder, folderEarly, warn, resolver);
                 // Some mods carry both entries in one DLL: the Anchor Chain one for the Workshop, the BepInEx one for players
                 // who copy the DLL into BepInEx\plugins. From a mod folder only the Anchor Chain entry is meant to run
                 // (the one Anchor Chain uses, the one the author tested); starting both would run the mod twice.
@@ -85,7 +87,6 @@ internal static class Scanner
                 foreach (PluginEntry p in found)
                 {
                     p.Order = order++;
-                    p.StartEarly |= folderEarly;
                     if (offBuild != null && p.State == PluginState.Pending)
                         p.Stop(PluginState.Skipped, $"{offBuild} build: this game has the {GameState.BuildName} (keel.ini)");
                     all.Add(p);
@@ -95,14 +96,14 @@ internal static class Scanner
         return all;
     }
 
-    private static List<PluginEntry> ScanDll(string dll, ModFolder folder, Action<string> warn, IAssemblyResolver resolver)
+    private static List<PluginEntry> ScanDll(string dll, ModFolder folder, bool folderEarly, Action<string> warn, IAssemblyResolver resolver)
     {
         var result = new List<PluginEntry>();
         try
         {
             using var stream = new MemoryStream(File.ReadAllBytes(dll));
             using ModuleDefinition module = ModuleDefinition.ReadModule(stream, new ReaderParameters { ReadSymbols = false, AssemblyResolver = resolver });
-            bool dllEarly = EarlyStart.AssemblyAsks(module.Assembly);
+            bool dllEarly = EarlyStart.AssemblyTiming(module.Assembly) ?? folderEarly;
             foreach (TypeDefinition type in module.GetTypes())
             {
                 if (!type.IsClass || type.IsAbstract || !type.HasCustomAttributes)

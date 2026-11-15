@@ -51,7 +51,13 @@ internal static class Planner
     /// </summary>
     public static List<PluginEntry> Replan(List<PluginEntry> all, ISet<string> runningElsewhere)
     {
-        Resolve(all, runningElsewhere);
+        var running = new HashSet<string>(runningElsewhere);
+        foreach (PluginEntry plugin in all.Where(p => p.State is PluginState.Running or PluginState.RunningWithErrors))
+        {
+            running.Add(plugin.Guid);
+            running.UnionWith(plugin.AlsoKnownAs);
+        }
+        Resolve(all, running);
         return Order(all.Where(p => p.State == PluginState.Pending).ToList());
     }
 
@@ -117,7 +123,7 @@ internal static class Planner
                            "Anchor Chain's loader would not: it drops every mod with an [ACIncompatibility], named mod present or not (an upstream bug).");
     }
 
-    private static Dictionary<PluginEntry, HashSet<PluginEntry>> Prerequisites(List<PluginEntry> plugins)
+    internal static Dictionary<PluginEntry, HashSet<PluginEntry>> Prerequisites(List<PluginEntry> plugins)
     {
         Dictionary<string, PluginEntry> byGuid = plugins.ToDictionary(p => p.Guid);
         foreach (PluginEntry p in plugins)

@@ -52,6 +52,26 @@ Lines it understands: Keel's `RUNNING / RUNNING WITH ERRORS / NOT STARTED / SKIP
 `Found N plugin(s)`, `N of M mod folders are on`, `The game's mod list is there`, `Start-up load screen done`, `Done:`; Anchor Chain's preloader's
 "started" line; the game's `FileManager.OnStart`, `FileManager.CheckFileValidity`, `(C) Triassic Games` and `3D WebView` lines for the early steps.
 
+## Startup preparation for mods
+
+A mod can include one or more DLLs ending in `.Preloader.dll` anywhere in
+its mod folder. Keel's BepInEx stub (1.1.0 or later) finds them in enabled
+folders that fit the game version.
+Each DLL needs one public type with a public static
+`void Prepare(string streamingAssets, string[] enabledMods, Action<string> report)`
+method and must be independent of Unity, Sea Power and the mod loaders. Keel
+calls each DLL on a worker when it sets up the loading window. A failed callback
+is logged and Keel continues with the next DLL. Use this for read-only file work
+that can run during the splash. The paths come from the saved mod list. Check
+them against the live game before using the results. Keep Unity and game API
+calls in the normal plugin entry point. The callback can report short status
+text for the loading window.
+
+`Keel.GetStartupTimings()` gives the timestamps of window setup, the first
+coroutine frame and early plugin dispatch in seconds since launch. A mod drawing replacement progress
+inside the game can call `Keel.HandOffStartupWindow()` once its display is
+visible. Keel still draws its own summary on the menu.
+
 ## Testing without the game
 
 `tools/loading-preview` (net8, no game): `dotnet run --project tools/loading-preview -c Release -- <Keel-log.txt> <out folder> [scale]`
@@ -65,3 +85,30 @@ replays a log through the window's model (adding the `STARTING` lines older logs
 - The preloader's 12.7 s are outside Keel (`tools/anchorchain-fix`); worth a look on its own.
 - Exclusive full screen hides the window; the game's "fullscreen window" mode shows it.
 - A mod that works on after its start returns (Dynamic Campaign Mod) is not named for that work.
+
+## Loader compatibility tests
+
+The offline self-test checks the two-argument boot method, both generations of
+the preparation handoff, and callback cleanup after success or failure.
+
+Run the live matrix locally with a current Steam install of Sea Power and
+BepInEx, the [Sea Power CLI](https://github.com/agm-114/crimean-tom/tree/main/docs/seapower-cli),
+and the stub and loader DLLs from a Keel release such as 0.5.4. Close the game
+first. The script builds the current pair, tests all four pairings, and
+restores the original mod list and starter files.
+
+```powershell
+$test = @{
+    GameDir = $gameDir
+    Cli = $cliExe
+    LegacyStub = $oldKeelStub
+    LegacyLoader = $oldKeelLoader
+}
+./tools/test-loaders.ps1 @test
+```
+
+To include the current Anchor Chain loader in the same local run, add
+`AnchorChainPreloader` from its release zip and
+`AnchorChainLoader` from its installed Workshop package to `$test`.
+This case starts Anchor Chain with its own preloader and needs the current
+game version. The script reports the directory containing the logs.

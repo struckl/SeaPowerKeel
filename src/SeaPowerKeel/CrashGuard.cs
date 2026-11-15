@@ -51,6 +51,7 @@ internal sealed class CrashGuard
 
     /// <summary>A mod is being kept out in this game because of an earlier crash.</summary>
     public bool HeldActive { get; private set; }
+    internal bool HasHeldPlugins => File.Exists(heldPath);
 
     /// <summary>The report's button: every held mod runs again from the next start.</summary>
     public void ClearHeld()

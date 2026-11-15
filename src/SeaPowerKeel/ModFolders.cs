@@ -59,12 +59,14 @@ internal static class ModFolders
 
     public static string UserSettings => System.IO.Path.Combine(PersistentDataPath, "usersettings.ini");
 
-    public static List<ModFolder> FromDisk()
+    public static List<ModFolder> FromDisk() => FromDisk(StreamingAssetsPath, WorkshopRoot, UserSettings);
+
+    internal static List<ModFolder> FromDisk(string streamingAssets, string workshop, string settings)
     {
         var found = new List<ModFolder>();
         try
         {
-            foreach (string dir in Directory.GetDirectories(StreamingAssetsPath))
+            foreach (string dir in Directory.GetDirectories(streamingAssets))
             {
                 string name = System.IO.Path.GetFileName(dir);
                 if (!GameFolders.Any(g => name.EndsWith(g, StringComparison.Ordinal)))
@@ -77,9 +79,9 @@ internal static class ModFolders
         }
         try
         {
-            if (Directory.Exists(WorkshopRoot))
+            if (Directory.Exists(workshop))
             {
-                foreach (string dir in Directory.GetDirectories(WorkshopRoot))
+                foreach (string dir in Directory.GetDirectories(workshop))
                 {
                     string name = System.IO.Path.GetFileName(dir);
                     if (ulong.TryParse(name, out ulong id))
@@ -93,7 +95,7 @@ internal static class ModFolders
         }
 
         var ordered = new List<ModFolder>();
-        foreach ((string dirName, bool on, ulong id) in ReadLoadOrder())
+        foreach ((string dirName, bool on, ulong id) in ReadLoadOrder(settings))
         {
             ModFolder match = (id != 0 ? found.FirstOrDefault(f => f.SteamId == id) : null)
                               ?? found.FirstOrDefault(f => f.Name == dirName);
@@ -110,12 +112,12 @@ internal static class ModFolders
     }
 
     /// <summary><c>[LoadOrder]</c> of usersettings.ini: <c>ModNDirectory=folder,enabled,steamId</c>.</summary>
-    private static IEnumerable<(string, bool, ulong)> ReadLoadOrder()
+    private static IEnumerable<(string, bool, ulong)> ReadLoadOrder(string settings)
     {
         string[] lines;
         try
         {
-            lines = File.ReadAllLines(UserSettings);
+            lines = File.ReadAllLines(settings);
         }
         catch (Exception)
         {

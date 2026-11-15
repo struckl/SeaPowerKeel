@@ -62,23 +62,30 @@ DLLs not named there are scanned as usual. Without `keel.ini` every DLL is scann
 
 ## Start early (opt-in)
 
-On the 3D globe build Keel starts mods after the game's start-up load screen (mods started during it can keep the unit data
-from loading or crash in Noesis). If your mod is safe there and needs to run while the game loads, ask for it. Either one:
+The default is Anchor Chain timing. On the current Sea Power build, regular
+mods wait for the startup load screen. Choose early timing if your mod can
+start before the game's startup services and UI are ready. Defer
+scene-dependent work until Unity loads a scene.
 
-- **`_info.ini`** of your mod folder (every plugin in the folder):
-  ```ini
-  [Keel]
-  StartEarly=true
-  ```
-- **Your DLL** (every plugin in it), no reference to Keel needed:
-  ```csharp
-  [assembly: System.Reflection.AssemblyMetadata("Keel.StartEarly", "true")]
-  ```
+Set `LoadTiming=Early` under `[Keel]` in `_info.ini` to apply it to the folder.
+`LoadTiming=AnchorChain` explicitly selects the default. To set timing for a
+particular DLL, use assembly metadata:
 
-- **What happens:** your mod starts as soon as Keel has checked it; every other mod still waits for the load screen.
-- **Dependencies:** a mod that needs (or must load after) a mod that waits starts with the others; the report says why.
-- **Seen in the report and log:** "Started before the load screen ended (the mod asked for it): ...".
-- **Load-screen hooks:** an early mod sees the real end of the load screen (Keel does not call its postfix again).
+```csharp
+[assembly: System.Reflection.AssemblyMetadata("Keel.LoadTiming", "Early")]
+```
+
+DLL metadata takes precedence over the folder setting. The older `StartEarly=true`
+flag is still supported. Keel begins discovery when BepInEx finishes starting
+its plugins, with Unity's first `Start` callback as a fallback. It checks
+enabled mods and plans their load order before calling the regular plugin entry
+point. An early plugin waits for any dependency or load-before prerequisite
+scheduled at Anchor Chain timing.
+The report names that prerequisite.
+
+Early plugins can use `Keel.GetEnabledModFolders()` to read the selected mod
+directories in load order without initializing the game's file manager.
+Their load-screen hooks see the real end of the load screen.
 
 ## The game-version check
 

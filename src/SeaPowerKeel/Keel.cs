@@ -27,6 +27,23 @@ public static class Keel
     public static readonly string Version = typeof(Keel).Assembly.GetName().Version.ToString(3);
 
     internal static readonly List<PluginEntry> Plugins = new();
+    private static readonly DateTime processStart = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+    internal static double StartupWindowOpened { get; set; }
+    internal static double StartupDispatchBeginning { get; set; }
+    internal static double EarlyPluginsStarting { get; set; }
+
+    internal static string[] EnabledModFolders = Array.Empty<string>();
+
+    /// <summary>The enabled mod directories in Keel's load order.</summary>
+    public static string[] GetEnabledModFolders() => (string[])EnabledModFolders.Clone();
+
+    internal static double StartupElapsed => (DateTime.UtcNow - processStart).TotalSeconds;
+
+    /// <summary>Seconds since process launch at window setup, mod discovery, and early plugin dispatch.</summary>
+    public static double[] GetStartupTimings() => new[] { StartupWindowOpened, StartupDispatchBeginning, EarlyPluginsStarting };
+
+    /// <summary>Call after a mod has drawn its replacement startup progress. The in-game Keel summary still appears.</summary>
+    public static void HandOffStartupWindow() => Loading.LoadingWindow.ExternalProgress = true;
 
     /// <summary>For other mods: is this plugin id running under Keel?</summary>
     public static bool IsRunning(string guid) =>
@@ -57,6 +74,8 @@ internal sealed partial class KeelHost : MonoBehaviour
     private bool wantNotice;
 
     private ManualLogSource log;
+    private ILogListener startupSignal;
+    private bool startupBegun;
     private ConfigEntry<bool> loadAcMods;
     private ConfigEntry<bool> takeOver;
     private Takeover.Record takeoverRecord;     // what the patcher did this start (null: it did not run)
@@ -194,29 +213,63 @@ internal sealed partial class KeelHost : MonoBehaviour
         };
         reportPath = Path.Combine(Paths.BepInExRootPath, "Keel-report.txt");
         Loading.LoadingWindow.Start(config, log);      // first, so it opens before the slow steps that follow (see docs/loading-window.md)
+        Keel.StartupWindowOpened = Keel.StartupElapsed;
+        if (disabled.Value.Length == 0 && crash is { Previous.Unclean: false, HasHeldPlugins: false })
+            PreparationDll.RunIfAvailable(Loading.LoadingWindow.ReportPreparation);
         log.LogInfo($"{Keel.Name} {Keel.Version} (stub {StubVersion}) on the {GameState.BuildName}, from {OwnPath}");
+        if (GameState.Globe)
+            BepInEx.Logging.Logger.Listeners.Add(startupSignal = new ChainloaderReady(BeginStartup));
+    }
+
+    // Unity Start is the fallback on BepInEx builds that omit the completion message.
+    private void Start() => BeginStartup();
+
+    private void BeginStartup()
+    {
+        if (startupBegun)
+            return;
+        startupBegun = true;
+        if (startupSignal != null)
+        {
+            BepInEx.Logging.Logger.Listeners.Remove(startupSignal);
+            startupSignal = null;
+        }
+        Keel.StartupDispatchBeginning = Keel.StartupElapsed;
         StartCoroutine(Run());
+    }
+
+    private class ChainloaderReady(Action start) : ILogListener
+    {
+        public void LogEvent(object sender, LogEventArgs args)
+        {
+            if (args.Level == LogLevel.Message && args.Source.SourceName == "BepInEx" &&
+                args.Data is string message && message == "Chainloader startup complete")
+                start();
+        }
+
+        public void Dispose() { }
     }
 
     private IEnumerator Run()
     {
-        // One frame first: every plugin in BepInEx\plugins (Anchor Chain's preloader too) has had its Awake by then.
-        yield return null;
-
-        // 1. The game's mod list. 0.8.7 has it straight away, the globe build after a while; failing that, the same list from disk.
+        // Prefer the native mod list. Until it is available, only a saved, enabled early request can start this phase.
         var watch = Stopwatch.StartNew();
-        List<ModFolder> folders = null;
-        // A mod that asked to start early (rgreat 2026-11-12: "could be a bit earlier", he replaces the load-screen pictures)
-        // does not wait for the game's own list, which comes about 8 s after Keel: Keel reads the same list from usersettings.ini
-        // at once, so early mods start before the first load-screen picture. Everything else still waits for the load screen.
-        if (GameState.Globe)
+        List<ModFolder> folders = GameState.GameModList();
+        List<PluginEntry> plugins = null;
+        if (GameState.Globe && folders == null)
         {
-            List<ModFolder> disk = null;
-            try { disk = ModFolders.FromDisk(); } catch (Exception) { }
-            if (disk != null && disk.Any(f => f.Enabled && EarlyStart.FolderAsks(f.Path)))
+            List<ModFolder> disk = ModFolders.FromDisk();
+            var scanNotes = new List<string>();
+            var scanSkipped = new List<SkippedDll>();
+            List<PluginEntry> saved = Scanner.Scan(disk.Where(f => f.Enabled).ToList(), scanNotes.Add,
+                scanSkipped, Paths.ManagedPath, Paths.BepInExAssemblyDirectory);
+            if (saved.Any(p => p.StartEarly && p.State == PluginState.Pending))
             {
                 folders = disk;
-                log.LogInfo("A mod asked to start early: Keel takes the mod list from usersettings.ini now instead of waiting for the game's.");
+                plugins = saved;
+                skippedDlls.AddRange(scanSkipped);
+                scanNotes.ForEach(Warn);
+                log.LogInfo("An enabled mod requested early timing. Using the saved mod list.");
             }
         }
         while (folders == null && (folders = GameState.GameModList()) == null && watch.Elapsed.TotalSeconds < 60)
@@ -226,16 +279,12 @@ internal sealed partial class KeelHost : MonoBehaviour
             folders = ModFolders.FromDisk();
             notes.Add("The game did not list its mod folders within 60 s; Keel used usersettings.ini instead.");
         }
-        else
-        {
+        else if (plugins == null)
             log.LogInfo($"The game's mod list is there (waited {watch.Elapsed.TotalSeconds:0.0} s).");
-        }
 
         List<ModFolder> enabled = folders.Where(f => f.Enabled).ToList();
-
-        // 2. Find the plugins (metadata only, no mod code runs): before the wait, so mods that ask to start early are known.
         watch.Restart();
-        Keel.Plugins.AddRange(Scanner.Scan(enabled, Warn, skippedDlls, Paths.ManagedPath, Paths.BepInExAssemblyDirectory));
+        Keel.Plugins.AddRange(plugins ?? Scanner.Scan(enabled, Warn, skippedDlls, Paths.ManagedPath, Paths.BepInExAssemblyDirectory));
         log.LogInfo($"Found {Keel.Plugins.Count} plugin(s) in {Keel.Plugins.Select(p => p.Dll).Distinct().Count()} DLL(s) ({watch.ElapsedMilliseconds} ms).");
         foreach (SkippedDll d in skippedDlls)
             log.LogInfo($"DLL left out: {d.Path} - {d.Reason}");
@@ -277,11 +326,13 @@ internal sealed partial class KeelHost : MonoBehaviour
                 packProblems = new List<string>();
             }
         });
-        yield return null;
+        if (!early)
+            yield return null;
 
         var runner = new Runner(log, gameObject, enabled);
         liveRunner = runner;
         liveFolders = enabled;
+        Keel.EnabledModFolders = enabled.Select(f => f.Path).ToArray();
         if (keelLog != null)
             keelLog.OwnerOf = runner.OwnerOf;
         // Unity hands exceptions to BepInEx without saying which mod threw; Keel adds a line that does, with the stack trace,
@@ -292,7 +343,8 @@ internal sealed partial class KeelHost : MonoBehaviour
 
         // 4. Check every DLL that may start against this game build.
         watch.Restart();
-        yield return Check();
+        foreach (object step in Check(yieldBetweenDlls: !early))
+            yield return step;
         log.LogInfo($"Game-version check done ({watch.ElapsedMilliseconds} ms, frames included).");
         watch.Restart();
 
@@ -306,16 +358,8 @@ internal sealed partial class KeelHost : MonoBehaviour
         if (LeaveToAnchorChain(runner, elsewhere, "before Keel loaded the mods"))
             order = Planner.Replan(Keel.Plugins, elsewhere);
 
-        // 5a. What Anchor Chain's own loader would have set up for its mods: the folder list behind AnchorChainLoader.FindFile,
-        // then the [ACConfig] mods' config files (Anchor Chain's first pass).
-        PrimeAnchorChainLoader(runner, enabled, folders, order);
-        PrepareAcConfigs(enabled, folders, order);
-        if (order.Any(p => p.State != PluginState.Pending))
-            order = Planner.Replan(Keel.Plugins, elsewhere);
-
-        // 5b. Load every DLL and create every Anchor Chain mod before any of them starts (as Anchor Chain does: a mod that looks
-        // for another mod's assembly when it starts finds it); then start in dependency order. One step per frame, which changes
-        // nothing about the order (see Sequencer). Anchor Chain is looked for again right before the first start.
+        // In each phase, prepare the DLLs and create the Anchor Chain mods before starting them in dependency order.
+        // Anchor Chain is looked for again right before the first start.
         var sequence = new Sequencer
         {
             Prepare = p =>
@@ -348,20 +392,30 @@ internal sealed partial class KeelHost : MonoBehaviour
                 p.Warnings.Add(why);
                 log.LogInfo($"{p.Display}: {why}");
             });
-            string names = string.Join(", ", earlySet.Select(p => p.Display).Distinct());
-            log.LogInfo($"Starting {earlySet.Count} plugin(s) that asked to start before the load screen ends: {names}.");
-            if (earlySet.Count > 0)
-                notes.Add($"Started before the load screen ended (the mod asked for it): {names}.");
             Func<List<PluginEntry>> replanAll = sequence.Replan;
-            sequence.Replan = () => replanAll().Where(earlySet.Contains).ToList();
-            foreach (PluginEntry _ in sequence.Run(order.Where(earlySet.Contains).ToList()))
-                yield return null;
+            if (earlySet.Count > 0)
+            {
+                sequence.Replan = () => replanAll().Where(earlySet.Contains).ToList();
+                List<PluginEntry> earlyOrder = Configure(order.Where(earlySet.Contains).ToList());
+                string names = string.Join(", ", earlyOrder.Select(p => p.Display).Distinct());
+                log.LogInfo($"Starting {earlyOrder.Count} plugin(s) that asked to start before the load screen ends: {names}.");
+                Keel.EarlyPluginsStarting = Keel.StartupElapsed;
+                foreach (PluginEntry _ in sequence.Run(earlyOrder)) { }
+            }
             started += sequence.StartedCount;
             sequence.StartedCount = 0;
             yield return WaitForLoadScreen();
-            sequence.Replan = () => replanAll().Where(p => !earlySet.Contains(p)).ToList();
-            order = sequence.Replan();
+            sequence.Replan = replanAll;
+            order = replanAll();
         }
+        List<PluginEntry> Configure(List<PluginEntry> phase)
+        {
+            PrimeAnchorChainLoader(runner, enabled, folders, phase);
+            PrepareAcConfigs(enabled, folders, phase);
+            return phase.Any(p => p.State != PluginState.Pending) ? sequence.Replan() : phase;
+        }
+
+        order = Configure(order);
         // Taken after the early mods: their load-screen hooks see the real end and are not called again.
         HashSet<string> loadScreenHooks = LoadScreenEnd.Owners();
         foreach (PluginEntry _ in sequence.Run(order))
@@ -375,7 +429,7 @@ internal sealed partial class KeelHost : MonoBehaviour
         crash?.Mark("done", "");
         done = true;
         UpdateLoadOrderWarnings();
-        log.LogInfo($"Started {started} plugin(s) in {watch.ElapsedMilliseconds} ms, one per frame.");
+        log.LogInfo($"Started {started} plugin(s) in {watch.ElapsedMilliseconds} ms.");
         log.LogInfo($"Done: {Report.Summary(Keel.Plugins)}. Report: {reportPath} or {hotkey.Value} in the game.");
         WriteReport();
         // Shown once the main menu is up (the start-up load screen can last minutes), see Update.
@@ -438,6 +492,7 @@ internal sealed partial class KeelHost : MonoBehaviour
             }
         }
         liveFolders = now;
+        Keel.EnabledModFolders = now.Select(f => f.Path).ToArray();
         UpdateLoadOrderWarnings();
 
         // Switched on: the same steps as at start-up, for the new folders only.
@@ -461,7 +516,7 @@ internal sealed partial class KeelHost : MonoBehaviour
             Keel.Plugins.RemoveAll(old => old.State == PluginState.Skipped && fresh.Any(n => n.Guid == old.Guid));
             Keel.Plugins.AddRange(fresh);
             RuleAnchorChain(now, liveRunner);
-            yield return Check();
+            yield return Check().GetEnumerator();
             var elsewhere = new HashSet<string>(Chainloader.PluginInfos.Keys);
             elsewhere.UnionWith(running);
             elsewhere.UnionWith(Keel.Plugins.Where(p => p.State == PluginState.LeftToAnchorChain).Select(p => p.Guid));
@@ -700,7 +755,7 @@ internal sealed partial class KeelHost : MonoBehaviour
         return System.IO.File.Exists(path) ? path : null;
     }
 
-    private IEnumerator Check()
+    private IEnumerable Check(bool yieldBetweenDlls = true)
     {
         string mode = versionCheck.Value;
         if (mode == "Off")
@@ -755,7 +810,8 @@ internal sealed partial class KeelHost : MonoBehaviour
                                            "That code cannot find its target here: expect errors from the mod, or a part of it that does nothing. (Keel does not check whether a transpiler still matches.)");
                     }
                 }
-                yield return null;
+                if (yieldBetweenDlls)
+                    yield return null;
             }
             if (preflight.IndexMs > 0)
                 log.LogInfo($"Index of the game's type names for by-name lookups: {preflight.IndexMs} ms.");

@@ -6,27 +6,16 @@ using Mono.Cecil;
 
 namespace SeaPowerKeel;
 
-/// <summary>
-/// Opt-in "start early" (asked for by rgreat, author of the Alternative mods, 2026-11-12). On the 3D globe build Keel starts mods
-/// only after the game's start-up load screen is done, because mods started during it can keep the unit data from loading (and
-/// can crash in Noesis). A mod that knows it is safe there, and needs to be running while the game loads, asks for it, without
-/// referencing Keel:
-/// <list type="bullet">
-/// <item>in its <c>_info.ini</c>: a <c>[Keel]</c> section with <c>StartEarly=true</c> (every plugin in that mod folder), or</item>
-/// <item>in its DLL: <c>[assembly: System.Reflection.AssemblyMetadata("Keel.StartEarly", "true")]</c> (every plugin in that DLL).</item>
-/// </list>
-/// Early mods start as soon as Keel has checked them, before the load screen ends; every other mod waits as before. An early mod
-/// that needs (or must start after) a mod that waits starts with the others, and the report says why.
-/// </summary>
 internal static class EarlyStart
 {
-    public const string InfoKey = "StartEarly", MetadataKey = "Keel.StartEarly";
+    private const string Timing = "LoadTiming", Legacy = "StartEarly";
 
-    /// <summary>True when <paramref name="infoIni"/> (the text of a mod's _info.ini) has [Keel] StartEarly=true.</summary>
-    public static bool InInfoIni(string infoIni)
+    // Null means the author did not specify a timing. Anchor Chain timing is the default.
+    public static bool? InInfoIni(string text)
     {
         bool inKeel = false;
-        foreach (string raw in (infoIni ?? "").Split('\n'))
+        bool? timing = null, legacy = null;
+        foreach (string raw in (text ?? "").Split('\n'))
         {
             string line = raw.Split(';', '#')[0].Trim();
             if (line.StartsWith("["))
@@ -35,61 +24,71 @@ internal static class EarlyStart
                 continue;
             }
             int eq = line.IndexOf('=');
-            if (inKeel && eq > 0 && line.Substring(0, eq).Trim().Equals(InfoKey, StringComparison.OrdinalIgnoreCase))
-                return IsTrue(line.Substring(eq + 1));
+            if (!inKeel || eq <= 0)
+                continue;
+            string key = line.Substring(0, eq).Trim(), value = line.Substring(eq + 1);
+            if (key.Equals(Timing, StringComparison.OrdinalIgnoreCase))
+                timing = ParseTiming(value);
+            else if (key.Equals(Legacy, StringComparison.OrdinalIgnoreCase))
+                legacy = IsTrue(value);
         }
-        return false;
+        return timing ?? legacy;
     }
 
-    /// <summary>True when the folder's _info.ini asks for an early start (false when there is none or it cannot be read).</summary>
-    public static bool FolderAsks(string folder)
+    public static bool? FolderTiming(string folder)
     {
         try
         {
-            string path = Path.Combine(folder ?? "", "_info.ini");
-            return File.Exists(path) && InInfoIni(File.ReadAllText(path));
+            string path = Path.Combine(folder, "_info.ini");
+            return File.Exists(path) ? InInfoIni(File.ReadAllText(path)) : null;
         }
         catch (Exception)
         {
-            return false;
+            return null;
         }
     }
 
-    /// <summary>True when the assembly carries AssemblyMetadata("Keel.StartEarly", "true").</summary>
-    public static bool AssemblyAsks(AssemblyDefinition assembly) =>
-        assembly?.CustomAttributes.Any(a => a.AttributeType.FullName == "System.Reflection.AssemblyMetadataAttribute"
-                                            && a.ConstructorArguments.Count == 2
-                                            && a.ConstructorArguments[0].Value as string == MetadataKey
-                                            && IsTrue(a.ConstructorArguments[1].Value as string)) == true;
+    public static bool? AssemblyTiming(AssemblyDefinition assembly)
+    {
+        string Value(string key) => assembly?.CustomAttributes
+            .Where(a => a.AttributeType.FullName == "System.Reflection.AssemblyMetadataAttribute" &&
+                        a.ConstructorArguments.Count == 2 && a.ConstructorArguments[0].Value as string == key)
+            .Select(a => a.ConstructorArguments[1].Value as string).FirstOrDefault();
 
-    private static bool IsTrue(string v) => (v ?? "").Trim().Trim('"').Equals("true", StringComparison.OrdinalIgnoreCase) || (v ?? "").Trim() == "1";
+        string legacy = Value("Keel." + Legacy);
+        return ParseTiming(Value("Keel." + Timing)) ?? (IsTrue(legacy) ? true : (bool?)null);
+    }
 
-    /// <summary>
-    /// The plugins that start early: those that asked and are still to start, less every one that depends on, or must start after,
-    /// a plugin Keel starts later (repeated until stable). <paramref name="note"/> gets one line per plugin moved to the later start.
-    /// </summary>
+    private static bool? ParseTiming(string value) => value?.Trim().Trim('"').ToUpperInvariant() switch
+    {
+        "EARLY" => true,
+        "ANCHORCHAIN" => false,
+        _ => null,
+    };
+
+    private static bool IsTrue(string value) =>
+        value?.Trim().Trim('"').Equals("true", StringComparison.OrdinalIgnoreCase) == true || value?.Trim() == "1";
+
+    /// <summary>Selects pending early plugins whose prerequisites can also start early.</summary>
     public static HashSet<PluginEntry> Set(IList<PluginEntry> all, Action<PluginEntry, string> note)
     {
-        var early = new HashSet<PluginEntry>(all.Where(p => p.StartEarly && p.State == PluginState.Pending));
-        var byGuid = all.Where(p => p.State == PluginState.Pending).GroupBy(p => p.Guid).ToDictionary(g => g.Key, g => g.First());
-        bool changed = true;
-        while (changed)
+        List<PluginEntry> pending = all.Where(p => p.State == PluginState.Pending).ToList();
+        var prerequisites = Planner.Prerequisites(pending);
+        var early = new HashSet<PluginEntry>(pending.Where(p => p.StartEarly));
+        bool changed;
+        do
         {
             changed = false;
-            foreach (PluginEntry p in early.ToList())
+            foreach (PluginEntry plugin in pending.Where(early.Contains))
             {
-                // what must be running before p starts: its dependencies, and mods that say they load before it
-                string late = p.Dependencies.Select(d => d.Guid)
-                               .Concat(all.Where(x => x.LoadBefore.Contains(p.Guid)).Select(x => x.Guid))
-                               .Where(g => byGuid.TryGetValue(g, out PluginEntry x) && !early.Contains(x))
-                               .Select(g => byGuid[g].Display).FirstOrDefault();
+                PluginEntry late = prerequisites[plugin].FirstOrDefault(p => !early.Contains(p));
                 if (late == null)
                     continue;
-                early.Remove(p);
+                early.Remove(plugin);
                 changed = true;
-                note?.Invoke(p, $"Asked to start early, but it needs {late}, which starts after the load screen: it starts with the others.");
+                note?.Invoke(plugin, $"Starts at Anchor Chain timing because it must start after {late.Display}.");
             }
-        }
+        } while (changed);
         return early;
     }
 }
