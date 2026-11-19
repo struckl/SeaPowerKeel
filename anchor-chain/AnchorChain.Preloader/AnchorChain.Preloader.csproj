@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
@@ -9,23 +9,23 @@
 
     <ItemGroup>
         <Reference Include="0Harmony">
-            <HintPath>..\Dll\0Harmony.dll</HintPath>
+            <HintPath>$(BepInExCore)\0Harmony.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="BepInEx">
-            <HintPath>..\Dll\BepInEx.dll</HintPath>
+            <HintPath>$(BepInExCore)\BepInEx.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Seapower-Scripts">
-            <HintPath>..\Dll\Seapower-Scripts.dll</HintPath>
+            <HintPath>$(ManagedDir)\Seapower-Scripts.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine">
-            <HintPath>..\Dll\UnityEngine.dll</HintPath>
+            <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="UnityEngine.CoreModule">
-            <HintPath>..\Dll\UnityEngine.CoreModule.dll</HintPath>
+            <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
             <Private>False</Private>
         </Reference>
 

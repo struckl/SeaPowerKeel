@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>12.0</LangVersion>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,32 +14,36 @@
 
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>..\Dll\0Harmony.dll</HintPath>
+      <HintPath>$(BepInExCore)\0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>..\Dll\BepInEx.dll</HintPath>
+      <HintPath>$(BepInExCore)\BepInEx.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="com.rlabrecque.steamworks.net">
+      <HintPath>$(ManagedDir)\com.rlabrecque.steamworks.net.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Noesis.NoesisGUI">
-      <HintPath>..\Dll\Noesis.NoesisGUI.dll</HintPath>
+      <HintPath>$(ManagedDir)\Noesis.NoesisGUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Seapower-Scripts">
-      <HintPath>..\Dll\Seapower-Scripts.dll</HintPath>
+      <HintPath>$(ManagedDir)\Seapower-Scripts.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\Dll\UnityEngine.dll</HintPath>
+      <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\Dll\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
 
     <Reference Include="UnityEngine.ParticleSystemModule">
-      <HintPath>..\Dll\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <HintPath>$(ManagedDir)\UnityEngine.ParticleSystemModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

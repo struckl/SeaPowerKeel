@@ -6,6 +6,7 @@
 - **Made by** [JustOneOther](https://github.com/JustOneOther) and [agm-114](https://github.com/agm-114) of the [SeaPower-Modders](https://github.com/SeaPower-Modders).
 - **Its whole history is part of this repository**: every Anchor Chain commit, under its author's name, joined to Keel's `main` as one chain.
 - **Its source as of the hand-over** is in [`anchor-chain/`](anchor-chain/) and stays under its own MIT license ([anchor-chain/LICENSE.md](anchor-chain/LICENSE.md)).
+- **Anchor Chain 1.3 (coming)** offers Anchor Chain players the switch to Keel in a game message box: [docs/test-plan-anchor-chain-1.3.md](docs/test-plan-anchor-chain-1.3.md).
 - **Original project:** [SeaPower-Modders/AnchorChain](https://github.com/SeaPower-Modders/AnchorChain) · [Workshop item](https://steamcommunity.com/sharedfiles/filedetails/?id=3380210757)
 
 > **Status (18 November 2026, game 0.9.3):** 0.6.0 was run in the test VM on game 0.9.3, public and beta: setup and Restore, cards, report, What's new, two missions, a game ended from outside and the start after it; every row green. Test notes: [docs/test-2026-11-18-0.6.0.md](docs/test-2026-11-18-0.6.0.md).

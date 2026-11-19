@@ -2,12 +2,23 @@
 
 ## Unreleased
 
+### KeelSetup downloads BepInEx
+
 Run in the test VM on 2026-11-18 (fake game folders, no game start): download, network off, offline zip, wrong zip refused, game with BepInEx, Restore; all green.
 
 - **Keel ships no BepInEx any more**: KeelSetup.exe downloads the official BepInEx 5.4.23.2 from its GitHub release only when the game has none
 - **Checked before anything is unpacked**: a download whose hash is not the pinned one is refused, nothing is installed
 - **No internet on that PC**: put `BepInEx_win_x64_5.4.23.2.zip` from BepInEx's GitHub page next to KeelSetup.exe; the setup checks and uses it
 - **Smaller package, fewer program files** for virus scanners to guess at
+
+### Anchor Chain 1.3: the switch to Keel
+
+Not released; a pull request. Run 2 in the test VM (2026-11-18): offer, Not now, Switch, restart and Keel taking over all green on 0.9.3 public and beta. Goes out through Anchor Chain's own Workshop item, not Keel's.
+
+- **Anchor Chain offers the switch**: on the main menu a game message box says Anchor Chain continues as Keel; Switch or Not now
+- **Switch does it all from the game**: subscribes to Keel, switches it on in the mod list, installs its stub and takeover the way KeelSetup does (Restore undoes it), restarts the game
+- **Not now changes nothing**: Anchor Chain keeps loading the mods; the box asks again at the next start
+- **Builds from the installed game**: `anchor-chain/` no longer needs a `Dll` folder of game files
 
 ## 0.6.0 - 2026-11-18 - Keel carries on Anchor Chain, fixes from 183 player reports
 

@@ -1,0 +1,9 @@
+<Project>
+  <!-- Where the game and BepInEx are: the references come from the installed game (no game files in this repository).
+       Override the install: dotnet build -p:GameDir="D:\Steam\steamapps\common\Sea Power" -->
+  <PropertyGroup>
+    <GameDir Condition="'$(GameDir)' == ''">E:\Games\steamapps\common\Sea Power</GameDir>
+    <ManagedDir Condition="'$(ManagedDir)' == ''">$(GameDir)\Sea Power_Data\Managed</ManagedDir>
+    <BepInExCore Condition="'$(BepInExCore)' == ''">$(GameDir)\BepInEx\core</BepInExCore>
+  </PropertyGroup>
+</Project>
